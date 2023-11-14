@@ -14,24 +14,24 @@ import (
 
 const insertLoop = 100
 
-type BusinessProcessor struct {
+type WorkerProcessor struct {
 	log       log.Logger
 	db        *database.DB
 	redis     *redis.Client
 	listeners chan interface{}
 }
 
-func NewBusinessProcessor(logger log.Logger, db *database.DB, redis *redis.Client) *BusinessProcessor {
-	businessProcessor := BusinessProcessor{
+func NewWorkerProcessor(logger log.Logger, db *database.DB, redis *redis.Client) *WorkerProcessor {
+	workerProcessor := WorkerProcessor{
 		log:       logger,
 		db:        db,
 		redis:     redis,
 		listeners: make(chan interface{}, 1),
 	}
-	return &businessProcessor
+	return &workerProcessor
 }
 
-func (b *BusinessProcessor) Start(ctx context.Context) error {
+func (b *WorkerProcessor) Start(ctx context.Context) error {
 	done := ctx.Done()
 
 	startup := make(chan interface{}, 1)
@@ -64,9 +64,9 @@ func (b *BusinessProcessor) Start(ctx context.Context) error {
 	}
 }
 
-func (b *BusinessProcessor) run() error {
-
+func (b *WorkerProcessor) run() error {
 	if err := b.syncL2ToL1StateRoot(); err != nil {
+		log.Info("err info", "err", err)
 		return err
 	}
 
@@ -75,7 +75,7 @@ func (b *BusinessProcessor) run() error {
 	return nil
 }
 
-func (b *BusinessProcessor) syncL2ToL1StateRoot() error {
+func (b *WorkerProcessor) syncL2ToL1StateRoot() error {
 	blockNumber, err := b.db.StateRoots.GetLatestStateRootL2BlockNumber()
 	if err != nil {
 		b.log.Error(err.Error())
@@ -101,7 +101,7 @@ func (b *BusinessProcessor) syncL2ToL1StateRoot() error {
 	return nil
 }
 
-func (b *BusinessProcessor) syncL1ToL2Business() error {
+func (b *WorkerProcessor) syncL1ToL2Worker() error {
 	startTimestamp := uint64(1)
 
 	val, err := b.redis.Get(context.Background(), "l1StartTimestamp").Result()
@@ -145,7 +145,7 @@ func (b *BusinessProcessor) syncL1ToL2Business() error {
 	return nil
 }
 
-func (b *BusinessProcessor) syncL2ToL1Business() error {
+func (b *WorkerProcessor) syncL2ToL1Worker() error {
 	startTimestamp := uint64(1)
 
 	val, err := b.redis.Get(context.Background(), "l2StartTimestamp").Result()

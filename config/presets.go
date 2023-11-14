@@ -197,7 +197,6 @@ var Presets = map[int]Preset{
 				L1CrossDomainMessengerProxy: common.HexToAddress("0x0165878A594ca255338adfa4d48449f69242Eb8F"),
 				L1StandardBridgeProxy:       common.HexToAddress("0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"),
-				DataLayrServiceManagerAddr:  common.HexToAddress("0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3"),
 
 				// pre-bedrock
 				LegacyCanonicalTransactionChain: common.HexToAddress("0x5e4e65926ba27467555eb562121fac00d24e9dd2"),

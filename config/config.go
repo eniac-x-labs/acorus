@@ -2,30 +2,23 @@ package config
 
 import (
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
 	"os"
 	"reflect"
-	"time"
-
-	"github.com/BurntSushi/toml"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
-	// default to 5 seconds
 	defaultLoopInterval     = 5000
 	defaultHeaderBufferSize = 500
 )
 
-// In the future, presets can just be onchain config and fetched on initialization
-
-// Config represents the `acorus.toml` file used to configure the acorus
 type Config struct {
 	Chain         ChainConfig  `toml:"chain"`
 	RPCs          RPCsConfig   `toml:"rpcs"`
-	DA            DAConfig     `toml:"da"`
 	Redis         RedisConfig  `toml:"redis"`
 	MasterDB      DBConfig     `toml:"master_db"`
 	SlaveDB       DBConfig     `toml:"slave_db"`
@@ -48,9 +41,6 @@ type L1Contracts struct {
 	L1CrossDomainMessengerProxy common.Address `toml:"l1-cross-domain-messenger"`
 	L1StandardBridgeProxy       common.Address `toml:"l1-standard-bridge"`
 	L1ERC721BridgeProxy         common.Address `toml:"l1-erc721-bridge"`
-
-	// da
-	DataLayrServiceManagerAddr common.Address `toml:"dlsm"`
 
 	// IGNORE: legacy contracts (only settable via presets)
 	LegacyCanonicalTransactionChain common.Address `toml:"-"`
@@ -93,7 +83,6 @@ func (c L2Contracts) ForEach(cb func(string, common.Address) error) error {
 	contracts := reflect.ValueOf(c)
 	fields := reflect.VisibleFields(reflect.TypeOf(c))
 	for _, field := range fields {
-		// ruleid: unsafe-reflect-by-name
 		addr := (contracts.FieldByName(field.Name).Interface()).(common.Address)
 		if err := cb(field.Name, addr); err != nil {
 			return err
@@ -103,21 +92,16 @@ func (c L2Contracts) ForEach(cb func(string, common.Address) error) error {
 	return nil
 }
 
-// ChainConfig configures of the chain being indexed
 type ChainConfig struct {
-	// Configure known chains with the l2 chain id
 	Preset           int
 	L1StartingHeight uint `toml:"l1-starting-height"`
 
 	L1Contracts L1Contracts `toml:"l1-contracts"`
 	L2Contracts L2Contracts `toml:"-"`
 
-	// Bedrock starting heights only applicable for OP-Mainnet & OP-Goerli
 	L1BedrockStartingHeight uint `toml:"-"`
 	L2BedrockStartingHeight uint `toml:"-"`
 
-	// These configuration options will be removed once
-	// native reorg handling is implemented
 	L1ConfirmationDepth uint `toml:"l1-confirmation-depth"`
 	L2ConfirmationDepth uint `toml:"l2-confirmation-depth"`
 
@@ -128,13 +112,11 @@ type ChainConfig struct {
 	L2HeaderBufferSize uint `toml:"l2-header-buffer-size"`
 }
 
-// RPCsConfig configures the RPC urls
 type RPCsConfig struct {
 	L1RPC string `toml:"l1-rpc"`
 	L2RPC string `toml:"l2-rpc"`
 }
 
-// DBConfig configures the postgres database
 type DBConfig struct {
 	Host     string `toml:"host"`
 	Port     int    `toml:"port"`
@@ -143,17 +125,9 @@ type DBConfig struct {
 	Password string `toml:"password"`
 }
 
-// Configures the a server
 type ServerConfig struct {
 	Host string `toml:"host"`
 	Port int    `toml:"port"`
-}
-
-type DAConfig struct {
-	RetrieverSocket          string        `toml:"retriever-socket"`
-	RetrieverTimeout         time.Duration `toml:"retriever-timeout"`
-	GraphProvider            string        `toml:"graph-provider"`
-	DataStorePollingDuration time.Duration `toml:"data-store-polling-duration"`
 }
 
 type RedisConfig struct {

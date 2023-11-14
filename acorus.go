@@ -21,21 +21,21 @@ import (
 	"github.com/cornerstone-labs/acorus/event/processors"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
-	node2 "github.com/cornerstone-labs/acorus/synchronizer/node"
+	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	"github.com/cornerstone-labs/acorus/worker"
 )
 
 type Acorus struct {
-	log               log.Logger
-	db                *database.DB
-	redis             *redis.Client
-	httpConfig        config.ServerConfig
-	metricsConfig     config.ServerConfig
-	metricsRegistry   *prometheus.Registry
-	L1Sync            *synchronizer.L1Sync
-	L2Sync            *synchronizer.L2Sync
-	BridgeProcessor   *processors.BridgeProcessor
-	BusinessProcessor *worker.BusinessProcessor
+	log             log.Logger
+	db              *database.DB
+	redis           *redis.Client
+	httpConfig      config.ServerConfig
+	metricsConfig   config.ServerConfig
+	metricsRegistry *prometheus.Registry
+	L1Sync          *synchronizer.L1Sync
+	L2Sync          *synchronizer.L2Sync
+	BridgeProcessor *processors.BridgeProcessor
+	WorkerProcessor *worker.WorkerProcessor
 }
 
 func NewAcorus(
@@ -47,10 +47,11 @@ func NewAcorus(
 	httpConfig config.ServerConfig,
 	metricsConfig config.ServerConfig,
 ) (*Acorus, error) {
-	l1EthClient, err := node2.DialEthClient(rpcsConfig.L1RPC)
+	l1EthClient, err := node.DialEthClient(rpcsConfig.L1RPC)
 	if err != nil {
 		return nil, err
 	}
+	log.Error("err", err)
 	l1Cfg := synchronizer.Config{
 		LoopIntervalMsec:  chainConfig.L1PollingInterval,
 		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
@@ -62,7 +63,7 @@ func NewAcorus(
 		return nil, err
 	}
 
-	l2EthClient, err := node2.DialEthClient(rpcsConfig.L2RPC)
+	l2EthClient, err := node.DialEthClient(rpcsConfig.L2RPC)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +82,18 @@ func NewAcorus(
 		return nil, err
 	}
 
-	businessProcessor := worker.NewBusinessProcessor(log, db, redis)
+	workerProcessor := worker.NewWorkerProcessor(log, db, redis)
 
 	acorus := &Acorus{
-		log:               log,
-		db:                db,
-		redis:             redis,
-		httpConfig:        httpConfig,
-		metricsConfig:     metricsConfig,
-		L1Sync:            l1Syncer,
-		L2Sync:            l2Syncer,
-		BridgeProcessor:   bridgeProcessor,
-		BusinessProcessor: businessProcessor,
+		log:             log,
+		db:              db,
+		redis:           redis,
+		httpConfig:      httpConfig,
+		metricsConfig:   metricsConfig,
+		L1Sync:          l1Syncer,
+		L2Sync:          l2Syncer,
+		BridgeProcessor: bridgeProcessor,
+		WorkerProcessor: workerProcessor,
 	}
 	return acorus, nil
 }
@@ -148,10 +149,10 @@ func (i *Acorus) Run(ctx context.Context) error {
 	runProcess(i.BridgeProcessor.Start)
 
 	// worker engine
-	runProcess(i.BusinessProcessor.Start)
+	// runProcess(i.WorkerProcessor.Start)
 
 	// metrics server
-	runProcess(i.startMetricsServer)
+	// runProcess(i.startMetricsServer)
 
 	// service server
 	runProcess(i.startHttpServer)

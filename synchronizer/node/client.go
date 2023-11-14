@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defaultDialTimeout    = 5 * time.Second
+	defaultDialTimeout    = 15 * time.Second
 	defaultDialAttempts   = 5
 	defaultRequestTimeout = 10 * time.Second
 )
@@ -43,23 +43,21 @@ func DialEthClient(rpcUrl string) (EthClient, error) {
 	defer cancel()
 
 	bOff := retry.Exponential()
-	rpcClient, err := retry.Do(ctxwt, defaultDialAttempts, bOff, func() (*rpc.Client, error) {
-		if isURLAvailable(rpcUrl) {
+	rpcCli, err := retry.Do(ctxwt, defaultDialAttempts, bOff, func() (*rpc.Client, error) {
+		if !isURLAvailable(rpcUrl) {
 			return nil, fmt.Errorf("address unavailable (%s)", rpcUrl)
 		}
-
 		client, err := rpc.DialContext(ctxwt, rpcUrl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dial address (%s): %w", rpcUrl, err)
 		}
 		return client, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	return &wrapClient{rpc: NewRPC(rpcClient)}, nil
+	return &wrapClient{rpc: NewRPC(rpcCli)}, nil
 }
 
 func (c *wrapClient) BlockHeaderByHash(hash common.Hash) (*types.Header, error) {
