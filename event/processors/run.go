@@ -3,6 +3,7 @@ package processors
 import (
 	"context"
 	"errors"
+	bridge2 "github.com/cornerstone-labs/acorus/event/processors/op-stack/bridge"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,7 +12,6 @@ import (
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/processors/bridge"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 )
 
@@ -164,21 +164,21 @@ func (b *BridgeProcessor) run() error {
 			l2BridgeLog.Info("scanning for bridge events")
 
 			// First, find all possible initiated bridge events
-			if err := bridge.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
+			if err := bridge2.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
 				return err
 			}
-			if err := bridge.LegacyL2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
+			if err := bridge2.LegacyL2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
 				batchLog.Error("failed to index legacy l2 initiated bridge events", "err", err)
 				return err
 			}
 
 			// Now that all initiated events have been indexed, it is ensured that all finalization can find their counterpart.
-			if err := bridge.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
+			if err := bridge2.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 finalized bridge events", "err", err)
 				return err
 			}
-			if err := bridge.LegacyL2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
+			if err := bridge2.LegacyL2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
 				batchLog.Error("failed to index legacy l2l finalized bridge events", "err", err)
 				return err
 			}
@@ -200,21 +200,21 @@ func (b *BridgeProcessor) run() error {
 		l2BridgeLog.Info("scanning for bridge events")
 
 		// First, find all possible initiated bridge events
-		if err := bridge.L1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
+		if err := bridge2.L1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 initiated bridge events", "err", err)
 			return err
 		}
-		if err := bridge.L2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
+		if err := bridge2.L2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
 			batchLog.Error("failed to index l2 initiated bridge events", "err", err)
 			return err
 		}
 
 		// Now all finalization events can find their counterpart.
-		if err := bridge.L1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
+		if err := bridge2.L1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 finalized bridge events", "err", err)
 			return err
 		}
-		if err := bridge.L2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
+		if err := bridge2.L2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
 			batchLog.Error("failed to index l2 finalized bridge events", "err", err)
 			return err
 		}

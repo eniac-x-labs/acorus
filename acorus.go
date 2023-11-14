@@ -3,15 +3,15 @@ package indexer
 import (
 	"context"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-redis/redis/v8"
 	"math/big"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -25,9 +25,7 @@ import (
 	"github.com/cornerstone-labs/acorus/worker"
 )
 
-// acorus contains the necessary resources for
-// indexing the configured L1 and L2 chains
-type acorus struct {
+type Acorus struct {
 	log               log.Logger
 	db                *database.DB
 	redis             *redis.Client
@@ -40,8 +38,7 @@ type acorus struct {
 	BusinessProcessor *worker.BusinessProcessor
 }
 
-// Newacorus initializes an instance of the acorus
-func Newacorus(
+func NewAcorus(
 	log log.Logger,
 	db *database.DB,
 	redis *redis.Client,
@@ -49,9 +46,7 @@ func Newacorus(
 	rpcsConfig config.RPCsConfig,
 	httpConfig config.ServerConfig,
 	metricsConfig config.ServerConfig,
-) (*acorus, error) {
-
-	// L1
+) (*Acorus, error) {
 	l1EthClient, err := node2.DialEthClient(rpcsConfig.L1RPC)
 	if err != nil {
 		return nil, err
@@ -67,7 +62,6 @@ func Newacorus(
 		return nil, err
 	}
 
-	// L2 (defaults to predeploy contracts)
 	l2EthClient, err := node2.DialEthClient(rpcsConfig.L2RPC)
 	if err != nil {
 		return nil, err
@@ -82,16 +76,14 @@ func Newacorus(
 		return nil, err
 	}
 
-	// Bridge
 	bridgeProcessor, err := processors.NewBridgeProcessor(log, db, l1Syncer, chainConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	// Business processor
 	businessProcessor := worker.NewBusinessProcessor(log, db, redis)
 
-	acorus := &acorus{
+	acorus := &Acorus{
 		log:               log,
 		db:                db,
 		redis:             redis,
@@ -105,7 +97,7 @@ func Newacorus(
 	return acorus, nil
 }
 
-func (i *acorus) startHttpServer(ctx context.Context) error {
+func (i *Acorus) startHttpServer(ctx context.Context) error {
 	i.log.Debug("starting http server...", "port", i.httpConfig.Host)
 
 	r := chi.NewRouter()
@@ -122,16 +114,15 @@ func (i *acorus) startHttpServer(ctx context.Context) error {
 	return srv.Stop(context.Background())
 }
 
-func (i *acorus) startMetricsServer(ctx context.Context) error {
+func (i *Acorus) startMetricsServer(ctx context.Context) error {
 	return nil
 }
 
-// Start starts the indexing service on L1 and L2 chains
-func (i *acorus) Run(ctx context.Context) error {
+func (i *Acorus) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, 5)
 
-	// if any goroutine halts, we stop the entire acorus
+	// if any goroutine halts, we stop the entire Acorus
 	processCtx, processCancel := context.WithCancel(ctx)
 	runProcess := func(start func(ctx context.Context) error) {
 		wg.Add(1)

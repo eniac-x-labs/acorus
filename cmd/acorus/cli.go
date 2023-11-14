@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/urfave/cli/v2"
+
+	"github.com/ethereum/go-ethereum/params"
 
 	acorus "github.com/cornerstone-labs/acorus"
 	oplog "github.com/cornerstone-labs/acorus/common/log"
@@ -45,7 +46,7 @@ func runIndexer(ctx *cli.Context) error {
 
 	redis, err := database.NewRedis(cfg.Redis)
 
-	acorus, err := acorus.Newacorus(log, db, redis, cfg.Chain, cfg.RPCs, cfg.HTTPServer, cfg.MetricsServer)
+	acorus, err := acorus.NewAcorus(log, db, redis, cfg.Chain, cfg.RPCs, cfg.HTTPServer, cfg.MetricsServer)
 	if err != nil {
 		log.Error("failed to create acorus", "err", err)
 		return err

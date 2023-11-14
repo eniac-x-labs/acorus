@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"github.com/urfave/cli/v2"
 	"io"
 	"os"
 	"strings"

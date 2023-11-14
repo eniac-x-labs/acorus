@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
 	"os"
 	"reflect"
 	"time"
@@ -10,8 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/cornerstone-labs/acorus/event/op-bindings/predeploys"
 )
 
 const (

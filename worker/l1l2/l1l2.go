@@ -7,9 +7,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/cornerstone-labs/acorus/database/business"
 	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	bridgeDb "github.com/cornerstone-labs/acorus/database/event/l1-l2"
+	"github.com/cornerstone-labs/acorus/database/worker"
 )
 
 type L1L2Processor struct {
@@ -24,10 +24,10 @@ func NewL1L2Processor(logger log.Logger, bv bridgeDb.BridgeTransfersView) L1L2Pr
 	}
 }
 
-func ConstructL1ToL2(deposits []l1_l2.L1BridgeDepositWithTransactionHashes) []business.L1ToL2 {
-	l1ToL2s := []business.L1ToL2{}
+func ConstructL1ToL2(deposits []l1_l2.L1BridgeDepositWithTransactionHashes) []worker.L1ToL2 {
+	l1ToL2s := []worker.L1ToL2{}
 	for i := 0; i < len(deposits); i++ {
-		l1ToL2 := business.L1ToL2{
+		l1ToL2 := worker.L1ToL2{
 			L1BlockNumber:     deposits[i].L1BlockHash,
 			QueueIndex:        new(big.Int).SetUint64(1),
 			L1TransactionHash: deposits[i].L1TransactionHash,
@@ -48,10 +48,10 @@ func ConstructL1ToL2(deposits []l1_l2.L1BridgeDepositWithTransactionHashes) []bu
 	return l1ToL2s
 }
 
-func ConstructL2ToL1(withdraws []l1_l2.L2BridgeWithdrawalWithTransactionHashes) []business.L2ToL1 {
-	l2ToL1s := []business.L2ToL1{}
+func ConstructL2ToL1(withdraws []l1_l2.L2BridgeWithdrawalWithTransactionHashes) []worker.L2ToL1 {
+	l2ToL1s := []worker.L2ToL1{}
 	for i := 0; i < len(withdraws); i++ {
-		l2ToL1 := business.L2ToL1{
+		l2ToL1 := worker.L2ToL1{
 			L2BlockNumber:             withdraws[i].L2BlockHash,
 			MsgNonce:                  new(big.Int).SetUint64(1),
 			L2TransactionHash:         withdraws[i].L2TransactionHash,

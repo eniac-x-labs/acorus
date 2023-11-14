@@ -3,12 +3,12 @@ package l1_l2
 import (
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
 	"gorm.io/gorm"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cornerstone-labs/acorus/database/utils"
-	"github.com/cornerstone-labs/acorus/event/op-bindings/predeploys"
 )
 
 var (

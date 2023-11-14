@@ -236,3 +236,19 @@ CREATE INDEX IF NOT EXISTS l2_to_l1_l2_transaction_hash ON l2_to_l1(l2_transacti
 CREATE INDEX IF NOT EXISTS l2_to_l1_l1_prove_tx_hash ON l2_to_l1(l1_prove_tx_hash);
 CREATE INDEX IF NOT EXISTS l2_to_l1_l1_finalize_tx_hash ON l2_to_l1(l1_finalize_tx_hash);
 
+CREATE TABLE IF NOT EXISTS state_root (
+    block_hash                VARCHAR PRIMARY KEY NOT NULL UNIQUE REFERENCES state_root(block_hash) ON DELETE CASCADE,
+    transaction_hash          VARCHAR NOT NULL UNIQUE REFERENCES state_root(transaction_hash) ON DELETE CASCADE,
+    l1_block_number           UINT256 DEFAULT 0,
+    l2_block_number           UINT256 DEFAULT 0,
+    output_index              UINT256 NOT NULL,
+    prev_total_elements       UINT256 DEFAULT 0,
+    status                    SMALLINT NOT NULL default 0,
+    output_root               VARCHAR NOT NULL UNIQUE REFERENCES state_root(output_root) ON DELETE CASCADE,
+    canonical                 BOOLEAN DEFAULT TRUE,
+    batch_size                UINT256 NOT NULL,
+    timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
+    );
+CREATE INDEX IF NOT EXISTS state_root_block_hash ON state_root(block_hash);
+CREATE INDEX IF NOT EXISTS state_root_transaction_hash ON state_root(transaction_hash);
+

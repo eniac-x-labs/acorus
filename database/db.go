@@ -14,12 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/config"
-	"github.com/cornerstone-labs/acorus/database/business"
 	"github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/database/utils"
 	_ "github.com/cornerstone-labs/acorus/database/utils/serializers"
+	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
 )
 
@@ -31,9 +31,9 @@ type DB struct {
 	BridgeTransfers    l1_l2.BridgeTransfersDB
 	BridgeMessages     l1_l2.BridgeMessagesDB
 	BridgeTransactions l1_l2.BridgeTransactionsDB
-	L2ToL1             business.L2ToL1DB
-	L1ToL2             business.L1ToL2DB
-	StateRoots         business.StateRootDB
+	L2ToL1             worker.L2ToL1DB
+	L1ToL2             worker.L1ToL2DB
+	StateRoots         worker.StateRootDB
 }
 
 func NewDB(log log.Logger, dbConfig config.DBConfig) (*DB, error) {
@@ -74,8 +74,8 @@ func NewDB(log log.Logger, dbConfig config.DBConfig) (*DB, error) {
 		BridgeTransfers:    l1_l2.NewBridgeTransfersDB(gorm),
 		BridgeMessages:     l1_l2.NewBridgeMessagesDB(gorm),
 		BridgeTransactions: l1_l2.NewBridgeTransactionsDB(gorm),
-		L1ToL2:             business.NewL1ToL2DB(gorm),
-		L2ToL1:             business.NewL21ToL1DB(gorm),
+		L1ToL2:             worker.NewL1ToL2DB(gorm),
+		L2ToL1:             worker.NewL21ToL1DB(gorm),
 	}
 
 	return db, nil
@@ -104,8 +104,8 @@ func dbFromGormTx(tx *gorm.DB) *DB {
 		BridgeTransfers:    l1_l2.NewBridgeTransfersDB(tx),
 		BridgeMessages:     l1_l2.NewBridgeMessagesDB(tx),
 		BridgeTransactions: l1_l2.NewBridgeTransactionsDB(tx),
-		L1ToL2:             business.NewL1ToL2DB(tx),
-		L2ToL1:             business.NewL21ToL1DB(tx),
+		L1ToL2:             worker.NewL1ToL2DB(tx),
+		L2ToL1:             worker.NewL21ToL1DB(tx),
 	}
 }
 

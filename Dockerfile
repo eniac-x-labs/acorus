@@ -11,7 +11,7 @@ RUN go mod download
 
 # build acorus with the shared go.mod & go.sum files
 COPY ./acorus /app/acorus
-COPY event/op-bindings /app/op-bindings
+COPY event/processors/op-stack/mantle/op-bindings /app/op-bindings
 COPY synchronizer/op-service /app/op-service
 COPY synchronizer/op-node /app/op-node
 

@@ -4,9 +4,10 @@ import (
 	"context"
 	"os"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	oplog "github.com/cornerstone-labs/acorus/common/log"
 	"github.com/cornerstone-labs/acorus/common/opio"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 var (
