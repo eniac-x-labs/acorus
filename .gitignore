@@ -1,5 +1,4 @@
 docker-compose.dev.yml
-acorus.toml
 .env
 /acorus
 .idea/

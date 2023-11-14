@@ -1,0 +1,56 @@
+# Chain configures l1 chain addresses
+# Can configure them manually or use a preset L2 ChainId for known chains
+#  - i.e OP Mainnet, OP Goerli, Base, Base Goerli, Zora, Zora Goerli, etc
+[chain]
+preset = 5000
+
+# L1 Config
+l1-polling-interval = 0
+l1-header-buffer-size = 0
+l1-confirmation-depth = 0
+l1-starting-height = 0
+
+# L2 Config
+l2-polling-interval = 0
+l2-header-buffer-size = 0
+l2-confirmation-depth = 0
+
+slave_db_enable = false
+
+[rpcs]
+l1-rpc = "http://127.0.0.1:8545"
+l2-rpc = "http://127.0.0.1:9545"
+
+[master_db]
+host = "localhost"
+port = 5432
+user = ""
+password = ""
+name = "acorus"
+
+[slave_db]
+host = "localhost"
+port = 5432
+user = ""
+password = ""
+name = "acorus"
+
+[http]
+host = "127.0.0.1"
+port = 8987
+
+[metrics]
+host = "127.0.0.1"
+port = 7214
+
+[da]
+retriever-socket = "127.0.0.1:32012"
+retriever-timeout = "120s"
+graph-provider = "http://127.0.0.1:8000/subgraphs/name/datalayr-v2"
+data-store-polling-duration = "120s"
+
+[redis]
+host = "localhost"
+port = 6379
+password = ""
+db = 0
