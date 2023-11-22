@@ -1,8 +1,9 @@
-package indexer
+package acorus
 
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/processors/op-stack"
 	"math/big"
 	"net"
 	"runtime/debug"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/processors"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
@@ -34,7 +34,7 @@ type Acorus struct {
 	metricsRegistry *prometheus.Registry
 	L1Sync          *synchronizer.L1Sync
 	L2Sync          *synchronizer.L2Sync
-	BridgeProcessor *processors.BridgeProcessor
+	BridgeProcessor *op_stack.BridgeProcessor
 	WorkerProcessor *worker.WorkerProcessor
 }
 
@@ -77,7 +77,7 @@ func NewAcorus(
 		return nil, err
 	}
 
-	bridgeProcessor, err := processors.NewBridgeProcessor(log, db, l1Syncer, chainConfig)
+	bridgeProcessor, err := op_stack.NewBridgeProcessor(log, db, l1Syncer, chainConfig)
 	if err != nil {
 		return nil, err
 	}
