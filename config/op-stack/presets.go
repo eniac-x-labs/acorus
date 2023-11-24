@@ -1,4 +1,4 @@
-package config
+package op_stack
 
 import (
 	"github.com/ethereum/go-ethereum/common"
@@ -6,16 +6,13 @@ import (
 
 type Preset struct {
 	Name        string
-	ChainConfig ChainConfig
+	OpContracts OpContracts
 }
 
-// In the future, presets can just be onchain config and fetched on initialization
-
-// Mapping of L2 chain ids to their preset chain configurations
 var Presets = map[int]Preset{
 	10: {
 		Name: "Optimism",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 10,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0xdE1FCfB0851916CA5101820A69b13a4E276bd81F"),
@@ -30,14 +27,11 @@ var Presets = map[int]Preset{
 				LegacyCanonicalTransactionChain: common.HexToAddress("0x5e4e65926ba27467555eb562121fac00d24e9dd2"),
 				LegacyStateCommitmentChain:      common.HexToAddress("0xBe5dAb4A2e9cd0F27300dB4aB94BeE3A233AEB19"),
 			},
-			L1StartingHeight:        13596466,
-			L1BedrockStartingHeight: 17422590,
-			L2BedrockStartingHeight: 105235063,
 		},
 	},
 	420: {
 		Name: "Optimism Goerli",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 420,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0xa6f73589243a6A7a9023b1Fa0651b1d89c177111"),
@@ -52,14 +46,11 @@ var Presets = map[int]Preset{
 				LegacyCanonicalTransactionChain: common.HexToAddress("0x607F755149cFEB3a14E1Dc3A4E2450Cde7dfb04D"),
 				LegacyStateCommitmentChain:      common.HexToAddress("0x9c945aC97Baf48cB784AbBB61399beB71aF7A378"),
 			},
-			L1StartingHeight:        7017096,
-			L1BedrockStartingHeight: 8300214,
-			L2BedrockStartingHeight: 4061224,
 		},
 	},
 	11155420: {
 		Name: "Optimism Sepolia",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 11155420,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x9bFE9c5609311DF1c011c47642253B78a4f33F4B"),
@@ -70,12 +61,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0xd83e03D576d23C9AEab8cC44Fa98d058D2176D1f"),
 			},
-			L1StartingHeight: 4071408,
 		},
 	},
 	8453: {
 		Name: "Base",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 8453,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x8EfB6B5c4767B09Dc9AA6Af4eAA89F749522BaE2"),
@@ -86,12 +76,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0x3154Cf16ccdb4C6d922629664174b904d80F2C35"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x608d94945A64503E642E6370Ec598e519a2C1E53"),
 			},
-			L1StartingHeight: 17481768,
 		},
 	},
 	84531: {
 		Name: "Base Goerli",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 84531,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x4Cf6b56b14c6CFcB72A75611080514F94624c54e"),
@@ -102,12 +91,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0xfA6D8Ee5BE770F84FC001D098C4bD604Fe01284a"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x5E0c967457347D5175bF82E8CCCC6480FCD7e568"),
 			},
-			L1StartingHeight: 8410981,
 		},
 	},
 	84532: {
 		Name: "Base Sepolia",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 84532,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x709c2B8ef4A9feFc629A8a2C1AF424Dc5BD6ad1B"),
@@ -118,12 +106,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0xfd0Bf71F60660E2f608ed56e1659C450eB113120"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x21eFD066e581FA55Ef105170Cc04d74386a09190"),
 			},
-			L1StartingHeight: 4370868,
 		},
 	},
 	7777777: {
 		Name: "Zora",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 7777777,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0xEF8115F2733fb2033a7c756402Fc1deaa56550Ef"),
@@ -134,12 +121,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0x3e2Ea9B92B7E48A52296fD261dc26fd995284631"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x83A4521A3573Ca87f3a971B169C5A0E1d34481c3"),
 			},
-			L1StartingHeight: 17473923,
 		},
 	},
 	999: {
 		Name: "Zora Goerli",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 999,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x54f4676203dEDA6C08E0D40557A119c602bFA246"),
@@ -150,12 +136,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0x7CC09AC2452D6555d5e0C213Ab9E2d44eFbFc956"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0x57C1C6b596ce90C0e010c358DD4Aa052404bB70F"),
 			},
-			L1StartingHeight: 8942381,
 		},
 	},
 	424: {
 		Name: "PGN",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 424,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x09d5DbA52F0ee2C4A5E94FD5C802bD74Ca9cAD3e"),
@@ -166,12 +151,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0xD0204B9527C1bA7bD765Fa5CCD9355d38338272b"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0xaFF0F8aaB6Cc9108D34b3B8423C76d2AF434d115"),
 			},
-			L1StartingHeight: 17672702,
 		},
 	},
 	58008: {
 		Name: "PGN Sepolia",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 58008,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0x0Ad91488288BBe60ff38258785568A6D1EB3B983"),
@@ -182,12 +166,11 @@ var Presets = map[int]Preset{
 				L1StandardBridgeProxy:       common.HexToAddress("0xFaE6abCAF30D23e233AC7faF747F2fC3a5a6Bfa3"),
 				L1ERC721BridgeProxy:         common.HexToAddress("0xBA8397B6f255618D5985d0fB427D8c0496F3a5FA"),
 			},
-			L1StartingHeight: 17672702,
 		},
 	},
 	5000: {
 		Name: "Mantle",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 5000,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"),
@@ -202,14 +185,11 @@ var Presets = map[int]Preset{
 				LegacyCanonicalTransactionChain: common.HexToAddress("0x5e4e65926ba27467555eb562121fac00d24e9dd2"),
 				LegacyStateCommitmentChain:      common.HexToAddress("0xBe5dAb4A2e9cd0F27300dB4aB94BeE3A233AEB19"),
 			},
-			L1StartingHeight:        0,
-			L1BedrockStartingHeight: 0,
-			L2BedrockStartingHeight: 0,
 		},
 	},
 	901: {
 		Name: "Mantle Local Devnet",
-		ChainConfig: ChainConfig{
+		OpContracts: OpContracts{
 			Preset: 901,
 			L1Contracts: L1Contracts{
 				AddressManager:              common.HexToAddress("0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"),
@@ -224,9 +204,6 @@ var Presets = map[int]Preset{
 				LegacyCanonicalTransactionChain: common.HexToAddress("0x5e4e65926ba27467555eb562121fac00d24e9dd2"),
 				LegacyStateCommitmentChain:      common.HexToAddress("0xBe5dAb4A2e9cd0F27300dB4aB94BeE3A233AEB19"),
 			},
-			L1StartingHeight:        0,
-			L1BedrockStartingHeight: 0,
-			L2BedrockStartingHeight: 0,
 		},
 	},
 }

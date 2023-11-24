@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/contracts"
 	"math/big"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
@@ -22,7 +22,7 @@ import (
 //  1. CanonicalTransactionChain
 //  2. L1CrossDomainMessenger
 //  3. L1StandardBridge
-func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Contracts config.L1Contracts, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Contracts op_stack.L1Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) CanonicalTransactionChain
 	ctcTxDepositEvents, err := contracts.LegacyCTCDepositEvents(l1Contracts.LegacyCanonicalTransactionChain, db, fromHeight, toHeight)
 	if err != nil {
@@ -134,7 +134,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Con
 //  1. L2CrossDomainMessenger - The LegacyMessagePasser contract cannot be used as entrypoint to bridge transactions from L2. The protocol
 //     only allows the L2CrossDomainMessenger as the sole sender when relaying a bridged message.
 //  2. L2StandardBridge
-func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts config.L2Contracts, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts op_stack.L2Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents("l2", l2Contracts.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {
@@ -229,7 +229,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Con
 // according to the pre-bedrock protocol. This follows:
 //  1. L1CrossDomainMessenger
 //  2. L1StandardBridge
-func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l1Client node.EthClient, l1Contracts config.L1Contracts, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l1Client node.EthClient, l1Contracts op_stack.L1Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) L1CrossDomainMessenger -> This is the root-most contract from which bridge events are finalized since withdrawals must be initiated from the
 	// L2CrossDomainMessenger. Since there's no two-step withdrawal process, we mark the transaction as proven/finalized in the same step
 	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l1", l1Contracts.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
@@ -309,7 +309,7 @@ func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l1Cli
 // according to the pre-bedrock protocol. This follows:
 //  1. L2CrossDomainMessenger
 //  2. L2StandardBridge
-func LegacyL2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l2Contracts config.L2Contracts, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l2Contracts op_stack.L2Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l2", l2Contracts.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {

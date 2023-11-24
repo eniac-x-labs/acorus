@@ -2,12 +2,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
 	"os"
-	"reflect"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/BurntSushi/toml"
+	common2 "github.com/cornerstone-labs/acorus/common"
+	op_stack "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -16,91 +15,12 @@ const (
 	defaultHeaderBufferSize = 500
 )
 
-type Config struct {
-	Chain         ChainConfig  `toml:"chain"`
-	RPCs          RPCsConfig   `toml:"rpcs"`
-	Redis         RedisConfig  `toml:"redis"`
-	MasterDB      DBConfig     `toml:"master_db"`
-	SlaveDB       DBConfig     `toml:"slave_db"`
-	SlaveDbEnable bool         `toml:"slave_db_enable"`
-	HTTPServer    ServerConfig `toml:"http"`
-	MetricsServer ServerConfig `toml:"metrics"`
-}
-
-// L1Contracts configures deployed contracts
-type L1Contracts struct {
-	// administrative
-	AddressManager    common.Address `toml:"address-manager"`
-	SystemConfigProxy common.Address `toml:"system-config"`
-
-	// rollup state
-	OptimismPortalProxy common.Address `toml:"optimism-portal"`
-	L2OutputOracleProxy common.Address `toml:"l2-output-oracle"`
-
-	// bridging
-	L1CrossDomainMessengerProxy common.Address `toml:"l1-cross-domain-messenger"`
-	L1StandardBridgeProxy       common.Address `toml:"l1-standard-bridge"`
-	L1ERC721BridgeProxy         common.Address `toml:"l1-erc721-bridge"`
-
-	// IGNORE: legacy contracts (only settable via presets)
-	LegacyCanonicalTransactionChain common.Address `toml:"-"`
-	LegacyStateCommitmentChain      common.Address `toml:"-"`
-}
-
-func (c L1Contracts) ForEach(cb func(string, common.Address) error) error {
-	contracts := reflect.ValueOf(c)
-	fields := reflect.VisibleFields(reflect.TypeOf(c))
-	for _, field := range fields {
-		// ruleid: unsafe-reflect-by-name
-		addr := (contracts.FieldByName(field.Name).Interface()).(common.Address)
-		if err := cb(field.Name, addr); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// L2Contracts configures core predeploy contracts. We explicitly specify
-// fields until we can detect and backfill new addresses
-type L2Contracts struct {
-	L2ToL1MessagePasser    common.Address
-	L2CrossDomainMessenger common.Address
-	L2StandardBridge       common.Address
-	L2ERC721Bridge         common.Address
-}
-
-func L2ContractsFromPredeploys() L2Contracts {
-	return L2Contracts{
-		L2ToL1MessagePasser:    predeploys.L2ToL1MessagePasserAddr,
-		L2CrossDomainMessenger: predeploys.L2CrossDomainMessengerAddr,
-		L2StandardBridge:       predeploys.L2StandardBridgeAddr,
-		L2ERC721Bridge:         predeploys.L2ERC721BridgeAddr,
-	}
-}
-
-func (c L2Contracts) ForEach(cb func(string, common.Address) error) error {
-	contracts := reflect.ValueOf(c)
-	fields := reflect.VisibleFields(reflect.TypeOf(c))
-	for _, field := range fields {
-		addr := (contracts.FieldByName(field.Name).Interface()).(common.Address)
-		if err := cb(field.Name, addr); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 type ChainConfig struct {
-	Preset           int
-	L1StartingHeight uint `toml:"l1-starting-height"`
+	L1RPC string `toml:"l1-rpc"`
+	L2RPC string `toml:"l2-rpc"`
 
-	L1Contracts L1Contracts `toml:"l1-contracts"`
-	L2Contracts L2Contracts `toml:"-"`
-
-	L1BedrockStartingHeight uint `toml:"-"`
-	L2BedrockStartingHeight uint `toml:"-"`
+	L1StartHeight uint `toml:"l1-start-height"`
+	L2StartHeight uint `toml:"l2-start-height"`
 
 	L1ConfirmationDepth uint `toml:"l1-confirmation-depth"`
 	L2ConfirmationDepth uint `toml:"l2-confirmation-depth"`
@@ -110,11 +30,6 @@ type ChainConfig struct {
 
 	L1HeaderBufferSize uint `toml:"l1-header-buffer-size"`
 	L2HeaderBufferSize uint `toml:"l2-header-buffer-size"`
-}
-
-type RPCsConfig struct {
-	L1RPC string `toml:"l1-rpc"`
-	L2RPC string `toml:"l2-rpc"`
 }
 
 type DBConfig struct {
@@ -137,10 +52,19 @@ type RedisConfig struct {
 	DB       int    `toml:"db"`
 }
 
-// LoadConfig loads the `acorus.toml` config file from a given path
-func LoadConfig(log log.Logger, path string) (Config, error) {
-	log.Debug("loading config", "path", path)
+type Config struct {
+	Chain         ChainConfig          `toml:"chain"`
+	OpContracts   op_stack.OpContracts `toml:"op_contracts"`
+	Redis         RedisConfig          `toml:"redis"`
+	MasterDB      DBConfig             `toml:"master_db"`
+	SlaveDB       DBConfig             `toml:"slave_db"`
+	SlaveDbEnable bool                 `toml:"slave_db_enable"`
+	HTTPServer    ServerConfig         `toml:"http"`
+	MetricsServer ServerConfig         `toml:"metrics"`
+}
 
+func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error) {
+	log.Debug("loading config", "path", path)
 	var cfg Config
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -155,37 +79,38 @@ func LoadConfig(log log.Logger, path string) (Config, error) {
 		return cfg, err
 	}
 
-	if cfg.Chain.Preset == DevnetPresetId {
-		preset, err := DevnetPreset()
-		if err != nil {
-			return cfg, err
+	if chainBridge == common2.Op {
+		if cfg.OpContracts.Preset == op_stack.DevnetPresetId {
+			preset, err := op_stack.DevnetPreset()
+			if err != nil {
+				return cfg, err
+			}
+			log.Info("detected preset", "preset", op_stack.DevnetPresetId, "name", preset.Name)
+			cfg.OpContracts = preset.OpContracts
+		} else if cfg.OpContracts.Preset != 0 {
+			preset, ok := op_stack.Presets[cfg.OpContracts.Preset]
+			if !ok {
+				return cfg, fmt.Errorf("unknown preset: %d", cfg.OpContracts.Preset)
+			}
+			log.Info("detected preset", "preset", cfg.OpContracts.Preset, "name", preset.Name)
+			cfg.OpContracts = preset.OpContracts
 		}
+		cfg.OpContracts.L2Contracts = op_stack.L2ContractsFromPredeploys()
 
-		log.Info("detected preset", "preset", DevnetPresetId, "name", preset.Name)
-		cfg.Chain = preset.ChainConfig
-	} else if cfg.Chain.Preset != 0 {
-		preset, ok := Presets[cfg.Chain.Preset]
-		if !ok {
-			return cfg, fmt.Errorf("unknown preset: %d", cfg.Chain.Preset)
+		if cfg.OpContracts.Preset > 0 {
+			if _, err := toml.Decode(string(data), &cfg); err != nil {
+				log.Error("failed to decode config file", "err", err)
+				return cfg, err
+			}
 		}
-
-		log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
-		cfg.Chain = preset.ChainConfig
+		log.Info("loaded chain config", "config", cfg.OpContracts)
+	} else if chainBridge == common2.Polygon {
+		// todo: handle polygon config here
+	} else if chainBridge == common2.Zksync {
+		// todo: handle zksync config here
+	} else if chainBridge == common2.Mantle {
+		// todo: handle mantle config here
 	}
-
-	// Setup L2Contracts from predeploys
-	cfg.Chain.L2Contracts = L2ContractsFromPredeploys()
-
-	// Deserialize the config file again when a preset is configured such that
-	// precedence is given to the config file vs the preset
-	if cfg.Chain.Preset > 0 {
-		if _, err := toml.Decode(string(data), &cfg); err != nil {
-			log.Error("failed to decode config file", "err", err)
-			return cfg, err
-		}
-	}
-
-	// Defaults for any unset options
 
 	if cfg.Chain.L1PollingInterval == 0 {
 		cfg.Chain.L1PollingInterval = defaultLoopInterval
@@ -203,6 +128,5 @@ func LoadConfig(log log.Logger, path string) (Config, error) {
 		cfg.Chain.L2HeaderBufferSize = defaultHeaderBufferSize
 	}
 
-	log.Info("loaded chain config", "config", cfg.Chain)
 	return cfg, nil
 }

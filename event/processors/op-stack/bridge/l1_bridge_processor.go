@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/config/op-stack"
 	contracts2 "github.com/cornerstone-labs/acorus/event/processors/op-stack/contracts"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/bindings"
 	"math/big"
@@ -10,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -21,7 +21,7 @@ import (
 //  1. OptimismPortal
 //  2. L1CrossDomainMessenger
 //  3. L1StandardBridge
-func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Contracts config.L1Contracts, fromHeight, toHeight *big.Int) error {
+func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Contracts op_stack.L1Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) OptimismPortal
 	optimismPortalTxDeposits, err := contracts2.OptimismPortalTransactionDepositEvents(l1Contracts.OptimismPortalProxy, db, fromHeight, toHeight)
 	if err != nil {
@@ -205,7 +205,7 @@ func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l1Contracts
 //  1. OptimismPortal (Bedrock prove & finalize steps)
 //  2. L1CrossDomainMessenger (relayMessage marker)
 //  3. L1StandardBridge (no-op, since this is simply a wrapper over the L1CrossDomainMessenger)
-func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l1Contracts config.L1Contracts, fromHeight, toHeight *big.Int) error {
+func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l1Contracts op_stack.L1Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) OptimismPortal (proven withdrawals)
 	provenWithdrawals, err := contracts2.OptimismPortalWithdrawalProvenEvents(l1Contracts.OptimismPortalProxy, db, fromHeight, toHeight)
 	if err != nil {

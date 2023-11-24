@@ -1,4 +1,4 @@
-package config
+package op_stack
 
 import (
 	"encoding/json"
@@ -39,12 +39,10 @@ func DevnetPreset() (*Preset, error) {
 
 	return &Preset{
 		Name:        "Local Devnet",
-		ChainConfig: ChainConfig{Preset: DevnetPresetId, L1Contracts: l1Contracts},
+		OpContracts: OpContracts{Preset: DevnetPresetId, L1Contracts: l1Contracts},
 	}, nil
 }
 
-// findMonorepoRoot will recursively search upwards for a go.mod file.
-// This depends on the structure of the monorepo having a go.mod file at the root.
 func findMonorepoRoot(startDir string) (string, error) {
 	dir, err := filepath.Abs(startDir)
 	if err != nil {
@@ -56,7 +54,6 @@ func findMonorepoRoot(startDir string) (string, error) {
 			return dir, nil
 		}
 		parentDir := filepath.Dir(dir)
-		// Check if we reached the filesystem root
 		if parentDir == dir {
 			break
 		}

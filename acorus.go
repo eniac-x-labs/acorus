@@ -3,27 +3,35 @@ package acorus
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processors/op-stack"
 	"math/big"
 	"net"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/config"
+	op_stack2 "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/event/processors/op-stack"
+
+	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	"github.com/cornerstone-labs/acorus/worker"
 )
+
+var ZeroAddr = common.Address{}
 
 type Acorus struct {
 	log             log.Logger
@@ -36,6 +44,7 @@ type Acorus struct {
 	L2Sync          *synchronizer.L2Sync
 	BridgeProcessor *op_stack.BridgeProcessor
 	WorkerProcessor *worker.WorkerProcessor
+	ChainBridge     string
 }
 
 func NewAcorus(
@@ -43,11 +52,12 @@ func NewAcorus(
 	db *database.DB,
 	redis *redis.Client,
 	chainConfig config.ChainConfig,
-	rpcsConfig config.RPCsConfig,
+	opContracts op_stack2.OpContracts,
 	httpConfig config.ServerConfig,
 	metricsConfig config.ServerConfig,
+	chainBridge string,
 ) (*Acorus, error) {
-	l1EthClient, err := node.DialEthClient(rpcsConfig.L1RPC)
+	l1EthClient, err := node.DialEthClient(chainConfig.L1RPC)
 	if err != nil {
 		return nil, err
 	}
@@ -56,14 +66,20 @@ func NewAcorus(
 		LoopIntervalMsec:  chainConfig.L1PollingInterval,
 		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
 		ConfirmationDepth: big.NewInt(int64(chainConfig.L1ConfirmationDepth)),
-		StartHeight:       big.NewInt(int64(chainConfig.L1StartingHeight)),
+		StartHeight:       big.NewInt(int64(chainConfig.L1StartHeight)),
 	}
-	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, chainConfig.L1Contracts, chainConfig.Preset)
+
+	l1Contracts, l2Contracts, err := ChainContractsSelect(chainBridge, opContracts)
 	if err != nil {
 		return nil, err
 	}
 
-	l2EthClient, err := node.DialEthClient(rpcsConfig.L2RPC)
+	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, l1Contracts, opContracts.Preset)
+	if err != nil {
+		return nil, err
+	}
+
+	l2EthClient, err := node.DialEthClient(chainConfig.L2RPC)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +88,13 @@ func NewAcorus(
 		HeaderBufferSize:  chainConfig.L2HeaderBufferSize,
 		ConfirmationDepth: big.NewInt(int64(chainConfig.L2ConfirmationDepth)),
 	}
-	l2Syncer, err := synchronizer.NewL2Sync(l2Cfg, log, db, l2EthClient, chainConfig.L2Contracts)
+
+	l2Syncer, err := synchronizer.NewL2Sync(l2Cfg, log, db, l2EthClient, l2Contracts)
 	if err != nil {
 		return nil, err
 	}
 
-	bridgeProcessor, err := op_stack.NewBridgeProcessor(log, db, l1Syncer, chainConfig)
+	bridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, l1Syncer, chainConfig, opContracts)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +111,7 @@ func NewAcorus(
 		L2Sync:          l2Syncer,
 		BridgeProcessor: bridgeProcessor,
 		WorkerProcessor: workerProcessor,
+		ChainBridge:     chainBridge,
 	}
 	return acorus, nil
 }
@@ -166,4 +184,38 @@ func (i *Acorus) Run(ctx context.Context) error {
 		i.log.Info("acorus stopped")
 	}
 	return err
+}
+
+func ChainContractsSelect(chainBridge string, opContracts op_stack2.OpContracts) (l1Contracts []common.Address, l2Contracts []common.Address, err error) {
+	var l1ResultContracts []common.Address
+	var l2ResultContracts []common.Address
+	if chainBridge == common2.Op {
+		if err := opContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
+			if addr == ZeroAddr {
+				log.Error("address not configured", "name", name)
+				return errors.New("all L2Contracts must be configured")
+			}
+			log.Info("configured contract", "name", name, "addr", addr)
+			l2ResultContracts = append(l2ResultContracts, addr)
+			return nil
+		}); err != nil {
+			return nil, nil, err
+		}
+		if err := opContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
+			if addr == ZeroAddr && !strings.HasPrefix(name, "Legacy") {
+				log.Error("address not configured", "name", name)
+				return errors.New("all L1Contracts must be configured")
+			}
+			log.Info("configured contract", "name", name, "addr", addr)
+			l1ResultContracts = append(l1ResultContracts, addr)
+			return nil
+		}); err != nil {
+			return nil, nil, err
+		}
+	} else if chainBridge == common2.Polygon {
+		// todo: handle polygon logic
+	} else if chainBridge == common2.Scroll {
+		// todo: handle scroll logic
+	}
+	return l1ResultContracts, l2ResultContracts, nil
 }

@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS state_root (
     canonical                 BOOLEAN DEFAULT TRUE,
     batch_size                UINT256 NOT NULL,
     timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
-    );
+);
 CREATE INDEX IF NOT EXISTS state_root_block_hash ON state_root(block_hash);
 CREATE INDEX IF NOT EXISTS state_root_transaction_hash ON state_root(transaction_hash);
 

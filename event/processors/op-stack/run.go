@@ -3,6 +3,7 @@ package op_stack
 import (
 	"context"
 	"errors"
+	op_stack "github.com/cornerstone-labs/acorus/config/op-stack"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -21,12 +22,13 @@ type BridgeProcessor struct {
 
 	l1Etl       *synchronizer.L1Sync
 	chainConfig config.ChainConfig
+	opContracts op_stack.OpContracts
 
 	LatestL1Header *types.Header
 	LatestL2Header *types.Header
 }
 
-func NewBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig) (*BridgeProcessor, error) {
+func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts op_stack.OpContracts) (*BridgeProcessor, error) {
 	log = log.New("processor", "bridge")
 
 	latestL1Header, err := db.BridgeTransactions.L1LatestBlockHeader()
@@ -53,15 +55,11 @@ func NewBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.
 		}
 		log.Info("detected latest indexed bridge state", "l1_block_number", l1Height, "l2_block_number", l2Height)
 	}
-
-	return &BridgeProcessor{log, db, L1Syncer, chainConfig, l1Header, l2Header}, nil
+	return &BridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
 }
 
 func (b *BridgeProcessor) Start(ctx context.Context) error {
 	done := ctx.Done()
-
-	// Fire off independently on startup to check for
-	// new data or if we've indexed new L1 data.
 	l1EtlUpdates := b.l1Etl.Notify()
 	startup := make(chan interface{}, 1)
 	startup <- nil
@@ -87,9 +85,6 @@ func (b *BridgeProcessor) Start(ctx context.Context) error {
 // L1 and L2 when processing events. The latest shared indexed time (epochs) between
 // L1 and L2 serves as this shared marker.
 func (b *BridgeProcessor) run() error {
-	// In the event where we have a large number of un-observed epochs, we cap the search
-	// of epochs by 10k. If this turns out to be a bottleneck, we can parallelize the processing
-	// of epochs to significantly speed up sync times.
 	maxEpochRange := uint64(10_000)
 	var lastEpoch *big.Int
 	if b.LatestL1Header != nil {
@@ -116,7 +111,7 @@ func (b *BridgeProcessor) run() error {
 
 	// Integrity Checks
 
-	genesisL1Height := big.NewInt(int64(b.chainConfig.L1StartingHeight))
+	genesisL1Height := big.NewInt(int64(b.chainConfig.L2StartHeight))
 	if latestEpoch.L1BlockHeader.Number.Cmp(genesisL1Height) < 0 {
 		b.log.Error("L1 epoch less than starting L1 height observed", "l1_starting_number", genesisL1Height, "latest_epoch_number", latestEpoch.L1BlockHeader.Number)
 		return errors.New("L1 epoch less than starting L1 height observed")
@@ -139,8 +134,8 @@ func (b *BridgeProcessor) run() error {
 		fromL2Height = new(big.Int).Add(b.LatestL2Header.Number, bigint.One)
 	}
 
-	l1BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L1BedrockStartingHeight))
-	l2BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L2BedrockStartingHeight))
+	l1BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L1StartHeight))
+	l2BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L2StartHeight))
 
 	batchLog := b.log.New("epoch_start_number", fromL1Height, "epoch_end_number", toL1Height)
 	batchLog.Info("unobserved epochs", "latest_l1_block_number", fromL1Height, "latest_l2_block_number", fromL2Height)
@@ -164,21 +159,21 @@ func (b *BridgeProcessor) run() error {
 			l2BridgeLog.Info("scanning for bridge events")
 
 			// First, find all possible initiated bridge events
-			if err := bridge.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
+			if err := bridge.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
 				return err
 			}
-			if err := bridge.LegacyL2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
+			if err := bridge.LegacyL2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.opContracts.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
 				batchLog.Error("failed to index legacy l2 initiated bridge events", "err", err)
 				return err
 			}
 
 			// Now that all initiated events have been indexed, it is ensured that all finalization can find their counterpart.
-			if err := bridge.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.chainConfig.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
+			if err := bridge.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.opContracts.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 finalized bridge events", "err", err)
 				return err
 			}
-			if err := bridge.LegacyL2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
+			if err := bridge.LegacyL2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.opContracts.L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
 				batchLog.Error("failed to index legacy l2l finalized bridge events", "err", err)
 				return err
 			}
@@ -200,21 +195,21 @@ func (b *BridgeProcessor) run() error {
 		l2BridgeLog.Info("scanning for bridge events")
 
 		// First, find all possible initiated bridge events
-		if err := bridge.L1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
+		if err := bridge.L1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 initiated bridge events", "err", err)
 			return err
 		}
-		if err := bridge.L2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
+		if err := bridge.L2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.opContracts.L2Contracts, fromL2Height, toL2Height); err != nil {
 			batchLog.Error("failed to index l2 initiated bridge events", "err", err)
 			return err
 		}
 
 		// Now all finalization events can find their counterpart.
-		if err := bridge.L1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.chainConfig.L1Contracts, fromL1Height, toL1Height); err != nil {
+		if err := bridge.L1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 finalized bridge events", "err", err)
 			return err
 		}
-		if err := bridge.L2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.chainConfig.L2Contracts, fromL2Height, toL2Height); err != nil {
+		if err := bridge.L2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.opContracts.L2Contracts, fromL2Height, toL2Height); err != nil {
 			batchLog.Error("failed to index l2 finalized bridge events", "err", err)
 			return err
 		}

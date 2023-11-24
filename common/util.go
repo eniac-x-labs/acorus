@@ -17,6 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+const (
+	Polygon = "polygon"
+	Scroll  = "scroll"
+	Zksync  = "zksync"
+	Op      = "Op"
+	Mantle  = "mantle"
+)
+
 func PrefixEnvVar(prefix, suffix string) []string {
 	return []string{prefix + "_" + suffix}
 }

@@ -3,6 +3,7 @@ package bridge
 import (
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/config/op-stack"
 	contracts2 "github.com/cornerstone-labs/acorus/event/processors/op-stack/contracts"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
 	"math/big"
@@ -10,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -21,7 +21,7 @@ import (
 //  1. OptimismPortal
 //  2. L2CrossDomainMessenger
 //  3. L2StandardBridge
-func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts config.L2Contracts, fromHeight, toHeight *big.Int) error {
+func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts op_stack.L2Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) L2ToL1MessagePasser
 	l2ToL1MPMessagesPassed, err := contracts2.L2ToL1MessagePasserMessagePassedEvents(l2Contracts.L2ToL1MessagePasser, db, fromHeight, toHeight)
 	if err != nil {
@@ -202,7 +202,7 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts
 //  2. L2StandardBridge (no-op, since this is simply a wrapper over the L2CrossDomainMEssenger)
 //
 // NOTE: Unlike L1, there's no L2ToL1MessagePasser stage since transaction deposits are apart of the block derivation process.
-func L2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l2Contracts config.L2Contracts, fromHeight, toHeight *big.Int) error {
+func L2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, l2Contracts op_stack.L2Contracts, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l2", l2Contracts.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {

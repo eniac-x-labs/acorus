@@ -2,9 +2,7 @@ package synchronizer
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -12,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
@@ -28,23 +25,8 @@ type L1Sync struct {
 	listeners []chan interface{}
 }
 
-func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, contracts config.L1Contracts, preset int) (*L1Sync, error) {
+func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, l1Contracts []common.Address, preset int) (*L1Sync, error) {
 	log = log.New("sync", "l1")
-
-	zeroAddr := common.Address{}
-	l1Contracts := []common.Address{}
-	if err := contracts.ForEach(func(name string, addr common.Address) error {
-		if addr == zeroAddr && !strings.HasPrefix(name, "Legacy") {
-			log.Error("address not configured", "name", name)
-			return errors.New("all L1Contracts must be configured")
-		}
-
-		log.Info("configured contract", "name", name, "addr", addr)
-		l1Contracts = append(l1Contracts, addr)
-		return nil
-	}); err != nil {
-		return nil, err
-	}
 
 	latestHeader, err := db.Blocks.L1LatestBlockHeader()
 	if err != nil {
@@ -61,7 +43,6 @@ func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch starting block header: %w", err)
 		}
-
 		fromHeader = header
 	} else {
 		log.Info("no indexed state, starting from genesis")
@@ -71,13 +52,11 @@ func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 	syncer := Synchronizer{
 		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Millisecond,
 		headerBufferSize: uint64(cfg.HeaderBufferSize),
-
-		log:             log,
-		headerTraversal: node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth),
-		contracts:       l1Contracts,
-		syncerBatches:   syncerBatches,
-
-		EthClient: client,
+		log:              log,
+		headerTraversal:  node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth),
+		contracts:        l1Contracts,
+		syncerBatches:    syncerBatches,
+		EthClient:        client,
 	}
 
 	return &L1Sync{Synchronizer: syncer, db: db, mu: new(sync.Mutex), preset: preset}, nil
@@ -126,7 +105,6 @@ func (l1Sync *L1Sync) Start(ctx context.Context) error {
 					batch.Logger.Error("unable to persist batch", "err", err)
 					return nil, err
 				}
-
 				return nil, nil
 			}); err != nil {
 				return err
