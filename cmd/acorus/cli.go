@@ -1,12 +1,12 @@
 package main
 
 import (
-	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/cornerstone-labs/acorus"
+	common2 "github.com/cornerstone-labs/acorus/common"
 	oplog "github.com/cornerstone-labs/acorus/common/log"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
@@ -53,6 +53,7 @@ func runAcorus(ctx *cli.Context) error {
 		return err
 	}
 	defer db.Close()
+	log.Info("new master db success", "dbName", cfg.MasterDB.Name)
 
 	redis, err := database.NewRedis(cfg.Redis)
 	if err != nil {
@@ -60,6 +61,7 @@ func runAcorus(ctx *cli.Context) error {
 		return err
 	}
 	defer redis.Close()
+	log.Info("new redis db success", "dbName", cfg.Redis.DB)
 
 	newAcorus, err := acorus.NewAcorus(log, db, redis, &cfg, chainBridge)
 	if err != nil {
