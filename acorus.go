@@ -21,7 +21,6 @@ import (
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/config"
-	op_stack2 "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/event"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
@@ -50,25 +49,22 @@ func NewAcorus(
 	log log.Logger,
 	db *database.DB,
 	redis *redis.Client,
-	chainConfig config.ChainConfig,
-	opContracts op_stack2.OpContracts,
-	httpConfig config.ServerConfig,
-	metricsConfig config.ServerConfig,
+	config *config.Config,
 	chainBridge string,
 ) (*Acorus, error) {
-	l1EthClient, err := node.DialEthClient(chainConfig.L1RPC)
+	l1EthClient, err := node.DialEthClient(config.Chain.L1RPC)
 	if err != nil {
 		return nil, err
 	}
 	log.Error("err", err)
 	l1Cfg := synchronizer.Config{
-		LoopIntervalMsec:  chainConfig.L1PollingInterval,
-		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(chainConfig.L1ConfirmationDepth)),
-		StartHeight:       big.NewInt(int64(chainConfig.L1StartHeight)),
+		LoopIntervalMsec:  config.Chain.L1PollingInterval,
+		HeaderBufferSize:  config.Chain.L1HeaderBufferSize,
+		ConfirmationDepth: big.NewInt(int64(config.Chain.L1ConfirmationDepth)),
+		StartHeight:       big.NewInt(int64(config.Chain.L1StartHeight)),
 	}
 
-	l1Contracts, l2Contracts, err := ChainContractsSelect(chainBridge, opContracts)
+	l1Contracts, l2Contracts, resultContracts, err := ChainContractsSelect(chainBridge, config)
 	if err != nil {
 		return nil, err
 	}
@@ -78,14 +74,14 @@ func NewAcorus(
 		return nil, err
 	}
 
-	l2EthClient, err := node.DialEthClient(chainConfig.L2RPC)
+	l2EthClient, err := node.DialEthClient(config.Chain.L2RPC)
 	if err != nil {
 		return nil, err
 	}
 	l2Cfg := synchronizer.Config{
-		LoopIntervalMsec:  chainConfig.L2PollingInterval,
-		HeaderBufferSize:  chainConfig.L2HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(chainConfig.L2ConfirmationDepth)),
+		LoopIntervalMsec:  config.Chain.L2PollingInterval,
+		HeaderBufferSize:  config.Chain.L2HeaderBufferSize,
+		ConfirmationDepth: big.NewInt(int64(config.Chain.L2ConfirmationDepth)),
 	}
 
 	l2Syncer, err := synchronizer.NewL2Sync(l2Cfg, log, db, l2EthClient, l2Contracts)
@@ -93,7 +89,7 @@ func NewAcorus(
 		return nil, err
 	}
 
-	dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, chainConfig, chainBridge, opContracts)
+	dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, config.Chain, chainBridge, resultContracts)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +103,8 @@ func NewAcorus(
 		log:             log,
 		db:              db,
 		redis:           redis,
-		httpConfig:      httpConfig,
-		metricsConfig:   metricsConfig,
+		httpConfig:      config.HTTPServer,
+		metricsConfig:   config.MetricsServer,
 		L1Sync:          l1Syncer,
 		L2Sync:          l2Syncer,
 		eventDispatcher: dispatcher,
@@ -188,11 +184,12 @@ func (i *Acorus) Run(ctx context.Context) error {
 	return err
 }
 
-func ChainContractsSelect(chainBridge string, opContracts op_stack2.OpContracts) (l1Contracts []common.Address, l2Contracts []common.Address, err error) {
+func ChainContractsSelect(chainBridge string, config2 *config.Config) (l1Contracts []common.Address, l2Contracts []common.Address, contracts interface{}, err error) {
+	var resultContracts interface{}
 	var l1ResultContracts []common.Address
 	var l2ResultContracts []common.Address
 	if chainBridge == common2.Op {
-		if err := opContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
+		if err := config2.OpContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
 			if addr == ZeroAddr {
 				log.Error("address not configured", "name", name)
 				return errors.New("all L2Contracts must be configured")
@@ -201,9 +198,9 @@ func ChainContractsSelect(chainBridge string, opContracts op_stack2.OpContracts)
 			l2ResultContracts = append(l2ResultContracts, addr)
 			return nil
 		}); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
-		if err := opContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
+		if err := config2.OpContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
 			if addr == ZeroAddr && !strings.HasPrefix(name, "Legacy") {
 				log.Error("address not configured", "name", name)
 				return errors.New("all L1Contracts must be configured")
@@ -212,12 +209,14 @@ func ChainContractsSelect(chainBridge string, opContracts op_stack2.OpContracts)
 			l1ResultContracts = append(l1ResultContracts, addr)
 			return nil
 		}); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+		resultContracts = config2.OpContracts
+
 	} else if chainBridge == common2.Polygon {
 		// todo: handle polygon logic
 	} else if chainBridge == common2.Scroll {
 		// todo: handle scroll logic
 	}
-	return l1ResultContracts, l2ResultContracts, nil
+	return l1ResultContracts, l2ResultContracts, resultContracts, nil
 }

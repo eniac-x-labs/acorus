@@ -19,8 +19,8 @@ type EventDispatcher struct {
 	chainBridge       string
 }
 
-func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, opContracts op_stack2.OpContracts) (*EventDispatcher, error) {
-	opBridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, opContracts)
+func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, contracts interface{}) (*EventDispatcher, error) {
+	opBridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts.(op_stack2.OpContracts))
 	if err != nil {
 		return nil, err
 	}

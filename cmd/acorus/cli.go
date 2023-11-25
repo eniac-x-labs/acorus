@@ -59,7 +59,7 @@ func runAcorus(ctx *cli.Context) error {
 	}
 	defer redis.Close()
 
-	newAcorus, err := acorus.NewAcorus(log, db, redis, cfg.Chain, cfg.OpContracts, cfg.HTTPServer, cfg.MetricsServer, chainBridge)
+	newAcorus, err := acorus.NewAcorus(log, db, redis, &cfg, chainBridge)
 	if err != nil {
 		log.Error("failed to create acorus", "err", err)
 		return err
