@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	sc_scroll "github.com/cornerstone-labs/acorus/config/scroll"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -16,8 +17,9 @@ const (
 )
 
 type ChainConfig struct {
-	L1RPC string `toml:"l1-rpc"`
-	L2RPC string `toml:"l2-rpc"`
+	Preset int    `toml:"preset"`
+	L1RPC  string `toml:"l1-rpc"`
+	L2RPC  string `toml:"l2-rpc"`
 
 	L1StartHeight uint `toml:"l1-start-height"`
 	L2StartHeight uint `toml:"l2-start-height"`
@@ -53,14 +55,15 @@ type RedisConfig struct {
 }
 
 type Config struct {
-	Chain         ChainConfig          `toml:"chain"`
-	OpContracts   op_stack.OpContracts `toml:"op_contracts"`
-	Redis         RedisConfig          `toml:"redis"`
-	MasterDB      DBConfig             `toml:"master_db"`
-	SlaveDB       DBConfig             `toml:"slave_db"`
-	SlaveDbEnable bool                 `toml:"slave_db_enable"`
-	HTTPServer    ServerConfig         `toml:"http"`
-	MetricsServer ServerConfig         `toml:"metrics"`
+	Chain         ChainConfig            `toml:"chain"`
+	OpContracts   op_stack.OpContracts   `toml:"op_contracts"`
+	SclContracts  sc_scroll.SclContracts `toml:"sc_contracts"`
+	Redis         RedisConfig            `toml:"redis"`
+	MasterDB      DBConfig               `toml:"master_db"`
+	SlaveDB       DBConfig               `toml:"slave_db"`
+	SlaveDbEnable bool                   `toml:"slave_db_enable"`
+	HTTPServer    ServerConfig           `toml:"http"`
+	MetricsServer ServerConfig           `toml:"metrics"`
 }
 
 func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error) {
@@ -80,24 +83,24 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 	}
 
 	if chainBridge == common2.Op {
-		if cfg.OpContracts.Preset == op_stack.DevnetPresetId {
+		if cfg.Chain.Preset == op_stack.DevnetPresetId {
 			preset, err := op_stack.DevnetPreset()
 			if err != nil {
 				return cfg, err
 			}
 			log.Info("detected preset", "preset", op_stack.DevnetPresetId, "name", preset.Name)
 			cfg.OpContracts = preset.OpContracts
-		} else if cfg.OpContracts.Preset != 0 {
-			preset, ok := op_stack.Presets[cfg.OpContracts.Preset]
+		} else if cfg.Chain.Preset != 0 {
+			preset, ok := op_stack.Presets[cfg.Chain.Preset]
 			if !ok {
 				return cfg, fmt.Errorf("unknown preset: %d", cfg.OpContracts.Preset)
 			}
-			log.Info("detected preset", "preset", cfg.OpContracts.Preset, "name", preset.Name)
+			log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
 			cfg.OpContracts = preset.OpContracts
 		}
 		cfg.OpContracts.L2Contracts = op_stack.L2ContractsFromPredeploys()
 
-		if cfg.OpContracts.Preset > 0 {
+		if cfg.Chain.Preset > 0 {
 			if _, err := toml.Decode(string(data), &cfg); err != nil {
 				log.Error("failed to decode config file", "err", err)
 				return cfg, err
@@ -110,6 +113,15 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 		// todo: handle zksync config here
 	} else if chainBridge == common2.Mantle {
 		// todo: handle mantle config here
+	} else if chainBridge == common2.Scroll {
+		if cfg.Chain.Preset != 0 {
+			preset, ok := sc_scroll.Presets[cfg.Chain.Preset]
+			if !ok {
+				return cfg, fmt.Errorf("unknown preset: %d", cfg.Chain.Preset)
+			}
+			log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
+			cfg.SclContracts = preset.SclContracts
+		}
 	}
 
 	if cfg.Chain.L1PollingInterval == 0 {
