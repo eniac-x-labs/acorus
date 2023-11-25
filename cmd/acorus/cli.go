@@ -45,6 +45,7 @@ func runAcorus(ctx *cli.Context) error {
 		log.Error("failed to load config", "err", err)
 		return err
 	}
+	log.Info("load config success", "L1RPC", cfg.Chain.L1RPC, "chainBridge", chainBridge)
 
 	db, err := database.NewDB(log, cfg.MasterDB)
 	if err != nil {
