@@ -1,6 +1,7 @@
 package main
 
 import (
+	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -28,7 +29,7 @@ var (
 	}
 	ChainBridgeFlag = &cli.StringFlag{
 		Name:    "chain-bridge",
-		Value:   "optimism",
+		Value:   common2.Scroll,
 		Usage:   "sync chain bridge event",
 		EnvVars: []string{"ACORUS_CHAIN_BRIDGE"},
 	}

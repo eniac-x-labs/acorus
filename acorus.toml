@@ -44,7 +44,7 @@ host = "127.0.0.1"
 port = 7214
 
 [redis]
-host = "localhost"
+host = "120.77.251.247"
 port = 6379
-password = ""
+password = "galamini"
 db = 0
