@@ -3,8 +3,6 @@ package acorus
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event"
-	"github.com/cornerstone-labs/acorus/worker"
 	"math/big"
 	"net"
 	"runtime/debug"
@@ -25,9 +23,11 @@ import (
 	"github.com/cornerstone-labs/acorus/config"
 	op_stack2 "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/event"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
+	"github.com/cornerstone-labs/acorus/worker"
 )
 
 var ZeroAddr = common.Address{}

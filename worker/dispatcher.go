@@ -2,11 +2,14 @@ package worker
 
 import (
 	"context"
+
+	"github.com/go-redis/redis/v8"
+
+	"github.com/ethereum/go-ethereum/log"
+
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/database"
 	op_stack "github.com/cornerstone-labs/acorus/worker/op-stack"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/go-redis/redis/v8"
 )
 
 type WorkerDispatcher struct {

@@ -3,10 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"os"
 	"path/filepath"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
