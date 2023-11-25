@@ -142,6 +142,8 @@ func newCli(GitCommit string, GitDate string) *cli.App {
 	flags = append(flags, oplog.CLIFlags("ACORUS")...)
 	migrationFlags := []cli.Flag{MigrationsFlag, ConfigFlag}
 	migrationFlags = append(migrationFlags, oplog.CLIFlags("ACORUS")...)
+	IndexFlags := []cli.Flag{ChainBridgeFlag, ConfigFlag}
+	IndexFlags = append(IndexFlags, oplog.CLIFlags("ACORUS")...)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
 		Description:          "An acorus of all optimism events with a serving service layer",
@@ -155,7 +157,7 @@ func newCli(GitCommit string, GitDate string) *cli.App {
 			},
 			{
 				Name:        "index",
-				Flags:       flags,
+				Flags:       IndexFlags,
 				Description: "Runs the indexing service",
 				Action:      runAcorus,
 			},

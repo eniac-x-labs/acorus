@@ -3,6 +3,8 @@ package acorus
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event"
+	"github.com/cornerstone-labs/acorus/worker"
 	"math/big"
 	"net"
 	"runtime/debug"
@@ -19,16 +21,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
+	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/config"
 	op_stack2 "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/processors/op-stack"
-
-	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
-	"github.com/cornerstone-labs/acorus/worker"
 )
 
 var ZeroAddr = common.Address{}
@@ -42,8 +41,8 @@ type Acorus struct {
 	metricsRegistry *prometheus.Registry
 	L1Sync          *synchronizer.L1Sync
 	L2Sync          *synchronizer.L2Sync
-	BridgeProcessor *op_stack.BridgeProcessor
-	WorkerProcessor *worker.WorkerProcessor
+	eventDispatcher *event.EventDispatcher
+	workDispatcher  *worker.WorkerDispatcher
 	ChainBridge     string
 }
 
@@ -74,7 +73,7 @@ func NewAcorus(
 		return nil, err
 	}
 
-	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, l1Contracts, opContracts.Preset)
+	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, l1Contracts)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +93,15 @@ func NewAcorus(
 		return nil, err
 	}
 
-	bridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, l1Syncer, chainConfig, opContracts)
+	dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, chainConfig, chainBridge, opContracts)
 	if err != nil {
 		return nil, err
 	}
 
-	workerProcessor := worker.NewWorkerProcessor(log, db, redis)
+	workDispatcher, err := worker.NewWorkerDispatcher(log, db, redis, chainBridge)
+	if err != nil {
+		return nil, err
+	}
 
 	acorus := &Acorus{
 		log:             log,
@@ -109,8 +111,8 @@ func NewAcorus(
 		metricsConfig:   metricsConfig,
 		L1Sync:          l1Syncer,
 		L2Sync:          l2Syncer,
-		BridgeProcessor: bridgeProcessor,
-		WorkerProcessor: workerProcessor,
+		eventDispatcher: dispatcher,
+		workDispatcher:  workDispatcher,
 		ChainBridge:     chainBridge,
 	}
 	return acorus, nil
@@ -164,10 +166,10 @@ func (i *Acorus) Run(ctx context.Context) error {
 	runProcess(i.L2Sync.Start)
 
 	// event engine
-	runProcess(i.BridgeProcessor.Start)
+	runProcess(i.eventDispatcher.Start)
 
-	// worker engine
-	// runProcess(i.WorkerProcessor.Start)
+	// work engine
+	runProcess(i.workDispatcher.Start)
 
 	// metrics server
 	// runProcess(i.startMetricsServer)

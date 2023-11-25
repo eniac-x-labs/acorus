@@ -19,13 +19,12 @@ import (
 
 type L1Sync struct {
 	Synchronizer
-	preset    int
 	db        *database.DB
 	mu        *sync.Mutex
 	listeners []chan interface{}
 }
 
-func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, l1Contracts []common.Address, preset int) (*L1Sync, error) {
+func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, l1Contracts []common.Address) (*L1Sync, error) {
 	log = log.New("sync", "l1")
 
 	latestHeader, err := db.Blocks.L1LatestBlockHeader()
@@ -59,7 +58,7 @@ func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 		EthClient:        client,
 	}
 
-	return &L1Sync{Synchronizer: syncer, db: db, mu: new(sync.Mutex), preset: preset}, nil
+	return &L1Sync{Synchronizer: syncer, db: db, mu: new(sync.Mutex)}, nil
 }
 
 func (l1Sync *L1Sync) Start(ctx context.Context) error {

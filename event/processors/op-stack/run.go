@@ -3,7 +3,6 @@ package op_stack
 import (
 	"context"
 	"errors"
-	op_stack "github.com/cornerstone-labs/acorus/config/op-stack"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,12 +10,13 @@ import (
 
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/config"
+	op_stack "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/bridge"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 )
 
-type BridgeProcessor struct {
+type OpBridgeProcessor struct {
 	log log.Logger
 	db  *database.DB
 
@@ -28,7 +28,7 @@ type BridgeProcessor struct {
 	LatestL2Header *types.Header
 }
 
-func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts op_stack.OpContracts) (*BridgeProcessor, error) {
+func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts op_stack.OpContracts) (*OpBridgeProcessor, error) {
 	log = log.New("processor", "bridge")
 
 	latestL1Header, err := db.BridgeTransactions.L1LatestBlockHeader()
@@ -55,10 +55,10 @@ func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronize
 		}
 		log.Info("detected latest indexed bridge state", "l1_block_number", l1Height, "l2_block_number", l2Height)
 	}
-	return &BridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
+	return &OpBridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
 }
 
-func (b *BridgeProcessor) Start(ctx context.Context) error {
+func (b *OpBridgeProcessor) Start(ctx context.Context) error {
 	done := ctx.Done()
 	l1EtlUpdates := b.l1Etl.Notify()
 	startup := make(chan interface{}, 1)
@@ -80,11 +80,7 @@ func (b *BridgeProcessor) Start(ctx context.Context) error {
 	}
 }
 
-// Runs the processing loop. In order to ensure all seen bridge finalization events
-// can be correlated with bridge initiated events, we establish a shared marker between
-// L1 and L2 when processing events. The latest shared indexed time (epochs) between
-// L1 and L2 serves as this shared marker.
-func (b *BridgeProcessor) run() error {
+func (b *OpBridgeProcessor) run() error {
 	maxEpochRange := uint64(10_000)
 	var lastEpoch *big.Int
 	if b.LatestL1Header != nil {
@@ -96,7 +92,6 @@ func (b *BridgeProcessor) run() error {
 		return err
 	} else if latestEpoch == nil {
 		if b.LatestL1Header != nil || b.LatestL2Header != nil {
-			// Once we have some indexed state `latestEpoch != nil` as `LatestObservedEpoch` is inclusive in its search with the last provided epoch.
 			b.log.Error("bridge events indexed, but no observed epoch returned", "latest_bridge_l1_block_number", b.LatestL1Header.Number)
 			return errors.New("bridge events indexed, but no observed epoch returned")
 		}
@@ -108,8 +103,6 @@ func (b *BridgeProcessor) run() error {
 		b.log.Warn("all available epochs indexed", "latest_bridge_l1_block_number", b.LatestL1Header.Number)
 		return nil
 	}
-
-	// Integrity Checks
 
 	genesisL1Height := big.NewInt(int64(b.chainConfig.L2StartHeight))
 	if latestEpoch.L1BlockHeader.Number.Cmp(genesisL1Height) < 0 {
@@ -143,7 +136,6 @@ func (b *BridgeProcessor) run() error {
 		l1BridgeLog := b.log.New("bridge", "l1")
 		l2BridgeLog := b.log.New("bridge", "l2")
 
-		// FOR OP-MAINNET, OP-GOERLI ONLY! Specially handle the existence of pre-bedrock blocks
 		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
 			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
 			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
@@ -158,7 +150,6 @@ func (b *BridgeProcessor) run() error {
 			l2BridgeLog = l2BridgeLog.New("mode", "legacy", "from_l2_block_number", legacyFromL2Height, "to_l2_block_number", legacyToL2Height)
 			l2BridgeLog.Info("scanning for bridge events")
 
-			// First, find all possible initiated bridge events
 			if err := bridge.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
 				return err
@@ -168,7 +159,6 @@ func (b *BridgeProcessor) run() error {
 				return err
 			}
 
-			// Now that all initiated events have been indexed, it is ensured that all finalization can find their counterpart.
 			if err := bridge.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.opContracts.L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
 				batchLog.Error("failed to index legacy l1 finalized bridge events", "err", err)
 				return err
@@ -179,7 +169,6 @@ func (b *BridgeProcessor) run() error {
 			}
 
 			if legacyToL1Height.Cmp(toL1Height) == 0 {
-				// a-ok! entire batch was legacy blocks
 				return nil
 			}
 
@@ -194,7 +183,6 @@ func (b *BridgeProcessor) run() error {
 		l2BridgeLog = l2BridgeLog.New("from_l2_block_number", fromL2Height, "to_l2_block_number", toL2Height)
 		l2BridgeLog.Info("scanning for bridge events")
 
-		// First, find all possible initiated bridge events
 		if err := bridge.L1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 initiated bridge events", "err", err)
 			return err
@@ -204,7 +192,6 @@ func (b *BridgeProcessor) run() error {
 			return err
 		}
 
-		// Now all finalization events can find their counterpart.
 		if err := bridge.L1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.opContracts.L1Contracts, fromL1Height, toL1Height); err != nil {
 			batchLog.Error("failed to index l1 finalized bridge events", "err", err)
 			return err
@@ -218,7 +205,6 @@ func (b *BridgeProcessor) run() error {
 	}); err != nil {
 		return err
 	}
-
 	batchLog.Info("indexed bridge events", "latest_l1_block_number", toL1Height, "latest_l2_block_number", toL2Height)
 	b.LatestL1Header = latestEpoch.L1BlockHeader.RLPHeader.Header()
 	b.LatestL2Header = latestEpoch.L2BlockHeader.RLPHeader.Header()

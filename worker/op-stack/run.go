@@ -1,14 +1,14 @@
-package worker
+package op_stack
 
 import (
 	"context"
+	"github.com/cornerstone-labs/acorus/worker/op-stack/l1l2"
 	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/worker/l1l2"
 	"github.com/ethereum/go-ethereum/log"
 )
 
