@@ -5,7 +5,7 @@
 slave_db_enable = false
 
 [chain]
-preset = 5000
+preset = 1
 l1-polling-interval = 0
 l1-header-buffer-size = 0
 l1-confirmation-depth = 0
@@ -13,14 +13,14 @@ l1-start-height = 18310747
 l2-polling-interval = 0
 l2-header-buffer-size = 0
 l2-confirmation-depth = 0
-l1-rpc = "http://127.0.0.1:8545"
-l2-rpc = "http://127.0.0.1:9545"
+l1-rpc = "https://rpc.mevblocker.io"
+l2-rpc = "https://rpc.scroll.io/"
 
 [master_db]
-host = "127.0.0.1"
+host = "120.77.251.247"
 port = 5432
-user = ""
-password = ""
+user = "postgres"
+password = "galamini"
 name = "acorus"
 
 [slave_db]
@@ -39,7 +39,7 @@ host = "127.0.0.1"
 port = 7214
 
 [redis]
-host = "127.0.0.1"
+host = "120.77.251.247"
 port = 6379
-password = ""
+password = "galamini"
 db = 0

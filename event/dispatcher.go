@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	op_stack "github.com/cornerstone-labs/acorus/event/processors/op-stack"
+	"github.com/cornerstone-labs/acorus/event/processors/scroll"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -29,7 +30,10 @@ func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.
 	} else if chainBridge == common2.Polygon {
 		// todo: handle polygon
 	} else if chainBridge == common2.Scroll {
-		// todo: handle scroll
+		bridgeProcessor, err = scroll.NewScrollBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &EventDispatcher{
 		log:               log,
@@ -48,7 +52,11 @@ func (dt *EventDispatcher) Start(ctx context.Context) error {
 	} else if dt.chainBridge == common2.Polygon {
 		// todo: handle polygon
 	} else if dt.chainBridge == common2.Scroll {
-		// todo: handle scroll
+		processor := dt.opBridgeProcessor.(*scroll.ScBridgeProcessor)
+		err := processor.Start(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
