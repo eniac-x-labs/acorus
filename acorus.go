@@ -68,11 +68,13 @@ func NewAcorus(
 	if err != nil {
 		return nil, err
 	}
+	log.Info("chain select success", "chain", chainBridge)
 
 	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, l1Contracts)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("l1 syncer new success", "rpc", config.Chain.L1RPC)
 
 	l2EthClient, err := node.DialEthClient(config.Chain.L2RPC)
 	if err != nil {
@@ -164,8 +166,8 @@ func (i *Acorus) Run(ctx context.Context) error {
 	// event engine
 	runProcess(i.eventDispatcher.Start)
 
-	// work engine
-	runProcess(i.workDispatcher.Start)
+	//// work engine
+	//runProcess(i.workDispatcher.Start)
 
 	// metrics server
 	// runProcess(i.startMetricsServer)
@@ -211,6 +213,7 @@ func ChainContractsSelect(chainBridge string, config2 *config.Config) (l1Contrac
 		}); err != nil {
 			return nil, nil, nil, err
 		}
+
 		resultContracts = config2.OpContracts
 
 	} else if chainBridge == common2.Polygon {

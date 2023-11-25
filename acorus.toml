@@ -1,31 +1,26 @@
 # Chain configures l1 chain addresses
 # Can configure them manually or use a preset L2 ChainId for known chains
 #  - i.e OP Mainnet, OP Goerli, Base, Base Goerli, Zora, Zora Goerli, etc
-[chain]
-preset = 1
 
-# L1 Config
+slave_db_enable = false
+
+[chain]
+preset = 5000
 l1-polling-interval = 0
 l1-header-buffer-size = 0
 l1-confirmation-depth = 0
 l1-starting-height = 18310747
-
-# L2 Config
 l2-polling-interval = 0
 l2-header-buffer-size = 0
 l2-confirmation-depth = 0
-
-slave_db_enable = false
-
-[rpcs]
-l1-rpc = "https://rpc.ankr.com/eth"
-l2-rpc = "http://mainnet-l2geth-internal-1.mainnet.scroll.tech:8545"
+l1-rpc = "http://127.0.0.1:8545"
+l2-rpc = "http://127.0.0.1:9545"
 
 [master_db]
-host = "120.77.251.247"
+host = "127.0.0.1"
 port = 5432
-user = "postgres"
-password = "galamini"
+user = ""
+password = ""
 name = "acorus"
 
 [slave_db]

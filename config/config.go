@@ -67,7 +67,7 @@ type Config struct {
 }
 
 func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error) {
-	log.Debug("loading config", "path", path)
+	log.Info("loading config", "path", path)
 	var cfg Config
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -75,7 +75,7 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 	}
 
 	data = []byte(os.ExpandEnv(string(data)))
-	log.Debug("parsed config file", "data", string(data))
+	log.Info("parsed config file", "data", string(data))
 
 	if _, err := toml.Decode(string(data), &cfg); err != nil {
 		log.Error("failed to decode config file", "err", err)
@@ -83,14 +83,7 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 	}
 
 	if chainBridge == common2.Op {
-		if cfg.Chain.Preset == op_stack.DevnetPresetId {
-			preset, err := op_stack.DevnetPreset()
-			if err != nil {
-				return cfg, err
-			}
-			log.Info("detected preset", "preset", op_stack.DevnetPresetId, "name", preset.Name)
-			cfg.OpContracts = preset.OpContracts
-		} else if cfg.Chain.Preset != 0 {
+		if cfg.Chain.Preset != 0 {
 			preset, ok := op_stack.Presets[cfg.Chain.Preset]
 			if !ok {
 				return cfg, fmt.Errorf("unknown preset: %d", cfg.OpContracts.Preset)
@@ -99,13 +92,6 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 			cfg.OpContracts = preset.OpContracts
 		}
 		cfg.OpContracts.L2Contracts = op_stack.L2ContractsFromPredeploys()
-
-		if cfg.Chain.Preset > 0 {
-			if _, err := toml.Decode(string(data), &cfg); err != nil {
-				log.Error("failed to decode config file", "err", err)
-				return cfg, err
-			}
-		}
 		log.Info("loaded chain config", "config", cfg.OpContracts)
 	} else if chainBridge == common2.Polygon {
 		// todo: handle polygon config here
