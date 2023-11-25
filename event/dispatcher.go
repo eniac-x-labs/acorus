@@ -7,7 +7,6 @@ import (
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/config"
-	op_stack2 "github.com/cornerstone-labs/acorus/config/op-stack"
 	"github.com/cornerstone-labs/acorus/database"
 	op_stack "github.com/cornerstone-labs/acorus/event/processors/op-stack"
 	"github.com/cornerstone-labs/acorus/synchronizer"
@@ -20,13 +19,13 @@ type EventDispatcher struct {
 }
 
 func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, contracts interface{}) (*EventDispatcher, error) {
-	opBridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts.(op_stack2.OpContracts))
-	if err != nil {
-		return nil, err
-	}
+	//opBridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts.(op_stack2.OpContracts))
+	//if err != nil {
+	//	return nil, err
+	//}
 	return &EventDispatcher{
 		log:               log,
-		opBridgeProcessor: opBridgeProcessor,
+		opBridgeProcessor: nil,
 		chainBridge:       chainBridge,
 	}, nil
 }
