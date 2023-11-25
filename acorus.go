@@ -54,9 +54,9 @@ func NewAcorus(
 ) (*Acorus, error) {
 	l1EthClient, err := node.DialEthClient(config.Chain.L1RPC)
 	if err != nil {
+		log.Error("Dail eth client err", "err", err)
 		return nil, err
 	}
-	log.Error("err", err)
 	l1Cfg := synchronizer.Config{
 		LoopIntervalMsec:  config.Chain.L1PollingInterval,
 		HeaderBufferSize:  config.Chain.L1HeaderBufferSize,
