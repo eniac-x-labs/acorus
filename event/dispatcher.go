@@ -19,13 +19,21 @@ type EventDispatcher struct {
 }
 
 func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, contracts interface{}) (*EventDispatcher, error) {
-	opBridgeProcessor, err := op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
-	if err != nil {
-		return nil, err
+	var bridgeProcessor interface{}
+	var err error
+	if chainBridge == common2.Op {
+		bridgeProcessor, err = op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+		if err != nil {
+			return nil, err
+		}
+	} else if chainBridge == common2.Polygon {
+		// todo: handle polygon
+	} else if chainBridge == common2.Scroll {
+		// todo: handle scroll
 	}
 	return &EventDispatcher{
 		log:               log,
-		opBridgeProcessor: opBridgeProcessor,
+		opBridgeProcessor: bridgeProcessor,
 		chainBridge:       chainBridge,
 	}, nil
 }
