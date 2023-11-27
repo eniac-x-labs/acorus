@@ -41,6 +41,7 @@ type L2Contracts struct {
 	USDCGatewayAddr        common.Address `toml:"USDCGatewayAddr"`
 	LIDOGatewayAddr        common.Address `toml:"LIDOGatewayAddr"`
 	DAIGatewayAddr         common.Address `toml:"DAIGatewayAddr"`
+	L2GasOracle            common.Address `toml:"L2GasOracle"`
 }
 
 func (c L2Contracts) ForEach(cb func(string, common.Address) error) error {

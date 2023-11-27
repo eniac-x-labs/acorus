@@ -25,6 +25,8 @@ type L1ToL2 struct {
 	ERC20Amount       *big.Int       `gorm:"serializer:u256;column:erc20_amount" json:"erc20_amount"`
 	GasLimit          *big.Int       `gorm:"serializer:u256;column:gas_limit" json:"gas_limit"`
 	Timestamp         int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
+	AssetType         int64          `gorm:"serializer:u256;column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
+	TokenIds          string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 }
 
 func (L1ToL2) TableName() string {

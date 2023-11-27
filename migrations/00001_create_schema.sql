@@ -207,7 +207,8 @@ CREATE TABLE IF NOT EXISTS l1_to_l2 (
     eth_amount          UINT256,
     erc20_amount        UINT256,
     gas_limit           UINT256 NOT NULL,
-    timestamp           INTEGER NOT NULL CHECK (timestamp > 0)
+    timestamp           INTEGER NOT NULL CHECK (timestamp > 0),
+    asset_type UINT256
 );
 CREATE INDEX IF NOT EXISTS l1_to_l2_timestamp ON l1_to_l2(timestamp);
 CREATE INDEX IF NOT EXISTS l1_to_l2_l1_transaction_hash ON l1_to_l2(l1_transaction_hash);
