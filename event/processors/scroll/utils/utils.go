@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -116,4 +117,14 @@ func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error
 	finishBlock = binary.BigEndian.Uint64(block[0:8])
 
 	return batchIndex, startBlock, finishBlock, err
+}
+
+func ConvertBigIntArrayToString(array []*big.Int) string {
+	stringArray := make([]string, len(array))
+	for i, num := range array {
+		stringArray[i] = num.String()
+	}
+
+	result := strings.Join(stringArray, ", ")
+	return result
 }

@@ -208,7 +208,10 @@ CREATE TABLE IF NOT EXISTS l1_to_l2 (
     erc20_amount        UINT256,
     gas_limit           UINT256 NOT NULL,
     timestamp           INTEGER NOT NULL CHECK (timestamp > 0),
-    asset_type UINT256
+    asset_type UINT256,
+    token_amounts VARCHAR NOT NULL,
+    msg_hash VARCHAR NOT NULL,
+    token_ids VARCHAR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS l1_to_l2_timestamp ON l1_to_l2(timestamp);
 CREATE INDEX IF NOT EXISTS l1_to_l2_l1_transaction_hash ON l1_to_l2(l1_transaction_hash);
@@ -230,7 +233,11 @@ CREATE TABLE IF NOT EXISTS l2_to_l1 (
     erc20_amount                 UINT256,
     gas_limit                    UINT256 NOT NULL,
     time_left                    UINT256 NOT NULL,
-    timestamp                    INTEGER NOT NULL CHECK (timestamp > 0)
+    timestamp                    INTEGER NOT NULL CHECK (timestamp > 0),
+    asset_type UINT256,
+    token_amounts VARCHAR NOT NULL,
+    msg_hash VARCHAR NOT NULL,
+    token_ids VARCHAR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS l2_to_l1_timestamp ON l2_to_l1(timestamp);
 CREATE INDEX IF NOT EXISTS l2_to_l1_l2_transaction_hash ON l2_to_l1(l2_transaction_hash);

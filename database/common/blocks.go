@@ -216,6 +216,7 @@ func (db *blocksDB) LatestObservedEpoch(fromL1Height *big.Int, maxL1Range uint64
 		// Fetch most recent header from l2_block_headers table
 		var l2Header L2BlockHeader
 		result = db.gorm.Where("timestamp <= ?", toTimestamp).Order("timestamp DESC").Take(&l2Header)
+		//result = db.gorm.Order("timestamp DESC").Take(&l2Header)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil, nil

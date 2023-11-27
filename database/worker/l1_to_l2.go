@@ -27,6 +27,8 @@ type L1ToL2 struct {
 	Timestamp         int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
 	AssetType         int64          `gorm:"serializer:u256;column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
 	TokenIds          string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
+	TokenAmounts      string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
+	MsgHash           common.Hash    `gorm:"column:msg_hash" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
 }
 
 func (L1ToL2) TableName() string {
@@ -37,6 +39,8 @@ type L1ToL2DB interface {
 	L1ToL2View
 	StoreL1ToL2Transactions([]L1ToL2) error
 	UpdateTokenPairs(l1L2List []L1ToL2) error
+	UpdateL1ToL2MsgHashByL1TxHash(l1L2 L1ToL2) error
+	UpdateL1ToL2L2TxHashByMsgHash(l1L2 L1ToL2) error
 }
 
 type L1ToL2View interface {
@@ -58,6 +62,17 @@ func NewL1ToL2DB(db *gorm.DB) L1ToL2DB {
 
 func (l1l2 l1ToL2DB) StoreL1ToL2Transactions(l1L2List []L1ToL2) error {
 	result := l1l2.gorm.CreateInBatches(&l1L2List, len(l1L2List))
+	return result.Error
+}
+
+func (l1l2 l1ToL2DB) UpdateL1ToL2MsgHashByL1TxHash(l1L2Stu L1ToL2) error {
+	result := l1l2.gorm.Where(&L1ToL2{L1TransactionHash: l1L2Stu.L1TransactionHash})
+	result = result.UpdateColumn("msg_hash", l1L2Stu.MsgHash)
+	return result.Error
+}
+func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(l1L2Stu L1ToL2) error {
+	result := l1l2.gorm.Where(&L1ToL2{MsgHash: l1L2Stu.MsgHash})
+	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash)
 	return result.Error
 }
 

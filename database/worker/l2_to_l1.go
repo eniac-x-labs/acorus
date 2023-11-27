@@ -30,6 +30,10 @@ type L2ToL1 struct {
 	L1TokenAddress            common.Address `gorm:"column:l1_token_address;serializer:bytes" db:"l1_token_address" json:"l1_token_address" form:"l1_token_address"`
 	L2TokenAddress            common.Address `gorm:"column:l2_token_address;serializer:bytes" db:"l2_token_address" json:"l2_token_address" form:"l2_token_address"`
 	Timestamp                 int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
+	AssetType                 int64          `gorm:"serializer:u256;column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
+	TokenIds                  string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
+	TokenAmounts              string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
+	MsgHash                   common.Hash    `gorm:"column:msg_hash" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
 }
 
 func (L2ToL1) TableName() string {
@@ -45,6 +49,8 @@ type L2ToL1DB interface {
 	UpdateL1FinalizeStatus(withdrawalHash common.Hash, finalizedL1EventGuid uuid.UUID) error
 	UpdateClaimedStatus(withdrawalHash common.Hash) error
 	UpdateTimeLeft() error
+	UpdateL2ToL1MsgHashByL2TxHash(l2L1 L2ToL1) error
+	UpdateL2ToL1L1TxHashByMsgHash(l2L1 L2ToL1) error
 }
 
 type L2ToL1View interface {
@@ -62,6 +68,18 @@ type l2ToL1DB struct {
 func NewL21ToL1DB(db *gorm.DB) L2ToL1DB {
 	gplus.Init(db)
 	return &l2ToL1DB{gorm: db}
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1MsgHashByL2TxHash(l2L1Stu L2ToL1) error {
+	result := l2l1.gorm.Where(&L2ToL1{L1FinalizeTxHash: l2L1Stu.L1FinalizeTxHash})
+	result = result.UpdateColumn("msg_hash", l2L1Stu.MsgHash)
+	return result.Error
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(l2L1Stu L2ToL1) error {
+	result := l2l1.gorm.Where(&L1ToL2{MsgHash: l2L1Stu.MsgHash})
+	result = result.UpdateColumn("l2_transaction_hash", l2L1Stu.L2TransactionHash)
+	return result.Error
 }
 
 func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(l1L2List []L2ToL1) error {

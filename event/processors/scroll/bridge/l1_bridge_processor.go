@@ -1,16 +1,15 @@
 package bridge
 
 import (
-	l1_l2 "github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	l1_l2 "github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/processors/scroll/abi"
 	"github.com/cornerstone-labs/acorus/event/processors/scroll/utils"
@@ -25,9 +24,12 @@ func L1DepositETH(contractAddress common.Address, db *database.DB, fromHeight, t
 	}
 	l1ToL2s := make([]worker.L1ToL2, len(depositEvents))
 	transactionDeposits := make([]l1_l2.L1TransactionDeposit, len(depositEvents))
+	if len(depositEvents) > 0 {
+		log.Info("detected eth transaction deposits", "size", len(depositEvents))
+	}
 	for i := range depositEvents {
 		ethDepositTx := depositEvents[i]
-		rlpLog := *depositEvents[i].RLPLog
+		rlpLog := *ethDepositTx.RLPLog
 		depositEvent := abi.DepositETH{}
 
 		unpackErr := utils.UnpackLog(abi.L1ETHGatewayABI, &depositEvent, "DepositETH", rlpLog)
@@ -88,7 +90,7 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 
 	for i := range depositErc20Events {
 		depositTx := depositErc20Events[i]
-		rlpLog := *depositErc20Events[i].RLPLog
+		rlpLog := *depositTx.RLPLog
 		depositErc20Event := abi.ERC20MessageEvent{}
 		transactionDeposits[i] = l1_l2.L1TransactionDeposit{
 			SourceHash:           depositTx.TransactionHash,
@@ -102,7 +104,7 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 				Timestamp:   depositTx.Timestamp,
 			},
 		}
-		unpackErr := utils.UnpackLog(abi.L1ETHGatewayABI, &depositErc20Event, "DepositERC20", rlpLog)
+		unpackErr := utils.UnpackLog(abi.L1StandardERC20GatewayABI, &depositErc20Event, "DepositERC20", rlpLog)
 		if unpackErr != nil {
 			return unpackErr
 		}
@@ -145,10 +147,10 @@ func L1DepositERC721(contractAddress common.Address, db *database.DB, fromHeight
 	l1ToL2s := make([]worker.L1ToL2, len(depositErc721Events))
 	for i := range depositErc721Events {
 		depositTx := depositErc721Events[i]
-		rlpLog := *depositErc721Events[i].RLPLog
+		rlpLog := *depositTx.RLPLog
 		depositErc721Event := abi.ERC721MessageEvent{}
 
-		unpackErr := utils.UnpackLog(abi.L1ETHGatewayABI, &depositErc721Event, "DepositERC721", rlpLog)
+		unpackErr := utils.UnpackLog(abi.L1ERC721GatewayABI, &depositErc721Event, "DepositERC721", rlpLog)
 		if unpackErr != nil {
 			return unpackErr
 		}
@@ -172,7 +174,6 @@ func L1DepositERC721(contractAddress common.Address, db *database.DB, fromHeight
 		}
 	}
 	if len(l1ToL2s) > 0 {
-
 		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
 			return err
 		}
@@ -190,10 +191,10 @@ func L1DepositERC1155(contractAddress common.Address, db *database.DB, fromHeigh
 	l1ToL2s := make([]worker.L1ToL2, len(depositErc1155Events))
 	for i := range depositErc1155Events {
 		depositTx := depositErc1155Events[i]
-		rlpLog := *depositErc1155Events[i].RLPLog
+		rlpLog := *depositTx.RLPLog
 		depositErc1155Event := abi.ERC1155MessageEvent{}
 
-		unpackErr := utils.UnpackLog(abi.L1ETHGatewayABI, &depositErc1155Event, "DepositERC1155", rlpLog)
+		unpackErr := utils.UnpackLog(abi.L1ERC1155GatewayABI, &depositErc1155Event, "DepositERC1155", rlpLog)
 		if unpackErr != nil {
 			return unpackErr
 		}
@@ -242,8 +243,13 @@ func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHei
 			log.Warn("Failed to unpack SentMessage event", "err", err)
 			return unpackErr
 		}
-		msgHash := ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
+		// compute msgHash
+		msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
 			sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
+		// update l1tol2  set msgHash by txHash
+		if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
+			return err
+		}
 		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
 			BridgeMessage: l1_l2.BridgeMessage{
 				MessageHash: msgHash,
@@ -258,7 +264,7 @@ func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHei
 					Timestamp:   depositTx.Timestamp,
 				},
 			},
-			TransactionSourceHash: rlpLog.TxHash,
+			TransactionSourceHash: msgHash,
 		}
 	}
 	if len(l1BridgeMsgs) > 0 {
@@ -269,25 +275,131 @@ func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHei
 	return nil
 }
 
-func L1BatchDepositERC721() {
+func L1BatchDepositERC721(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
+	l1BatchDepositERC721Sig := abi.L1BatchDepositERC721Sig
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1BatchDepositERC721Sig}
+	batchDepositERC721Events, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	if err != nil {
+		return err
+	}
+	l1ToL2s := make([]worker.L1ToL2, len(batchDepositERC721Events))
+	for i := range batchDepositERC721Events {
+		depositTx := batchDepositERC721Events[i]
+		rlpLog := *depositTx.RLPLog
+		batchDepositErc721Event := abi.BatchERC721MessageEvent{}
 
+		unpackErr := utils.UnpackLog(abi.L1ERC721GatewayABI, &batchDepositErc721Event, "BatchDepositERC721", rlpLog)
+		if unpackErr != nil {
+			return unpackErr
+		}
+		l1ToL2s[i] = worker.L1ToL2{
+			L1BlockNumber:     rlpLog.BlockHash,
+			QueueIndex:        nil,
+			L1TransactionHash: rlpLog.TxHash,
+			L2TransactionHash: common.Hash{},
+			L1TxOrigin:        common.Hash{},
+			Status:            0,
+			FromAddress:       batchDepositErc721Event.From,
+			ToAddress:         batchDepositErc721Event.To,
+			L1TokenAddress:    batchDepositErc721Event.L1Token,
+			L2TokenAddress:    batchDepositErc721Event.L2Token,
+			ETHAmount:         nil,
+			ERC20Amount:       nil,
+			GasLimit:          nil,
+			Timestamp:         int64(depositTx.Timestamp),
+			AssetType:         int64(common2.ERC721),
+			TokenIds:          utils.ConvertBigIntArrayToString(batchDepositErc721Event.TokenIDs),
+		}
+	}
+	if len(l1ToL2s) > 0 {
+		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func L1BatchDepositERC1155() {
+func L1BatchDepositERC1155(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
+	l1BatchDepositERC1155Sig := abi.L1BatchDepositERC1155Sig
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1BatchDepositERC1155Sig}
+	batchDepositERC1155Events, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	if err != nil {
+		return err
+	}
+	l1ToL2s := make([]worker.L1ToL2, len(batchDepositERC1155Events))
+	for i := range batchDepositERC1155Events {
+		depositTx := batchDepositERC1155Events[i]
+		rlpLog := *depositTx.RLPLog
+		batchDepositERC1155Event := abi.BatchERC1155MessageEvent{}
 
+		unpackErr := utils.UnpackLog(abi.L1ERC1155GatewayABI, &batchDepositERC1155Event, "BatchWithdrawERC1155", rlpLog)
+		if unpackErr != nil {
+			return unpackErr
+		}
+		l1ToL2s[i] = worker.L1ToL2{
+			L1BlockNumber:     rlpLog.BlockHash,
+			QueueIndex:        nil,
+			L1TransactionHash: rlpLog.TxHash,
+			L2TransactionHash: common.Hash{},
+			L1TxOrigin:        common.Hash{},
+			Status:            0,
+			FromAddress:       batchDepositERC1155Event.From,
+			ToAddress:         batchDepositERC1155Event.To,
+			L1TokenAddress:    batchDepositERC1155Event.L1Token,
+			L2TokenAddress:    batchDepositERC1155Event.L2Token,
+			ETHAmount:         nil,
+			ERC20Amount:       nil,
+			GasLimit:          nil,
+			Timestamp:         int64(depositTx.Timestamp),
+			AssetType:         int64(common2.ERC1155),
+			TokenIds:          utils.ConvertBigIntArrayToString(batchDepositERC1155Event.TokenIDs),
+			TokenAmounts:      utils.ConvertBigIntArrayToString(batchDepositERC1155Event.TokenAmounts),
+		}
+	}
+	if len(l1ToL2s) > 0 {
+		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func L1RelayedMessageEvent() {
+func L1RelayedMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
+	l1RelayedMessageSig := abi.L1RelayedMessageEventSignature
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1RelayedMessageSig}
+	l1RelayedMessageEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	if err != nil {
+		return err
+	}
+	l1BridgeMsgs := make([]l1_l2.L1BridgeMessage, len(l1RelayedMessageEvents))
 
-}
+	for i := range l1RelayedMessageEvents {
+		depositTx := l1RelayedMessageEvents[i]
+		rlpLog := *depositTx.RLPLog
+		batchDepositERC1155Event := abi.L1RelayedMessageEvent{}
+		unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &batchDepositERC1155Event, "RelayedMessage", rlpLog)
+		if unpackErr != nil {
+			return unpackErr
+		}
+		// update l2 to l1 Set l1_tx_hash by msg_hash
+		if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
+			worker.L2ToL1{
+				MsgHash:          batchDepositERC1155Event.MessageHash,
+				L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
+			return err
+		}
 
-func ComputeMessageHash(
-	sender common.Address,
-	target common.Address,
-	value *big.Int,
-	messageNonce *big.Int,
-	message []byte,
-) common.Hash {
-	data, _ := abi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
-	return common.BytesToHash(crypto.Keccak256(data))
+		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
+			BridgeMessage: l1_l2.BridgeMessage{
+				MessageHash: batchDepositERC1155Event.MessageHash,
+			},
+			TransactionSourceHash: batchDepositERC1155Event.MessageHash,
+		}
+	}
+	if len(l1BridgeMsgs) > 0 {
+		if err := db.BridgeMessages.StoreL1BridgeMessages(l1BridgeMsgs); err != nil {
+			return err
+		}
+	}
+	return nil
 }

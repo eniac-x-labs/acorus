@@ -30,4 +30,7 @@ func L2SentMessageEvent() {
 
 func L2RelayedMessageEvent() {
 
+	// todo msgHash
+	// todo
+
 }
