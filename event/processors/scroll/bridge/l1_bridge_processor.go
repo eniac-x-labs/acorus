@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/google/uuid"
 
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
@@ -44,13 +45,15 @@ func L1DepositETH(contractAddress common.Address, db *database.DB, fromHeight, t
 				FromAddress: depositEvent.From,
 				ToAddress:   depositEvent.To,
 				ETHAmount:   depositEvent.Amount,
-				ERC20Amount: nil,
+				ERC20Amount: big.NewInt(0),
 				Data:        depositEvent.Data,
 				Timestamp:   ethDepositTx.Timestamp,
 			},
+			GasLimit: big.NewInt(0),
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -61,16 +64,18 @@ func L1DepositETH(contractAddress common.Address, db *database.DB, fromHeight, t
 			L1TokenAddress:    common.Address{},
 			L2TokenAddress:    common.Address{},
 			ETHAmount:         depositEvent.Amount,
-			ERC20Amount:       nil,
-			GasLimit:          nil,
+			ERC20Amount:       big.NewInt(0),
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(ethDepositTx.Timestamp),
 			AssetType:         int64(common2.ETH),
+			MsgHash:           common.Hash{},
 		}
 	}
 	if len(l1ToL2s) > 0 {
 		if err := db.BridgeTransactions.StoreL1TransactionDeposits(transactionDeposits); err != nil {
 			return err
 		}
+		//marshal, _ := json.Marshal(l1ToL2s)
 		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
 			return err
 		}
@@ -98,18 +103,20 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 			Tx: l1_l2.Transaction{
 				FromAddress: depositErc20Event.From,
 				ToAddress:   depositErc20Event.To,
-				ETHAmount:   nil,
+				ETHAmount:   big.NewInt(0),
 				ERC20Amount: depositErc20Event.Amount,
 				Data:        depositErc20Event.Data,
 				Timestamp:   depositTx.Timestamp,
 			},
+			GasLimit: big.NewInt(0),
 		}
 		unpackErr := utils.UnpackLog(abi.L1StandardERC20GatewayABI, &depositErc20Event, "DepositERC20", rlpLog)
 		if unpackErr != nil {
 			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -119,9 +126,9 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 			ToAddress:         depositErc20Event.To,
 			L1TokenAddress:    depositErc20Event.L1Token,
 			L2TokenAddress:    depositErc20Event.L2Token,
-			ETHAmount:         nil,
+			ETHAmount:         big.NewInt(0),
 			ERC20Amount:       depositErc20Event.Amount,
-			GasLimit:          nil,
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(depositTx.Timestamp),
 			AssetType:         int64(common2.ERC20),
 		}
@@ -155,7 +162,8 @@ func L1DepositERC721(contractAddress common.Address, db *database.DB, fromHeight
 			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -166,8 +174,8 @@ func L1DepositERC721(contractAddress common.Address, db *database.DB, fromHeight
 			L1TokenAddress:    depositErc721Event.L1Token,
 			L2TokenAddress:    depositErc721Event.L2Token,
 			ETHAmount:         depositErc721Event.Amount,
-			ERC20Amount:       nil,
-			GasLimit:          nil,
+			ERC20Amount:       big.NewInt(0),
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(depositTx.Timestamp),
 			AssetType:         int64(common2.ERC721),
 			TokenIds:          depositErc721Event.TokenID.String(),
@@ -199,7 +207,8 @@ func L1DepositERC1155(contractAddress common.Address, db *database.DB, fromHeigh
 			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -210,8 +219,8 @@ func L1DepositERC1155(contractAddress common.Address, db *database.DB, fromHeigh
 			L1TokenAddress:    depositErc1155Event.L1Token,
 			L2TokenAddress:    depositErc1155Event.L2Token,
 			ETHAmount:         depositErc1155Event.Amount,
-			ERC20Amount:       nil,
-			GasLimit:          nil,
+			ERC20Amount:       big.NewInt(0),
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(depositTx.Timestamp),
 			AssetType:         int64(common2.ERC1155),
 			TokenIds:          depositErc1155Event.TokenID.String(),
@@ -250,21 +259,24 @@ func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHei
 		if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
 			return err
 		}
+		relayedMessageEventGUID := uuid.New()
 		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
 			BridgeMessage: l1_l2.BridgeMessage{
-				MessageHash: msgHash,
-				Nonce:       sentMessageEvent.MessageNonce,
-				GasLimit:    sentMessageEvent.GasLimit,
+				MessageHash:             msgHash,
+				Nonce:                   sentMessageEvent.MessageNonce,
+				GasLimit:                sentMessageEvent.GasLimit,
+				SentMessageEventGUID:    uuid.New(),
+				RelayedMessageEventGUID: &relayedMessageEventGUID,
 				Tx: l1_l2.Transaction{
 					FromAddress: sentMessageEvent.Sender,
 					ToAddress:   sentMessageEvent.Target,
 					ETHAmount:   sentMessageEvent.Value,
-					ERC20Amount: nil,
+					ERC20Amount: big.NewInt(0),
 					Data:        sentMessageEvent.Message,
 					Timestamp:   depositTx.Timestamp,
 				},
 			},
-			TransactionSourceHash: msgHash,
+			TransactionSourceHash: rlpLog.TxHash,
 		}
 	}
 	if len(l1BridgeMsgs) > 0 {
@@ -293,7 +305,8 @@ func L1BatchDepositERC721(contractAddress common.Address, db *database.DB, fromH
 			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -303,9 +316,9 @@ func L1BatchDepositERC721(contractAddress common.Address, db *database.DB, fromH
 			ToAddress:         batchDepositErc721Event.To,
 			L1TokenAddress:    batchDepositErc721Event.L1Token,
 			L2TokenAddress:    batchDepositErc721Event.L2Token,
-			ETHAmount:         nil,
-			ERC20Amount:       nil,
-			GasLimit:          nil,
+			ETHAmount:         big.NewInt(0),
+			ERC20Amount:       big.NewInt(0),
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(depositTx.Timestamp),
 			AssetType:         int64(common2.ERC721),
 			TokenIds:          utils.ConvertBigIntArrayToString(batchDepositErc721Event.TokenIDs),
@@ -337,7 +350,8 @@ func L1BatchDepositERC1155(contractAddress common.Address, db *database.DB, from
 			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			L1BlockNumber:     rlpLog.BlockHash,
+			GUID:              uuid.New(),
+			L1BlockHash:       rlpLog.BlockHash,
 			QueueIndex:        nil,
 			L1TransactionHash: rlpLog.TxHash,
 			L2TransactionHash: common.Hash{},
@@ -347,9 +361,9 @@ func L1BatchDepositERC1155(contractAddress common.Address, db *database.DB, from
 			ToAddress:         batchDepositERC1155Event.To,
 			L1TokenAddress:    batchDepositERC1155Event.L1Token,
 			L2TokenAddress:    batchDepositERC1155Event.L2Token,
-			ETHAmount:         nil,
-			ERC20Amount:       nil,
-			GasLimit:          nil,
+			ETHAmount:         big.NewInt(0),
+			ERC20Amount:       big.NewInt(0),
+			GasLimit:          big.NewInt(0),
 			Timestamp:         int64(depositTx.Timestamp),
 			AssetType:         int64(common2.ERC1155),
 			TokenIds:          utils.ConvertBigIntArrayToString(batchDepositERC1155Event.TokenIDs),
@@ -376,24 +390,31 @@ func L1RelayedMessageEvent(contractAddress common.Address, db *database.DB, from
 	for i := range l1RelayedMessageEvents {
 		depositTx := l1RelayedMessageEvents[i]
 		rlpLog := *depositTx.RLPLog
-		batchDepositERC1155Event := abi.L1RelayedMessageEvent{}
-		unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &batchDepositERC1155Event, "RelayedMessage", rlpLog)
+		l1RelayedMessageEvent := abi.L1RelayedMessageEvent{}
+		unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &l1RelayedMessageEvent, "RelayedMessage", rlpLog)
 		if unpackErr != nil {
 			return unpackErr
 		}
 		// update l2 to l1 Set l1_tx_hash by msg_hash
 		if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
 			worker.L2ToL1{
-				MsgHash:          batchDepositERC1155Event.MessageHash,
+				MsgHash:          l1RelayedMessageEvent.MessageHash,
 				L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
 			return err
 		}
 
 		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
 			BridgeMessage: l1_l2.BridgeMessage{
-				MessageHash: batchDepositERC1155Event.MessageHash,
+				MessageHash: l1RelayedMessageEvent.MessageHash,
+				Tx: l1_l2.Transaction{
+					FromAddress: common.Address{},
+					ToAddress:   common.Address{},
+					ETHAmount:   big.NewInt(0),
+					ERC20Amount: big.NewInt(0),
+					Timestamp:   depositTx.Timestamp,
+				},
 			},
-			TransactionSourceHash: batchDepositERC1155Event.MessageHash,
+			TransactionSourceHash: l1RelayedMessageEvent.MessageHash,
 		}
 	}
 	if len(l1BridgeMsgs) > 0 {

@@ -28,7 +28,7 @@ func ConstructL1ToL2(deposits []l1_l2.L1BridgeDepositWithTransactionHashes) []wo
 	l1ToL2s := []worker.L1ToL2{}
 	for i := 0; i < len(deposits); i++ {
 		l1ToL2 := worker.L1ToL2{
-			L1BlockNumber:     deposits[i].L1BlockHash,
+			L1BlockHash:       deposits[i].L1BlockHash,
 			QueueIndex:        new(big.Int).SetUint64(1),
 			L1TransactionHash: deposits[i].L1TransactionHash,
 			L2TransactionHash: deposits[i].L2TransactionHash,
@@ -52,7 +52,7 @@ func ConstructL2ToL1(withdraws []l1_l2.L2BridgeWithdrawalWithTransactionHashes) 
 	l2ToL1s := []worker.L2ToL1{}
 	for i := 0; i < len(withdraws); i++ {
 		l2ToL1 := worker.L2ToL1{
-			L2BlockNumber:             withdraws[i].L2BlockHash,
+			L2BlockHash:               withdraws[i].L2BlockHash,
 			MsgNonce:                  new(big.Int).SetUint64(1),
 			L2TransactionHash:         withdraws[i].L2TransactionHash,
 			L2WithdrawTransactionHash: withdraws[i].L2BridgeWithdrawal.TransactionWithdrawalHash,

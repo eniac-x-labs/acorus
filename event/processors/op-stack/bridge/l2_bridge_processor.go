@@ -6,6 +6,7 @@ import (
 	"github.com/cornerstone-labs/acorus/config/op-stack"
 	contracts2 "github.com/cornerstone-labs/acorus/event/processors/op-stack/contracts"
 	"github.com/cornerstone-labs/acorus/event/processors/op-stack/mantle/op-bindings/predeploys"
+	"github.com/google/uuid"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -44,7 +45,8 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, l2Contracts
 			Tx:                   messagePassed.Tx,
 		}
 		l2ToL1s[i] = worker.L2ToL1{
-			L2BlockNumber:             messagePassed.Event.BlockHash,
+			GUID:                      uuid.New(),
+			L2BlockHash:               messagePassed.Event.BlockHash,
 			MsgNonce:                  messagePassed.Nonce,
 			L2TransactionHash:         messagePassed.Event.TransactionHash,
 			L2WithdrawTransactionHash: messagePassed.WithdrawalHash,

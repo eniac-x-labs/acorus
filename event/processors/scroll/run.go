@@ -124,84 +124,64 @@ func (b *ScBridgeProcessor) run() error {
 	if b.LatestL2Header != nil {
 		fromL2Height = new(big.Int).Add(b.LatestL2Header.Number, bigint.One)
 	}
-	l1BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L1StartHeight))
-	l2BedrockStartingHeight := big.NewInt(int64(b.chainConfig.L2StartHeight))
 
 	batchLog := b.log.New("epoch_start_number", fromL1Height, "epoch_end_number", toL1Height)
 	batchLog.Info("unobserved epochs", "latest_l1_block_number", fromL1Height, "latest_l2_block_number", fromL2Height)
 	if err := b.db.Transaction(func(tx *database.DB) error {
 		l1BridgeLog := b.log.New("bridge", "l1")
 		l2BridgeLog := b.log.New("bridge", "l2")
-		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
-			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
-			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
-			if l1BedrockStartingHeight.Cmp(toL1Height) <= 0 {
-				legacyToL1Height = new(big.Int).Sub(l1BedrockStartingHeight, bigint.One)
-				legacyToL2Height = new(big.Int).Sub(l2BedrockStartingHeight, bigint.One)
-			}
 
-			l1BridgeLog = l1BridgeLog.New("mode", "legacy", "from_l1_block_number", legacyFromL1Height, "to_l1_block_number", legacyToL1Height)
-			l1BridgeLog.Info("scanning for bridge events")
-
-			l2BridgeLog = l2BridgeLog.New("mode", "legacy", "from_l2_block_number", legacyFromL2Height, "to_l2_block_number", legacyToL2Height)
-			l2BridgeLog.Info("scanning for bridge events")
-			l1Contracts := b.opContracts.(scroll.SclContracts).L1Contracts
-			// l1 handle start
-			// eth deposit handle
-			if err := bridge.L1DepositETH(l1Contracts.ETHGatewayAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1DepositERC20(l1Contracts.StandardERC20Gateway, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1BatchDepositERC721(l1Contracts.ERC721GatewayAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1BatchDepositERC1155(l1Contracts.ERC1155GatewayAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			// sentMessage handle
-			if err := bridge.L1SentMessageEvent(l1Contracts.MessengerAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1BatchDepositERC721(l1Contracts.ERC721GatewayAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1BatchDepositERC1155(l1Contracts.ERC1155GatewayAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-
-			if err := bridge.L1RelayedMessageEvent(l1Contracts.MessengerAddr, tx, legacyFromL1Height, legacyToL1Height); err != nil {
-				batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-				return err
-			}
-			// l1 handle end
-
-			// l2 handle start
-
-			// l2 handle end
-
-			if legacyToL1Height.Cmp(toL1Height) == 0 {
-				return nil
-			}
-
-			batchLog.Info("detected switch to bedrock", "l1_bedrock_starting_height", l1BedrockStartingHeight, "l2_bedrock_starting_height", l2BedrockStartingHeight)
-			fromL1Height = l1BedrockStartingHeight
-			fromL2Height = l2BedrockStartingHeight
+		l1BridgeLog.Info("scanning for bridge events")
+		l2BridgeLog.Info("scanning for bridge events")
+		l1Contracts := b.opContracts.(scroll.SclContracts).L1Contracts
+		// l1 handle start
+		// eth deposit handle
+		if err := bridge.L1DepositETH(l1Contracts.ETHGatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1DepositETH bridge events", "err", err)
+			return err
 		}
+
+		if err := bridge.L1DepositERC20(l1Contracts.StandardERC20Gateway, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1DepositERC20 bridge events", "err", err)
+			return err
+		}
+
+		if err := bridge.L1DepositERC721(l1Contracts.ERC721GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1DepositERC721 bridge events", "err", err)
+			return err
+		}
+
+		if err := bridge.L1DepositERC1155(l1Contracts.ERC1155GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1DepositERC1155 bridge events", "err", err)
+			return err
+		}
+
+		// sentMessage handle
+		if err := bridge.L1SentMessageEvent(l1Contracts.MessengerAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1SentMessageEvent bridge events", "err", err)
+			return err
+		}
+
+		if err := bridge.L1BatchDepositERC721(l1Contracts.ERC721GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1BatchDepositERC721 bridge events", "err", err)
+			return err
+		}
+
+		if err := bridge.L1BatchDepositERC1155(l1Contracts.ERC1155GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1BatchDepositERC1155 bridge events", "err", err)
+			return err
+		}
+
+		if err := bridge.L1RelayedMessageEvent(l1Contracts.MessengerAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1RelayedMessageEvent bridge events", "err", err)
+			return err
+		}
+		// l1 handle end
+
+		// l2 handle start
+
+		// l2 handle end
+
 		return nil
 	}); err != nil {
 		return err

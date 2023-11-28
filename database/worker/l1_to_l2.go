@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"math/big"
 
@@ -11,7 +12,8 @@ import (
 )
 
 type L1ToL2 struct {
-	L1BlockNumber     common.Hash    `gorm:"column:l1_block_number;primaryKey;serializer:bytes" db:"l1_block_number" json:"l1_block_number" form:"l1_block_number"`
+	GUID              uuid.UUID      `gorm:"primaryKey"`
+	L1BlockHash       common.Hash    `gorm:"column:l1_block_hash;serializer:bytes" db:"l1_block_hash" json:"l1_block_hash" form:"l1_block_hash"`
 	QueueIndex        *big.Int       `gorm:"serializer:u256;column:queue_index" json:"queue_index"`
 	L1TransactionHash common.Hash    `gorm:"column:l1_transaction_hash;serializer:bytes"  db:"l1_transaction_hash" json:"l1_transaction_hash" form:"l1_transaction_hash"`
 	L2TransactionHash common.Hash    `gorm:"column:l2_transaction_hash;serializer:bytes" db:"l2_transaction_hash" json:"l2_transaction_hash" form:"l2_transaction_hash"`
@@ -25,10 +27,10 @@ type L1ToL2 struct {
 	ERC20Amount       *big.Int       `gorm:"serializer:u256;column:erc20_amount" json:"erc20_amount"`
 	GasLimit          *big.Int       `gorm:"serializer:u256;column:gas_limit" json:"gas_limit"`
 	Timestamp         int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
-	AssetType         int64          `gorm:"serializer:u256;column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
+	AssetType         int64          `gorm:"column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
 	TokenIds          string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 	TokenAmounts      string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
-	MsgHash           common.Hash    `gorm:"column:msg_hash" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
+	MsgHash           common.Hash    `gorm:"column:msg_hash;serializer:bytes" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
 }
 
 func (L1ToL2) TableName() string {
@@ -66,13 +68,13 @@ func (l1l2 l1ToL2DB) StoreL1ToL2Transactions(l1L2List []L1ToL2) error {
 }
 
 func (l1l2 l1ToL2DB) UpdateL1ToL2MsgHashByL1TxHash(l1L2Stu L1ToL2) error {
-	result := l1l2.gorm.Where(&L1ToL2{L1TransactionHash: l1L2Stu.L1TransactionHash})
-	result = result.UpdateColumn("msg_hash", l1L2Stu.MsgHash)
+	result := l1l2.gorm.Model(&l1L2Stu).Where(&L1ToL2{L1TransactionHash: l1L2Stu.L1TransactionHash})
+	result = result.UpdateColumn("msg_hash", l1L2Stu.MsgHash.String())
 	return result.Error
 }
 func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(l1L2Stu L1ToL2) error {
-	result := l1l2.gorm.Where(&L1ToL2{MsgHash: l1L2Stu.MsgHash})
-	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash)
+	result := l1l2.gorm.Model(&l1L2Stu).Where(&L1ToL2{MsgHash: l1L2Stu.MsgHash})
+	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash.String())
 	return result.Error
 }
 

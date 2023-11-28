@@ -14,7 +14,8 @@ import (
 )
 
 type L2ToL1 struct {
-	L2BlockNumber             common.Hash    `gorm:"column:l2_block_number;primaryKey;serializer:bytes" db:"l2_block_number" json:"l2_block_number" form:"l2_block_number"`
+	GUID                      uuid.UUID      `gorm:"primaryKey"`
+	L2BlockHash               common.Hash    `gorm:"column:l2_block_hash;serializer:bytes" db:"l2_block_hash" json:"l2_block_hash" form:"l2_block_hash"`
 	MsgNonce                  *big.Int       `gorm:"column:msg_nonce;serializer:u256" db:"msg_nonce" json:"msg_nonce" form:"msg_nonce"`
 	L2TransactionHash         common.Hash    `gorm:"column:l2_transaction_hash;serializer:bytes" db:"l2_transaction_hash" json:"l2_transaction_hash" form:"l2_transaction_hash"`
 	L2WithdrawTransactionHash common.Hash    `gorm:"column:l2_withdraw_transaction_hash;serializer:bytes" db:"l2_withdraw_transaction_hash" json:"l2_withdraw_transaction_hash" form:"l2_withdraw_transaction_hash"`
@@ -30,10 +31,10 @@ type L2ToL1 struct {
 	L1TokenAddress            common.Address `gorm:"column:l1_token_address;serializer:bytes" db:"l1_token_address" json:"l1_token_address" form:"l1_token_address"`
 	L2TokenAddress            common.Address `gorm:"column:l2_token_address;serializer:bytes" db:"l2_token_address" json:"l2_token_address" form:"l2_token_address"`
 	Timestamp                 int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
-	AssetType                 int64          `gorm:"serializer:u256;column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
+	AssetType                 int64          `gorm:"column:asset_type" db:"asset_type" json:"asset_type" form:"asset_type"`
 	TokenIds                  string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 	TokenAmounts              string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
-	MsgHash                   common.Hash    `gorm:"column:msg_hash" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
+	MsgHash                   common.Hash    `gorm:"column:msg_hash;serializer:bytes" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
 }
 
 func (L2ToL1) TableName() string {
@@ -71,14 +72,14 @@ func NewL21ToL1DB(db *gorm.DB) L2ToL1DB {
 }
 
 func (l2l1 l2ToL1DB) UpdateL2ToL1MsgHashByL2TxHash(l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Where(&L2ToL1{L1FinalizeTxHash: l2L1Stu.L1FinalizeTxHash})
-	result = result.UpdateColumn("msg_hash", l2L1Stu.MsgHash)
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{L1FinalizeTxHash: l2L1Stu.L1FinalizeTxHash})
+	result = result.UpdateColumn("msg_hash", l2L1Stu.MsgHash.String())
 	return result.Error
 }
 
 func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Where(&L1ToL2{MsgHash: l2L1Stu.MsgHash})
-	result = result.UpdateColumn("l2_transaction_hash", l2L1Stu.L2TransactionHash)
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L1ToL2{MsgHash: l2L1Stu.MsgHash})
+	result = result.UpdateColumn("l2_transaction_hash", l2L1Stu.L2TransactionHash.String())
 	return result.Error
 }
 
@@ -151,7 +152,7 @@ func (l2l1 l2ToL1DB) UpdateReadyForClaimStatus(withdrawalHash common.Hash, prove
 		return result.Error
 	}
 
-	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockNumber.String()).Updates(map[string]interface{}{"l1_prove_tx_hash": provenHash, "status": common2.ReadyForClaim})
+	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockHash.String()).Updates(map[string]interface{}{"l1_prove_tx_hash": provenHash, "status": common2.ReadyForClaim})
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil
@@ -180,7 +181,7 @@ func (l2l1 l2ToL1DB) UpdateL1FinalizeStatus(withdrawalHash common.Hash, finalize
 		return result.Error
 	}
 
-	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockNumber.String()).Updates(map[string]interface{}{"l1_finalize_tx_hash": finalizedHash})
+	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockHash.String()).Updates(map[string]interface{}{"l1_finalize_tx_hash": finalizedHash})
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil
@@ -201,7 +202,7 @@ func (l2l1 l2ToL1DB) UpdateClaimedStatus(withdrawalHash common.Hash) error {
 		return result.Error
 	}
 
-	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockNumber.String()).Updates(map[string]interface{}{"status": common2.Claimed})
+	result = l2l1.gorm.Model(&L2ToL1{}).Where("l2_block_number = ?", l2ToL1.L2BlockHash.String()).Updates(map[string]interface{}{"status": common2.Claimed})
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil
