@@ -80,7 +80,7 @@ func (b *ScBridgeProcessor) Start(ctx context.Context) error {
 }
 
 func (b *ScBridgeProcessor) run() error {
-	maxEpochRange := uint64(10)
+	maxEpochRange := uint64(10_000)
 	var lastEpoch *big.Int
 	if b.LatestL1Header != nil {
 		lastEpoch = b.LatestL1Header.Number
@@ -190,23 +190,9 @@ func (b *ScBridgeProcessor) run() error {
 			}
 			// l1 handle end
 
-			//if err := bridge.LegacyL1ProcessInitiatedBridgeEvents(l1BridgeLog, tx, b.opContracts.(scroll.SclContracts).L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
-			//	batchLog.Error("failed to index legacy l1 initiated bridge events", "err", err)
-			//	return err
-			//}
-			//if err := bridge.LegacyL2ProcessInitiatedBridgeEvents(l2BridgeLog, tx, b.opContracts.(op_stack.OpContracts).L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
-			//	batchLog.Error("failed to index legacy l2 initiated bridge events", "err", err)
-			//	return err
-			//}
-			//
-			//if err := bridge.LegacyL1ProcessFinalizedBridgeEvents(l1BridgeLog, tx, b.l1Etl.EthClient, b.opContracts.(op_stack.OpContracts).L1Contracts, legacyFromL1Height, legacyToL1Height); err != nil {
-			//	batchLog.Error("failed to index legacy l1 finalized bridge events", "err", err)
-			//	return err
-			//}
-			//if err := bridge.LegacyL2ProcessFinalizedBridgeEvents(l2BridgeLog, tx, b.opContracts.(op_stack.OpContracts).L2Contracts, legacyFromL2Height, legacyToL2Height); err != nil {
-			//	batchLog.Error("failed to index legacy l2l finalized bridge events", "err", err)
-			//	return err
-			//}
+			// l2 handle start
+
+			// l2 handle end
 
 			if legacyToL1Height.Cmp(toL1Height) == 0 {
 				return nil

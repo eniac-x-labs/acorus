@@ -13,8 +13,8 @@ l1-start-height = 18310747
 l2-polling-interval = 0
 l2-header-buffer-size = 0
 l2-confirmation-depth = 0
-l1-rpc = "https://mainnet.infura.io/v3/b272eedacaea4c798f09c9e52426aa11"
-l2-rpc = "https://rpc.scroll.io/"
+l1-rpc = "https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
+l2-rpc = "https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
 
 [master_db]
 host = "120.77.251.247"
