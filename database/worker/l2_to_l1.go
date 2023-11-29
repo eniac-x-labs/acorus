@@ -72,14 +72,14 @@ func NewL21ToL1DB(db *gorm.DB) L2ToL1DB {
 }
 
 func (l2l1 l2ToL1DB) UpdateL2ToL1MsgHashByL2TxHash(l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{L1FinalizeTxHash: l2L1Stu.L1FinalizeTxHash})
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{L2TransactionHash: l2L1Stu.L2TransactionHash})
 	result = result.UpdateColumn("msg_hash", l2L1Stu.MsgHash.String())
 	return result.Error
 }
 
 func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Model(&l2L1Stu).Where(&L1ToL2{MsgHash: l2L1Stu.MsgHash})
-	result = result.UpdateColumn("l2_transaction_hash", l2L1Stu.L2TransactionHash.String())
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{MsgHash: l2L1Stu.MsgHash})
+	result = result.UpdateColumn("l1_finalize_tx_hash", l2L1Stu.L1FinalizeTxHash.String()).UpdateColumn("status", 1)
 	return result.Error
 }
 

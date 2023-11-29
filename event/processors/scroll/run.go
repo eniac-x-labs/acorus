@@ -179,6 +179,40 @@ func (b *ScBridgeProcessor) run() error {
 		// l1 handle end
 
 		// l2 handle start
+		l2Contracts := b.opContracts.(scroll.SclContracts).L2Contracts
+
+		if err := bridge.L2WithdrawETH(l2Contracts.ETHGatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2WithdrawETH bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2WithdrawERC20(l2Contracts.StandardERC20Gateway, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2WithdrawERC20 bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2WithdrawERC721(l2Contracts.ERC721GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2WithdrawERC721 bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2WithdrawERC1155(l2Contracts.ERC1155GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2WithdrawERC1155 bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2BatchWithdrawERC721(l2Contracts.ERC721GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2BatchWithdrawERC721 bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2BatchWithdrawERC1155(l2Contracts.ERC1155GatewayAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2BatchWithdrawERC1155 bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2SentMessageEvent(l2Contracts.MessengerAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2SentMessageEvent bridge events", "err", err)
+			return err
+		}
+		if err := bridge.L2RelayedMessageEvent(l2Contracts.MessengerAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L2RelayedMessageEvent bridge events", "err", err)
+			return err
+		}
 
 		// l2 handle end
 

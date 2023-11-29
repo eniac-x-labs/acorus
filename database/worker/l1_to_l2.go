@@ -74,7 +74,7 @@ func (l1l2 l1ToL2DB) UpdateL1ToL2MsgHashByL1TxHash(l1L2Stu L1ToL2) error {
 }
 func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(l1L2Stu L1ToL2) error {
 	result := l1l2.gorm.Model(&l1L2Stu).Where(&L1ToL2{MsgHash: l1L2Stu.MsgHash})
-	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash.String())
+	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash.String()).UpdateColumn("status", 1)
 	return result.Error
 }
 

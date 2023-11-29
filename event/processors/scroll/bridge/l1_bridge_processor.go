@@ -97,6 +97,10 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 		depositTx := depositErc20Events[i]
 		rlpLog := *depositTx.RLPLog
 		depositErc20Event := abi.ERC20MessageEvent{}
+		unpackErr := utils.UnpackLog(abi.L1StandardERC20GatewayABI, &depositErc20Event, "DepositERC20", rlpLog)
+		if unpackErr != nil {
+			return unpackErr
+		}
 		transactionDeposits[i] = l1_l2.L1TransactionDeposit{
 			SourceHash:           depositTx.TransactionHash,
 			InitiatedL1EventGUID: depositTx.GUID,
@@ -109,10 +113,6 @@ func L1DepositERC20(contractAddress common.Address, db *database.DB, fromHeight,
 				Timestamp:   depositTx.Timestamp,
 			},
 			GasLimit: big.NewInt(0),
-		}
-		unpackErr := utils.UnpackLog(abi.L1StandardERC20GatewayABI, &depositErc20Event, "DepositERC20", rlpLog)
-		if unpackErr != nil {
-			return unpackErr
 		}
 		l1ToL2s[i] = worker.L1ToL2{
 			GUID:              uuid.New(),
@@ -235,58 +235,6 @@ func L1DepositERC1155(contractAddress common.Address, db *database.DB, fromHeigh
 
 }
 
-func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
-	l1SentMessageEventSignature := abi.L1SentMessageEventSignature
-	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1SentMessageEventSignature}
-	sentMessageEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
-	if err != nil {
-		return err
-	}
-	l1BridgeMsgs := make([]l1_l2.L1BridgeMessage, len(sentMessageEvents))
-	for i := range sentMessageEvents {
-		depositTx := sentMessageEvents[i]
-		rlpLog := *depositTx.RLPLog
-		sentMessageEvent := abi.L1SentMessageEvent{}
-		unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &sentMessageEvent, "SentMessage", rlpLog)
-		if unpackErr != nil {
-			log.Warn("Failed to unpack SentMessage event", "err", err)
-			return unpackErr
-		}
-		// compute msgHash
-		msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
-			sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
-		// update l1tol2  set msgHash by txHash
-		if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
-			return err
-		}
-		relayedMessageEventGUID := uuid.New()
-		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
-			BridgeMessage: l1_l2.BridgeMessage{
-				MessageHash:             msgHash,
-				Nonce:                   sentMessageEvent.MessageNonce,
-				GasLimit:                sentMessageEvent.GasLimit,
-				SentMessageEventGUID:    uuid.New(),
-				RelayedMessageEventGUID: &relayedMessageEventGUID,
-				Tx: l1_l2.Transaction{
-					FromAddress: sentMessageEvent.Sender,
-					ToAddress:   sentMessageEvent.Target,
-					ETHAmount:   sentMessageEvent.Value,
-					ERC20Amount: big.NewInt(0),
-					Data:        sentMessageEvent.Message,
-					Timestamp:   depositTx.Timestamp,
-				},
-			},
-			TransactionSourceHash: rlpLog.TxHash,
-		}
-	}
-	if len(l1BridgeMsgs) > 0 {
-		if err := db.BridgeMessages.StoreL1BridgeMessages(l1BridgeMsgs); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func L1BatchDepositERC721(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
 	l1BatchDepositERC721Sig := abi.L1BatchDepositERC721Sig
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1BatchDepositERC721Sig}
@@ -372,6 +320,58 @@ func L1BatchDepositERC1155(contractAddress common.Address, db *database.DB, from
 	}
 	if len(l1ToL2s) > 0 {
 		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
+	l1SentMessageEventSignature := abi.L1SentMessageEventSignature
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1SentMessageEventSignature}
+	sentMessageEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	if err != nil {
+		return err
+	}
+	l1BridgeMsgs := make([]l1_l2.L1BridgeMessage, len(sentMessageEvents))
+	for i := range sentMessageEvents {
+		depositTx := sentMessageEvents[i]
+		rlpLog := *depositTx.RLPLog
+		sentMessageEvent := abi.L1SentMessageEvent{}
+		unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &sentMessageEvent, "SentMessage", rlpLog)
+		if unpackErr != nil {
+			log.Warn("Failed to unpack SentMessage event", "err", err)
+			return unpackErr
+		}
+		// compute msgHash
+		msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
+			sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
+		// update l1tol2  set msgHash by txHash
+		if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
+			return err
+		}
+		relayedMessageEventGUID := uuid.New()
+		l1BridgeMsgs[i] = l1_l2.L1BridgeMessage{
+			BridgeMessage: l1_l2.BridgeMessage{
+				MessageHash:             msgHash,
+				Nonce:                   sentMessageEvent.MessageNonce,
+				GasLimit:                sentMessageEvent.GasLimit,
+				SentMessageEventGUID:    uuid.New(),
+				RelayedMessageEventGUID: &relayedMessageEventGUID,
+				Tx: l1_l2.Transaction{
+					FromAddress: sentMessageEvent.Sender,
+					ToAddress:   sentMessageEvent.Target,
+					ETHAmount:   sentMessageEvent.Value,
+					ERC20Amount: big.NewInt(0),
+					Data:        sentMessageEvent.Message,
+					Timestamp:   depositTx.Timestamp,
+				},
+			},
+			TransactionSourceHash: rlpLog.TxHash,
+		}
+	}
+	if len(l1BridgeMsgs) > 0 {
+		if err := db.BridgeMessages.StoreL1BridgeMessages(l1BridgeMsgs); err != nil {
 			return err
 		}
 	}
