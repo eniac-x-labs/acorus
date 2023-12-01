@@ -23,6 +23,7 @@ const (
 	Zksync  = "zksync"
 	Op      = "Op"
 	Mantle  = "mantle"
+	Linea   = "linea"
 )
 
 func PrefixEnvVar(prefix, suffix string) []string {

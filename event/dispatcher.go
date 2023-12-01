@@ -34,6 +34,12 @@ func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.
 		if err != nil {
 			return nil, err
 		}
+	} else if chainBridge == common2.Linea {
+		bridgeProcessor, err = linea.NewLineaBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &EventDispatcher{
 		log:               log,
