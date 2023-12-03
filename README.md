@@ -30,12 +30,19 @@ Acorus is project which can sync l1->l2 deposit, l2->l1 withdraw transactions of
 
 
 ## Support layer2 as follow
-- [Polygon](https://github.com/0xPolygonHermez)
-- [Optimism](https://github.com/ethereum-optimism)
-- [Scroll](https://github.com/scroll-tech)
-- [Linea](https://github.com/Consensys)
-- [Zksync](https://github.com/matter-labs)
-- [Arbitrum](https://github.com/OffchainLab)
+- ✅ [Optimism](https://github.com/ethereum-optimism)
+- ✅ [Scroll](https://github.com/scroll-tech)
+- ✅ [Linea](https://github.com/Consensys)
+- ✅ [Base](https://github.com/base-org)
+- ✅ [Mantle](https://github.com/mantlenetworkio)
+- ✅ [Metis Andromeda](https://github.com/MetisProtocol)
+- ✅ [Manta](https://pacific.manta.network/)
+- 🏗️ [Polygon](https://github.com/0xPolygonHermez)
+- 🏗️ [Zksync](https://github.com/matter-labs)
+- 🏗️ [Arbitrum](https://github.com/OffchainLab)
+- 🏗️ [Starknet](https://github.com/starkware-libs)
+
+If you want support your project, please create pr for us, we will support it.
 
 
 ## Install
@@ -52,9 +59,8 @@ make
 
 ### Config env
 
-```bash
-
-```
+- For layer2 chain contracts config, you can [config](https://github.com/bridge-alchemy/acorus/tree/main/config) director and refer to exist config do it.
+- For toml config, you can [acorus.toml](https://github.com/bridge-alchemy/acorus/blob/main/acorus.toml) file and config your real env value.
 
 ### start syncer
 ```bash
