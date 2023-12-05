@@ -33,22 +33,17 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 	if len(topicInputs) > 0 {
 		eth_abi.ParseTopicsIntoMap(eventInfo, topicInputs, chainTopics)
 	}
+	fmt.Println(eventInfo)
 
 	//marshal, _ := json.Marshal(eventInfo)
 	//fmt.Println(string(marshal))
 	calldataBytes := eventInfo["_calldata"].([]byte)
-	//hexString := hex.EncodeToString(calldataBytes)
-	//decodedCalldata, _ := hex.DecodeString(hexString)
-	//fmt.Println(len(decodedCalldata))
-	//// 输出十六进制字符串
-	//fmt.Println(hexString)
-	////hash := common.BytesToHash(calldataBytes)
-	////fmt.Println(hash)
-	//fmt.Println(len(rlpLog.Data))
-	//
-	//fmt.Println(len(calldataBytes))
+
+	//calldataStr := "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006eb4c000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000c4cc29a30600000000000000000000000036c56fa4327122f7ea3683b2d527c1b2476d32ee000000000000000000000000000000000000000000000000002dc7f9e1bca4000000000000000000000000000000000000000000000000000028f723671b516b00000000000000000000000000000000000000000000000000000000657521e7000000000000000000000000710bda329b2a6224e4b44833de30f38e7f81d56400000000000000000000000000000000000000000000000000049e57d635400000000000000000000000000000000000000000000000000000000000"
+	//decodedCalldata, _ := hex.DecodeString(calldataStr)
 
 	if len(calldataBytes) > 0 {
+		calldataBytes = calldataBytes[4:]
 		calldata, calldataUnpackErr := DecodeMessageCallData(calldataBytes)
 		if calldataUnpackErr != nil {
 			log.Warn("Failed to unpack DecodeMessageCallData function", "err", calldataUnpackErr)
@@ -60,13 +55,14 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 }
 
 func DecodeMessageCallData(data []byte) (map[string]interface{}, error) {
-	functionSignature := "completeBridging(address,uint256,address,uint256,bytes)"
+	//functionSignature := "completeBridging(address,uint256,address,uint256,bytes)"
 	callDataAbi := "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_nativeToken\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"_recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_chainId\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_tokenMetadata\",\"type\":\"bytes\"}],\"name\":\"completeBridging\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 	thisAbi, _ := eth_abi.JSON(strings.NewReader(callDataAbi))
 	calldataInfo := make(map[string]interface{})
 	// 解析 calldata 数据
 
-	unpackErr := thisAbi.Methods[functionSignature].Inputs.UnpackIntoMap(calldataInfo, data)
+	unpackErr := thisAbi.UnpackIntoMap(calldataInfo, "completeBridging", data)
+	//unpackErr := thisAbi.Methods[functionSignature].Inputs.UnpackIntoMap(calldataInfo, data)
 	//_, unpackErr := thisAbi.Unpack("completeBridging", data)
 	if unpackErr != nil {
 		fmt.Println(unpackErr)
