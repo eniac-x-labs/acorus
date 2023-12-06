@@ -2,3 +2,4 @@ docker-compose.dev.yml
 .env
 /acorus
 .idea/
+acorus.exe
