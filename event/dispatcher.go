@@ -2,14 +2,15 @@ package event
 
 import (
 	"context"
-	op_stack "github.com/cornerstone-labs/acorus/event/processors/op-stack"
-	"github.com/cornerstone-labs/acorus/event/processors/scroll"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/event/processors/linea"
+	op_stack "github.com/cornerstone-labs/acorus/event/processors/op-stack"
+	"github.com/cornerstone-labs/acorus/event/processors/scroll"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 )
 
@@ -63,6 +64,13 @@ func (dt *EventDispatcher) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	} else if dt.chainBridge == common2.Linea {
+		processor := dt.opBridgeProcessor.(*linea.LineaBridgeProcessor)
+		err := processor.Start(ctx)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
