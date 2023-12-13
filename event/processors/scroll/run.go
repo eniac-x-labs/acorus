@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/cornerstone-labs/acorus/config/scroll"
 	"github.com/cornerstone-labs/acorus/event/processors/scroll/bridge"
+	"github.com/cornerstone-labs/acorus/metrics"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
@@ -20,6 +21,7 @@ type ScBridgeProcessor struct {
 	log log.Logger
 	db  *database.DB
 
+	metrics     metrics.Metricer
 	l1Etl       *synchronizer.L1Sync
 	chainConfig config.ChainConfig
 	opContracts interface{}
@@ -28,7 +30,7 @@ type ScBridgeProcessor struct {
 	LatestL2Header *types.Header
 }
 
-func NewScrollBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*ScBridgeProcessor, error) {
+func NewScrollBridgeProcessor(log log.Logger, db *database.DB, metrics metrics.Metricer, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*ScBridgeProcessor, error) {
 	log = log.New("processor", "bridge")
 	latestL1Header, err := db.BridgeTransactions.L1LatestBlockHeader()
 	if err != nil {
@@ -54,7 +56,7 @@ func NewScrollBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchro
 		}
 		log.Info("detected latest indexed bridge state", "l1_block_number", l1Height, "l2_block_number", l2Height)
 	}
-	return &ScBridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
+	return &ScBridgeProcessor{log, db, metrics, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
 }
 
 func (b *ScBridgeProcessor) Start(ctx context.Context) error {
@@ -75,7 +77,8 @@ func (b *ScBridgeProcessor) Start(ctx context.Context) error {
 		case <-l1EtlUpdates:
 		}
 
-		b.run()
+		done := b.metrics.RecordInterval()
+		done(b.run())
 	}
 }
 

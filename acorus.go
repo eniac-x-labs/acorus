@@ -84,6 +84,7 @@ func NewAcorus(
 		LoopIntervalMsec:  config.Chain.L2PollingInterval,
 		HeaderBufferSize:  config.Chain.L2HeaderBufferSize,
 		ConfirmationDepth: big.NewInt(int64(config.Chain.L2ConfirmationDepth)),
+		StartHeight:       big.NewInt(int64(config.Chain.L2StartHeight)),
 	}
 
 	l2Syncer, err := synchronizer.NewL2Sync(l2Cfg, log, db, l2EthClient, l2Contracts)
@@ -91,7 +92,7 @@ func NewAcorus(
 		return nil, err
 	}
 
-	dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, config.Chain, chainBridge, resultContracts)
+	dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, config.Chain, chainBridge, resultContracts, config.Chain.L1RPC, config.Chain.L2RPC)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +218,30 @@ func ChainContractsSelect(chainBridge string, config2 *config.Config) (l1Contrac
 		resultContracts = config2.OpContracts
 
 	} else if chainBridge == common2.Polygon {
-		// todo: handle polygon logic
+		if err := config2.PlContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
+			if addr == ZeroAddr {
+				log.Error("address not configured", "name", name)
+				return errors.New("all L2Contracts must be configured")
+			}
+			log.Info("configured contract", "name", name, "addr", addr)
+			l2ResultContracts = append(l2ResultContracts, addr)
+			return nil
+		}); err != nil {
+			return nil, nil, nil, err
+		}
+		if err := config2.PlContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
+			if addr == ZeroAddr && !strings.HasPrefix(name, "Legacy") {
+				log.Error("address not configured", "name", name)
+				return errors.New("all L1Contracts must be configured")
+			}
+			log.Info("configured contract", "name", name, "addr", addr)
+			l1ResultContracts = append(l1ResultContracts, addr)
+			return nil
+		}); err != nil {
+			return nil, nil, nil, err
+		}
+
+		resultContracts = config2.PlContracts
 	} else if chainBridge == common2.Scroll {
 		if err := config2.SclContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
 			if addr == ZeroAddr {

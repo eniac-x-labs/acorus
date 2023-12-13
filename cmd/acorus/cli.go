@@ -29,7 +29,7 @@ var (
 	}
 	ChainBridgeFlag = &cli.StringFlag{
 		Name:    "chain-bridge",
-		Value:   common2.Scroll,
+		Value:   common2.Polygon,
 		Usage:   "sync chain bridge event",
 		EnvVars: []string{"ACORUS_CHAIN_BRIDGE"},
 	}
@@ -144,10 +144,13 @@ func runMigrations(ctx *cli.Context) error {
 func newCli(GitCommit string, GitDate string) *cli.App {
 	flags := []cli.Flag{ConfigFlag}
 	flags = append(flags, oplog.CLIFlags("ACORUS")...)
+	flags = append(flags, ChainBridgeFlag)
 	migrationFlags := []cli.Flag{MigrationsFlag, ConfigFlag}
 	migrationFlags = append(migrationFlags, oplog.CLIFlags("ACORUS")...)
+	migrationFlags = append(migrationFlags, ChainBridgeFlag)
 	IndexFlags := []cli.Flag{ChainBridgeFlag, ConfigFlag}
 	IndexFlags = append(IndexFlags, oplog.CLIFlags("ACORUS")...)
+	IndexFlags = append(IndexFlags)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
 		Description:          "An acorus of all optimism events with a serving service layer",

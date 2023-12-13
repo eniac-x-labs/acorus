@@ -1,33 +1,38 @@
 # Chain configures l1 chain addresses
 # Can configure them manually or use a preset L2 ChainId for known chains
 #  - i.e OP Mainnet, OP Goerli, Base, Base Goerli, Zora, Zora Goerli, etc
+[chain]
+preset = 137
+
+# L1 Config
+l1-polling-interval = 0
+l1-header-buffer-size = 100
+l1-confirmation-depth = 0
+l1-start-height = 18768379
+
+# L2 Config
+l2-polling-interval = 0
+l2-header-buffer-size = 100
+l2-confirmation-depth = 0
+l2-start-height = 8539066
+
+l1-rpc = "https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
+l2-rpc = "https://rpc.ankr.com/polygon_zkevm/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
 
 slave_db_enable = false
 
-[chain]
-preset = 1
-l1-polling-interval = 0
-l1-header-buffer-size = 0
-l1-confirmation-depth = 0
-l1-start-height = 18310747
-l2-polling-interval = 0
-l2-header-buffer-size = 0
-l2-confirmation-depth = 0
-l1-rpc = "https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
-l2-rpc = "https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
-
 [master_db]
-host = "120.77.251.247"
+host = "localhost"
 port = 5432
-user = "postgres"
-password = "galamini"
+user = ""
+password = ""
 name = "acorus"
 
 [slave_db]
 host = "localhost"
 port = 5432
-user = "postgres"
-password = "galamini"
+user = ""
+password = ""
 name = "acorus"
 
 [http]

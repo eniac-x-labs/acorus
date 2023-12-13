@@ -2,6 +2,9 @@ package event
 
 import (
 	"context"
+	"github.com/cornerstone-labs/acorus/event/processors/polygon"
+
+	"github.com/cornerstone-labs/acorus/metrics"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -20,23 +23,27 @@ type EventDispatcher struct {
 	chainBridge       string
 }
 
-func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, contracts interface{}) (*EventDispatcher, error) {
+func NewEventDispatcher(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, chainBridge string, contracts interface{}, L1URL string, L2URL string) (*EventDispatcher, error) {
 	var bridgeProcessor interface{}
 	var err error
 	if chainBridge == common2.Op {
-		bridgeProcessor, err = op_stack.NewOpBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+		metricsRegistry := metrics.NewRegistry()
+		bridgeProcessor, err = op_stack.NewOpBridgeProcessor(log, db, metrics.NewMetrics(metricsRegistry), L1Syncer, chainConfig, contracts)
 		if err != nil {
 			return nil, err
 		}
 	} else if chainBridge == common2.Polygon {
-		// todo: handle polygon
+		metricsRegistry := metrics.NewRegistry()
+		bridgeProcessor, err = polygon.NewPolygonBridgeProcessor(log, db, metrics.NewMetrics(metricsRegistry), L1Syncer, chainConfig, contracts, L1URL, L2URL)
 	} else if chainBridge == common2.Scroll {
-		bridgeProcessor, err = scroll.NewScrollBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+		metricsRegistry := metrics.NewRegistry()
+		bridgeProcessor, err = scroll.NewScrollBridgeProcessor(log, db, metrics.NewMetrics(metricsRegistry), L1Syncer, chainConfig, contracts)
 		if err != nil {
 			return nil, err
 		}
 	} else if chainBridge == common2.Linea {
-		bridgeProcessor, err = linea.NewLineaBridgeProcessor(log, db, L1Syncer, chainConfig, contracts)
+		metricsRegistry := metrics.NewRegistry()
+		bridgeProcessor, err = linea.NewLineaBridgeProcessor(log, db, metrics.NewMetrics(metricsRegistry), L1Syncer, chainConfig, contracts)
 
 		if err != nil {
 			return nil, err
@@ -57,7 +64,11 @@ func (dt *EventDispatcher) Start(ctx context.Context) error {
 			return err
 		}
 	} else if dt.chainBridge == common2.Polygon {
-		// todo: handle polygon
+		processor := dt.opBridgeProcessor.(*polygon.PlBridgeProcessor)
+		err := processor.Start(ctx)
+		if err != nil {
+			return err
+		}
 	} else if dt.chainBridge == common2.Scroll {
 		processor := dt.opBridgeProcessor.(*scroll.ScBridgeProcessor)
 		err := processor.Start(ctx)

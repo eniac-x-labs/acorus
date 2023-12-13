@@ -3,6 +3,8 @@ package linea
 import (
 	"context"
 	"errors"
+	"github.com/cornerstone-labs/acorus/metrics"
+
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,6 +20,7 @@ type LineaBridgeProcessor struct {
 	log log.Logger
 	db  *database.DB
 
+	metrics     metrics.Metricer
 	l1Etl       *synchronizer.L1Sync
 	chainConfig config.ChainConfig
 	opContracts interface{}
@@ -26,7 +29,7 @@ type LineaBridgeProcessor struct {
 	LatestL2Header *types.Header
 }
 
-func NewLineaBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*LineaBridgeProcessor, error) {
+func NewLineaBridgeProcessor(log log.Logger, db *database.DB, metrics metrics.Metricer, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*LineaBridgeProcessor, error) {
 	log = log.New("processor", "bridge")
 	latestL1Header, err := db.BridgeTransactions.L1LatestBlockHeader()
 	if err != nil {
@@ -52,7 +55,7 @@ func NewLineaBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchron
 		}
 		log.Info("detected latest indexed bridge state", "l1_block_number", l1Height, "l2_block_number", l2Height)
 	}
-	return &LineaBridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
+	return &LineaBridgeProcessor{log, db, metrics, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
 }
 
 func (b *LineaBridgeProcessor) Start(ctx context.Context) error {
@@ -73,7 +76,8 @@ func (b *LineaBridgeProcessor) Start(ctx context.Context) error {
 		case <-l1EtlUpdates:
 		}
 
-		b.run()
+		done := b.metrics.RecordInterval()
+		done(b.run())
 	}
 }
 

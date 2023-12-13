@@ -3,6 +3,7 @@ package op_stack
 import (
 	"context"
 	"errors"
+	"github.com/cornerstone-labs/acorus/metrics"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,6 +21,7 @@ type OpBridgeProcessor struct {
 	log log.Logger
 	db  *database.DB
 
+	metrics     metrics.Metricer
 	l1Etl       *synchronizer.L1Sync
 	chainConfig config.ChainConfig
 	opContracts interface{}
@@ -28,7 +30,7 @@ type OpBridgeProcessor struct {
 	LatestL2Header *types.Header
 }
 
-func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*OpBridgeProcessor, error) {
+func NewOpBridgeProcessor(log log.Logger, db *database.DB, metrics metrics.Metricer, L1Syncer *synchronizer.L1Sync, chainConfig config.ChainConfig, opContracts interface{}) (*OpBridgeProcessor, error) {
 	log = log.New("processor", "bridge")
 
 	latestL1Header, err := db.BridgeTransactions.L1LatestBlockHeader()
@@ -55,7 +57,7 @@ func NewOpBridgeProcessor(log log.Logger, db *database.DB, L1Syncer *synchronize
 		}
 		log.Info("detected latest indexed bridge state", "l1_block_number", l1Height, "l2_block_number", l2Height)
 	}
-	return &OpBridgeProcessor{log, db, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
+	return &OpBridgeProcessor{log, db, metrics, L1Syncer, chainConfig, opContracts, l1Header, l2Header}, nil
 }
 
 func (b *OpBridgeProcessor) Start(ctx context.Context) error {
@@ -76,7 +78,8 @@ func (b *OpBridgeProcessor) Start(ctx context.Context) error {
 		case <-l1EtlUpdates:
 		}
 
-		b.run()
+		done := b.metrics.RecordInterval()
+		done(b.run())
 	}
 }
 

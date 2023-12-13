@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/config/polygon"
 	sc_scroll "github.com/cornerstone-labs/acorus/config/scroll"
 	"os"
 
@@ -58,6 +59,7 @@ type Config struct {
 	Chain         ChainConfig            `toml:"chain"`
 	OpContracts   op_stack.OpContracts   `toml:"op_contracts"`
 	SclContracts  sc_scroll.SclContracts `toml:"sc_contracts"`
+	PlContracts   polygon.PlContracts    `toml:"pl_contracts"`
 	Redis         RedisConfig            `toml:"redis"`
 	MasterDB      DBConfig               `toml:"master_db"`
 	SlaveDB       DBConfig               `toml:"slave_db"`
@@ -94,7 +96,14 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 		cfg.OpContracts.L2Contracts = op_stack.L2ContractsFromPredeploys()
 		log.Info("loaded chain config", "config", cfg.OpContracts)
 	} else if chainBridge == common2.Polygon {
-		// todo: handle polygon config here
+		if cfg.Chain.Preset != 0 {
+			preset, ok := polygon.Presets[cfg.Chain.Preset]
+			if !ok {
+				return cfg, fmt.Errorf("unknown preset: %d", cfg.Chain.Preset)
+			}
+			log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
+			cfg.PlContracts = preset.PlContracts
+		}
 	} else if chainBridge == common2.Zksync {
 		// todo: handle zksync config here
 	} else if chainBridge == common2.Mantle {
@@ -109,7 +118,6 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 			cfg.SclContracts = preset.SclContracts
 		}
 	}
-
 	if cfg.Chain.L1PollingInterval == 0 {
 		cfg.Chain.L1PollingInterval = defaultLoopInterval
 	}

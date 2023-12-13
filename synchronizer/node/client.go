@@ -103,21 +103,24 @@ func (c *wrapClient) BlockHeadersByRange(startHeight, endHeight *big.Int) ([]typ
 
 	count := new(big.Int).Sub(endHeight, startHeight).Uint64() + 1
 	batchElems := make([]rpc.BatchElem, count)
+
 	for i := uint64(0); i < count; i++ {
+		ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+		defer cancel()
 		height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
 		batchElems[i] = rpc.BatchElem{
 			Method: "eth_getBlockByNumber",
-			Args:   []interface{}{toBlockNumArg(height), false},
 			Result: new(types.Header),
 			Error:  nil,
 		}
+		header := new(types.Header)
+		err := c.rpc.CallContext(ctxwt, header, batchElems[i].Method, toBlockNumArg(height), false)
+		batchElems[i].Result = header
+		if err != nil {
+			return nil, err
+		}
 	}
-	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
-	defer cancel()
-	err := c.rpc.BatchCallContext(ctxwt, batchElems)
-	if err != nil {
-		return nil, err
-	}
+
 	size := 0
 	headers := make([]types.Header, count)
 	for i, batchElem := range batchElems {

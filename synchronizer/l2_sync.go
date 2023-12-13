@@ -2,6 +2,7 @@ package synchronizer
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -32,6 +33,13 @@ func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 	if latestHeader != nil {
 		log.Info("detected last indexed block", "number", latestHeader.Number, "hash", latestHeader.Hash)
 		fromHeader = latestHeader.RLPHeader.Header()
+	} else if cfg.StartHeight.BitLen() > 0 {
+		log.Info("no indexed state starting from supplied L2 height", "height", cfg.StartHeight.String())
+		header, err := client.BlockHeaderByNumber(cfg.StartHeight)
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch starting block header: %w", err)
+		}
+		fromHeader = header
 	} else {
 		log.Info("no indexed state, starting from genesis")
 	}
