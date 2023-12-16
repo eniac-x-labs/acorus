@@ -6,11 +6,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/google/uuid"
 
 	"github.com/acmestack/gorm-plus/gplus"
+
 	common2 "github.com/cornerstone-labs/acorus/database/common"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type L2ToL1 struct {
@@ -35,6 +37,7 @@ type L2ToL1 struct {
 	TokenIds                  string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 	TokenAmounts              string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
 	MsgHash                   common.Hash    `gorm:"column:msg_hash;serializer:bytes" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
+	ChainId                   int64          `gorm:"column:chain_id" db:"chain_id" json:"chain_id" form:"chain_id"`
 }
 
 func (L2ToL1) TableName() string {
@@ -43,7 +46,7 @@ func (L2ToL1) TableName() string {
 
 type L2ToL1DB interface {
 	L2ToL1View
-	StoreL2ToL1Transactions([]L2ToL1) error
+	StoreL2ToL1Transactions([]*L2ToL1) error
 	UpdateTokenPairs(l1L2List []L2ToL1) error
 	UpdateReadyForProvedStatus(blockTimestamp int64) error
 	UpdateReadyForClaimStatus(withdrawalHash common.Hash, provenL1EventGuid uuid.UUID) error
@@ -83,8 +86,8 @@ func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(l2L1Stu L2ToL1) error {
 	return result.Error
 }
 
-func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(l1L2List []L2ToL1) error {
-	result := l2l1.gorm.CreateInBatches(&l1L2List, len(l1L2List))
+func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(l1L2List []*L2ToL1) error {
+	result := l2l1.gorm.CreateInBatches(&l1L2List, 3000)
 	return result.Error
 }
 

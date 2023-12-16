@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
@@ -20,7 +21,8 @@ type L2Sync struct {
 	db *database.DB
 }
 
-func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, l2Contracts []common.Address) (*L2Sync, error) {
+func NewL2Sync(cfg Config, log log.Logger, db *database.DB,
+	client node.EthClient, l2Contracts []common.Address, chain config.ChainConfig) (*L2Sync, error) {
 	log = log.New("syncer", "l2")
 
 	latestHeader, err := db.Blocks.L2LatestBlockHeader()
@@ -45,6 +47,7 @@ func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 		contracts:        l2Contracts,
 		syncerBatches:    syncerBatches,
 		EthClient:        client,
+		ChainId:          chain.ChainId,
 	}
 	return &L2Sync{Synchronizer: syncer, db: db}, nil
 }
@@ -69,7 +72,7 @@ func (l2Sync *L2Sync) Start(ctx context.Context) error {
 			l2ContractEvents := make([]event.L2ContractEvent, len(batch.Logs))
 			for i := range batch.Logs {
 				timestamp := batch.HeaderMap[batch.Logs[i].BlockHash].Time
-				l2ContractEvents[i] = event.L2ContractEvent{ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp)}
+				l2ContractEvents[i] = event.L2ContractEvent{ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp, l2Sync.ChainId)}
 			}
 
 			retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}

@@ -10,15 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	common2 "github.com/cornerstone-labs/acorus/database/utils"
+	"github.com/cornerstone-labs/acorus/database/utils"
 )
 
 type BlockHeader struct {
-	Hash       common.Hash `gorm:"primaryKey;serializer:bytes"`
-	ParentHash common.Hash `gorm:"serializer:bytes"`
-	Number     *big.Int    `gorm:"serializer:u256"`
-	Timestamp  uint64
-	RLPHeader  *common2.RLPHeader `gorm:"serializer:rlp;column:rlp_bytes"`
+	Hash       common.Hash      `gorm:"primaryKey;"`
+	ParentHash common.Hash      `gorm:"serializer:bytes"`
+	Number     *big.Int         `gorm:"serializer:u256"`
+	ChainId    uint64           `gorm:"column:chain_id"`
+	Timestamp  uint64           `gorm:"column:timestamp"`
+	RLPHeader  *utils.RLPHeader `gorm:"serializer:rlp;column:rlp_bytes"`
 }
 
 func BlockHeaderFromHeader(header *types.Header) BlockHeader {
@@ -27,8 +28,7 @@ func BlockHeaderFromHeader(header *types.Header) BlockHeader {
 		ParentHash: header.ParentHash,
 		Number:     header.Number,
 		Timestamp:  header.Time,
-
-		RLPHeader: (*common2.RLPHeader)(header),
+		RLPHeader:  (*utils.RLPHeader)(header),
 	}
 }
 
@@ -76,7 +76,7 @@ func NewBlocksDB(db *gorm.DB) BlocksDB {
 // L1 module
 
 func (db *blocksDB) StoreL1BlockHeaders(headers []L1BlockHeader) error {
-	result := db.gorm.CreateInBatches(&headers, common2.BatchInsertSize)
+	result := db.gorm.CreateInBatches(&headers, utils.BatchInsertSize)
 	return result.Error
 }
 
@@ -101,6 +101,7 @@ func (db *blocksDB) L1LatestBlockHeader() (*L1BlockHeader, error) {
 	var l1Header L1BlockHeader
 	result := db.gorm.Order("number DESC").Take(&l1Header)
 	if result.Error != nil {
+		fmt.Println(result.Error)
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -114,7 +115,7 @@ func (db *blocksDB) L1LatestBlockHeader() (*L1BlockHeader, error) {
 // L2 module
 
 func (db *blocksDB) StoreL2BlockHeaders(headers []L2BlockHeader) error {
-	result := db.gorm.CreateInBatches(&headers, common2.BatchInsertSize)
+	result := db.gorm.CreateInBatches(&headers, utils.BatchInsertSize)
 	return result.Error
 }
 

@@ -16,7 +16,7 @@ import (
 var (
 	ConfigFlag = &cli.StringFlag{
 		Name:    "config",
-		Value:   "./acorus.toml",
+		Value:   "./acorus_scroll.toml",
 		Aliases: []string{"c"},
 		Usage:   "path to config file",
 		EnvVars: []string{"ACORUS_CONFIG"},
@@ -97,7 +97,7 @@ func runApi(ctx *cli.Context) error {
 	defer db.Close()
 
 	log.Info("running service...")
-	api := service.NewApi(log, db.BridgeTransfers, db.L1ToL2, db.L2ToL1, db.Blocks, db.StateRoots, cfg.HTTPServer, cfg.MetricsServer)
+	api := service.NewApi(log, db.L1ToL2, db.L2ToL1, db.Blocks, db.StateRoots, cfg.HTTPServer, cfg.MetricsServer)
 	return api.Run(ctx.Context)
 }
 

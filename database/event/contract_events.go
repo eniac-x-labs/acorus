@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
+	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/utils"
 )
 
@@ -29,13 +30,13 @@ type ContractEvent struct {
 
 	EventSignature common.Hash `gorm:"serializer:bytes"`
 	Timestamp      uint64
-
+	ChainId        uint64 `gorm:"column:chain_id"`
 	// NOTE: NOT ALL THE DERIVED FIELDS ON `types.Log` ARE
 	// AVAILABLE. FIELDS LISTED ABOVE ARE FILLED IN
 	RLPLog *types.Log `gorm:"serializer:rlp;column:rlp_bytes"`
 }
 
-func ContractEventFromLog(log *types.Log, timestamp uint64) ContractEvent {
+func ContractEventFromLog(log *types.Log, timestamp uint64, chainId uint64) ContractEvent {
 	eventSig := common.Hash{}
 	if len(log.Topics) > 0 {
 		eventSig = log.Topics[0]
@@ -50,8 +51,8 @@ func ContractEventFromLog(log *types.Log, timestamp uint64) ContractEvent {
 
 		EventSignature: eventSig,
 		LogIndex:       uint64(log.Index),
-
-		Timestamp: timestamp,
+		ChainId:        chainId,
+		Timestamp:      timestamp,
 
 		RLPLog: log,
 	}
@@ -86,6 +87,10 @@ type ContractEventsView interface {
 	L2LatestContractEventWithFilter(ContractEvent) (*L2ContractEvent, error)
 
 	ContractEventsWithFilter(ContractEvent, string, *big.Int, *big.Int) ([]ContractEvent, error)
+
+	L1LatestBlockHeader(chainId uint64) (*common2.L1BlockHeader, error)
+
+	L2LatestBlockHeader(chainId uint64) (*common2.L2BlockHeader, error)
 }
 
 type ContractEventsDB interface {
@@ -105,6 +110,40 @@ type contractEventsDB struct {
 
 func NewContractEventsDB(db *gorm.DB) ContractEventsDB {
 	return &contractEventsDB{gorm: db}
+}
+
+func (db *contractEventsDB) L1LatestBlockHeader(chainId uint64) (*common2.L1BlockHeader, error) {
+	l1ToL2Query := db.gorm.Table("l1_to_l2").Where("chain_id=?", chainId).Order("l1_to_l2.timestamp DESC").Limit(1)
+	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l1_contract_events ON l1_contract_events.block_hash=l1_to_l2.l1_block_hash").Limit(1)
+	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l1_block_headers ON l1_block_headers.hash=l1_contract_events.block_hash")
+	l1ToL2Query = l1ToL2Query.Order("l1_block_headers.timestamp DESC").Limit(1)
+	l1ToL2Query = l1ToL2Query.Select("l1_block_headers.*")
+	var l1Header common2.L1BlockHeader
+	result := l1ToL2Query.Take(&l1Header)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l1Header, nil
+}
+
+func (db *contractEventsDB) L2LatestBlockHeader(chainId uint64) (*common2.L2BlockHeader, error) {
+	l1ToL2Query := db.gorm.Table("l2_to_l1").Where("chain_id=?", chainId).Order("l2_to_l1.timestamp DESC").Limit(1)
+	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l2_contract_events ON l2_contract_events.block_hash=l2_to_l1.l2_block_hash").Limit(1)
+	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l2_block_headers ON l2_block_headers.hash=l2_contract_events.block_hash")
+	l1ToL2Query = l1ToL2Query.Order("l2_block_headers.timestamp DESC").Limit(1)
+	l1ToL2Query = l1ToL2Query.Select("l2_block_headers.*")
+	var l2Header common2.L2BlockHeader
+	result := l1ToL2Query.Take(&l2Header)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l2Header, nil
 }
 
 // L1

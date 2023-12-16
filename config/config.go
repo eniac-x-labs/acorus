@@ -1,13 +1,10 @@
 package config
 
 import (
-	"fmt"
-	sc_scroll "github.com/cornerstone-labs/acorus/config/scroll"
 	"os"
 
 	"github.com/BurntSushi/toml"
-	common2 "github.com/cornerstone-labs/acorus/common"
-	op_stack "github.com/cornerstone-labs/acorus/config/op-stack"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -17,9 +14,9 @@ const (
 )
 
 type ChainConfig struct {
-	Preset int    `toml:"preset"`
-	L1RPC  string `toml:"l1-rpc"`
-	L2RPC  string `toml:"l2-rpc"`
+	ChainId uint64 `toml:"chainId"`
+	L1RPC   string `toml:"l1-rpc"`
+	L2RPC   string `toml:"l2-rpc"`
 
 	L1StartHeight uint `toml:"l1-start-height"`
 	L2StartHeight uint `toml:"l2-start-height"`
@@ -32,6 +29,9 @@ type ChainConfig struct {
 
 	L1HeaderBufferSize uint `toml:"l1-header-buffer-size"`
 	L2HeaderBufferSize uint `toml:"l2-header-buffer-size"`
+
+	L1Contracts []common.Address `toml:"l1-contracts"`
+	L2Contracts []common.Address `toml:"l2-contracts"`
 }
 
 type DBConfig struct {
@@ -55,15 +55,13 @@ type RedisConfig struct {
 }
 
 type Config struct {
-	Chain         ChainConfig            `toml:"chain"`
-	OpContracts   op_stack.OpContracts   `toml:"op_contracts"`
-	SclContracts  sc_scroll.SclContracts `toml:"sc_contracts"`
-	Redis         RedisConfig            `toml:"redis"`
-	MasterDB      DBConfig               `toml:"master_db"`
-	SlaveDB       DBConfig               `toml:"slave_db"`
-	SlaveDbEnable bool                   `toml:"slave_db_enable"`
-	HTTPServer    ServerConfig           `toml:"http"`
-	MetricsServer ServerConfig           `toml:"metrics"`
+	Chain         ChainConfig  `toml:"chain"`
+	Redis         RedisConfig  `toml:"redis"`
+	MasterDB      DBConfig     `toml:"master_db"`
+	SlaveDB       DBConfig     `toml:"slave_db"`
+	SlaveDbEnable bool         `toml:"slave_db_enable"`
+	HTTPServer    ServerConfig `toml:"http"`
+	MetricsServer ServerConfig `toml:"metrics"`
 }
 
 func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error) {
@@ -80,34 +78,6 @@ func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error)
 	if _, err := toml.Decode(string(data), &cfg); err != nil {
 		log.Error("failed to decode config file", "err", err)
 		return cfg, err
-	}
-
-	if chainBridge == common2.Op {
-		if cfg.Chain.Preset != 0 {
-			preset, ok := op_stack.Presets[cfg.Chain.Preset]
-			if !ok {
-				return cfg, fmt.Errorf("unknown preset: %d", cfg.OpContracts.Preset)
-			}
-			log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
-			cfg.OpContracts = preset.OpContracts
-		}
-		cfg.OpContracts.L2Contracts = op_stack.L2ContractsFromPredeploys()
-		log.Info("loaded chain config", "config", cfg.OpContracts)
-	} else if chainBridge == common2.Polygon {
-		// todo: handle polygon config here
-	} else if chainBridge == common2.Zksync {
-		// todo: handle zksync config here
-	} else if chainBridge == common2.Mantle {
-		// todo: handle mantle config here
-	} else if chainBridge == common2.Scroll {
-		if cfg.Chain.Preset != 0 {
-			preset, ok := sc_scroll.Presets[cfg.Chain.Preset]
-			if !ok {
-				return cfg, fmt.Errorf("unknown preset: %d", cfg.Chain.Preset)
-			}
-			log.Info("detected preset", "preset", cfg.Chain.Preset, "name", preset.Name)
-			cfg.SclContracts = preset.SclContracts
-		}
 	}
 
 	if cfg.Chain.L1PollingInterval == 0 {

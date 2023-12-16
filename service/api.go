@@ -17,7 +17,6 @@ import (
 
 	"github.com/cornerstone-labs/acorus/config"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
-	"github.com/cornerstone-labs/acorus/database/event/l1-l2"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/service/routes"
@@ -41,9 +40,9 @@ const (
 	WithdrawalsV1Path = "/service/v1/withdrawals"
 )
 
-func NewApi(logger log.Logger, bv l1_l2.BridgeTransfersView, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View, blv common2.BlocksView, srv worker.StateRootView, serverConfig config.ServerConfig, metricsConfig config.ServerConfig) *API {
+func NewApi(logger log.Logger, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View, blv common2.BlocksView, srv worker.StateRootView, serverConfig config.ServerConfig, metricsConfig config.ServerConfig) *API {
 	apiRouter := chi.NewRouter()
-	h := routes.NewRoutes(logger, bv, l1l2v, l2l1v, blv, srv, apiRouter)
+	h := routes.NewRoutes(logger, l1l2v, l2l1v, blv, srv, apiRouter)
 
 	apiRouter.Use(middleware.Recoverer)
 	apiRouter.Use(middleware.Heartbeat(HealthPath))

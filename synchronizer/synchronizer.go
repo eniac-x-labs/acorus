@@ -29,6 +29,7 @@ type Synchronizer struct {
 	contracts        []common.Address
 	syncerBatches    chan SynchronizerBatch
 	EthClient        node.EthClient
+	ChainId          uint64
 }
 
 type SynchronizerBatch struct {
