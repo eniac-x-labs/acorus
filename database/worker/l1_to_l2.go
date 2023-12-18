@@ -16,6 +16,7 @@ type L1ToL2 struct {
 	L1BlockHash       common.Hash    `gorm:"column:l1_block_hash;serializer:bytes" db:"l1_block_hash" json:"l1_block_hash" form:"l1_block_hash"`
 	QueueIndex        *big.Int       `gorm:"serializer:u256;column:queue_index" json:"queue_index"`
 	L1TransactionHash common.Hash    `gorm:"column:l1_transaction_hash;serializer:bytes"  db:"l1_transaction_hash" json:"l1_transaction_hash" form:"l1_transaction_hash"`
+	L1DepositHash     common.Hash    `gorm:"column:l1_deposit_hash;serializer:bytes"  db:"l1_deposit_hash" json:"l1_deposit_hash" form:"l1_deposit_hash"`
 	L2TransactionHash common.Hash    `gorm:"column:l2_transaction_hash;serializer:bytes" db:"l2_transaction_hash" json:"l2_transaction_hash" form:"l2_transaction_hash"`
 	L1TxOrigin        common.Hash    `gorm:"column:l1_tx_origin;serializer:bytes" db:"l1_tx_origin" json:"l1_tx_origin" form:"l1_tx_origin"`
 	Status            int64          `gorm:"column:status" db:"status" json:"status" form:"status"`
@@ -31,6 +32,7 @@ type L1ToL2 struct {
 	TokenIds          string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 	TokenAmounts      string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
 	MsgHash           common.Hash    `gorm:"column:msg_hash;serializer:bytes" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
+	ChainId           int64          `gorm:"column:chain_id" db:"chain_id" json:"chain_id" form:"chain_id"`
 }
 
 func (L1ToL2) TableName() string {
@@ -39,7 +41,7 @@ func (L1ToL2) TableName() string {
 
 type L1ToL2DB interface {
 	L1ToL2View
-	StoreL1ToL2Transactions([]L1ToL2) error
+	StoreL1ToL2Transactions([]*L1ToL2) error
 	UpdateTokenPairs(l1L2List []L1ToL2) error
 	UpdateL1ToL2MsgHashByL1TxHash(l1L2 L1ToL2) error
 	UpdateL1ToL2L2TxHashByMsgHash(l1L2 L1ToL2) error
@@ -62,8 +64,8 @@ func NewL1ToL2DB(db *gorm.DB) L1ToL2DB {
 	return &l1ToL2DB{gorm: db}
 }
 
-func (l1l2 l1ToL2DB) StoreL1ToL2Transactions(l1L2List []L1ToL2) error {
-	result := l1l2.gorm.CreateInBatches(&l1L2List, len(l1L2List))
+func (l1l2 l1ToL2DB) StoreL1ToL2Transactions(l1L2List []*L1ToL2) error {
+	result := l1l2.gorm.CreateInBatches(l1L2List, 3000)
 	return result.Error
 }
 

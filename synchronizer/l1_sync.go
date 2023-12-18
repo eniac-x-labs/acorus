@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
@@ -24,7 +25,8 @@ type L1Sync struct {
 	listeners []chan interface{}
 }
 
-func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, l1Contracts []common.Address) (*L1Sync, error) {
+func NewL1Sync(cfg Config, log log.Logger, db *database.DB,
+	client node.EthClient, l1Contracts []common.Address, chain config.ChainConfig) (*L1Sync, error) {
 	log = log.New("sync", "l1")
 
 	latestHeader, err := db.Blocks.L1LatestBlockHeader()
@@ -56,6 +58,7 @@ func NewL1Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 		contracts:        l1Contracts,
 		syncerBatches:    syncerBatches,
 		EthClient:        client,
+		ChainId:          chain.ChainId,
 	}
 
 	return &L1Sync{Synchronizer: syncer, db: db, mu: new(sync.Mutex)}, nil
@@ -76,7 +79,8 @@ func (l1Sync *L1Sync) Start(ctx context.Context) error {
 			l1BlockHeaders := make([]common2.L1BlockHeader, 0, len(batch.Headers))
 			for i := range batch.Headers {
 				if _, ok := batch.HeadersWithLog[batch.Headers[i].Hash()]; ok {
-					l1BlockHeaders = append(l1BlockHeaders, common2.L1BlockHeader{BlockHeader: common2.BlockHeaderFromHeader(&batch.Headers[i])})
+					l1BlockHeaders = append(l1BlockHeaders,
+						common2.L1BlockHeader{BlockHeader: common2.BlockHeaderFromHeader(&batch.Headers[i])})
 				}
 			}
 			if len(l1BlockHeaders) == 0 {
@@ -87,7 +91,8 @@ func (l1Sync *L1Sync) Start(ctx context.Context) error {
 			l1ContractEvents := make([]event.L1ContractEvent, len(batch.Logs))
 			for i := range batch.Logs {
 				timestamp := batch.HeaderMap[batch.Logs[i].BlockHash].Time
-				l1ContractEvents[i] = event.L1ContractEvent{ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp)}
+				l1ContractEvents[i] = event.L1ContractEvent{
+					ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp, l1Sync.ChainId)}
 			}
 
 			retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
