@@ -166,6 +166,10 @@ func (b *PlBridgeProcessor) run() error {
 			batchLog.Error("failed to index L1Deposit bridge events", "err", err)
 			return err
 		}
+		if err := bridge.L1WithdrawClaimed(b.L1PolygonBridge, l1Contracts.PolygonZKEVMBridgeAddr, tx, fromL1Height, toL1Height); err != nil {
+			batchLog.Error("failed to index L1WithdrawClaimed bridge events", "err", err)
+			return err
+		}
 		// l1 handle end
 
 		// l2 handle start

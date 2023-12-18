@@ -17,8 +17,8 @@ import (
 )
 
 func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
-	l1DepositETHSig := utils.DepositEventSignatureHash
-	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1DepositETHSig}
+	l1DepositSig := utils.DepositEventSignatureHash
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1DepositSig}
 	depositEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return err
@@ -97,6 +97,37 @@ func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, contractAddress common.Add
 		}
 		//marshal, _ := json.Marshal(l1ToL2s)
 		if err := db.L1ToL2.StoreL1ToL2Transactions(l1ToL2s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func L1WithdrawClaimed(polygonBridge *abi.Polygonzkevmbridge, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
+	L1WithdrawClaimedSig := utils.ClaimEventSignatureHash
+	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: L1WithdrawClaimedSig}
+	claimedEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	if err != nil {
+		return err
+	}
+	l2ToL1s := make([]worker.L2ToL1, len(claimedEvents))
+	if len(claimedEvents) > 0 {
+		log.Info("detected transaction withdraw claimed", "size", len(claimedEvents))
+	}
+	for i := range claimedEvents {
+		rlpLog := *claimedEvents[i].RLPLog
+
+		c, unpackErr := polygonBridge.ParseClaimEvent(rlpLog)
+		if unpackErr != nil {
+			return unpackErr
+		}
+		l2ToL1s[i].ClaimedIndex = c.GlobalIndex.Int64()
+		l2ToL1s[i].L1FinalizeTxHash = claimedEvents[i].TransactionHash
+		l2ToL1s[i].Status = 1
+	}
+	if len(l2ToL1s) > 0 {
+
+		if err := db.L2ToL1.UpdateL2ToL1ClaimedStatus(l2ToL1s); err != nil {
 			return err
 		}
 	}

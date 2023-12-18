@@ -35,6 +35,7 @@ type L2ToL1 struct {
 	TokenIds                  string         `gorm:"column:token_ids" db:"token_ids" json:"token_ids" form:"token_ids"`
 	TokenAmounts              string         `gorm:"column:token_amounts" db:"token_amounts" json:"token_amounts" form:"token_amounts"`
 	MsgHash                   common.Hash    `gorm:"column:msg_hash;serializer:bytes" db:"msg_hash" json:"msg_hash" form:"msg_hash"`
+	ClaimedIndex              int64          `gorm:"column:claimed_index" db:"claimed_index" json:"claimed_index"`
 }
 
 func (L2ToL1) TableName() string {
@@ -52,6 +53,7 @@ type L2ToL1DB interface {
 	UpdateTimeLeft() error
 	UpdateL2ToL1MsgHashByL2TxHash(l2L1 L2ToL1) error
 	UpdateL2ToL1L1TxHashByMsgHash(l2L1 L2ToL1) error
+	UpdateL2ToL1ClaimedStatus(l1L2List []L2ToL1) error
 }
 
 type L2ToL1View interface {
@@ -208,6 +210,22 @@ func (l2l1 l2ToL1DB) UpdateClaimedStatus(withdrawalHash common.Hash) error {
 			return nil
 		}
 		return result.Error
+	}
+
+	return nil
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1ClaimedStatus(l1L2List []L2ToL1) error {
+
+	for _, v := range l1L2List {
+		result := l2l1.gorm.Model(&L2ToL1{}).Where("claimed_index = ?", v.ClaimedIndex).Updates(map[string]interface{}{"status": common2.Claimed, "l1_finalize_tx_hash": v.L1FinalizeTxHash})
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+
 	}
 
 	return nil
