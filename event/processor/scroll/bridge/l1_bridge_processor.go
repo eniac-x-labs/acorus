@@ -23,7 +23,6 @@ func L1DepositETH(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
@@ -38,7 +37,7 @@ func L1DepositETH(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
-		MsgHash:           common.Hash{},
+		MessageHash:       common.Hash{},
 	}, nil
 
 }
@@ -53,7 +52,6 @@ func L1DepositERC20(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
@@ -83,7 +81,6 @@ func L1DepositERC721(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
@@ -112,7 +109,6 @@ func L1DepositERC1155(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
@@ -141,7 +137,6 @@ func L1BatchDepositERC721(event event.L1ContractEvent) (*worker.L1ToL2, error) {
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
@@ -171,7 +166,6 @@ func L1BatchDepositERC1155(event event.L1ContractEvent) (*worker.L1ToL2, error) 
 	}
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
-		L1BlockHash:       rlpLog.BlockHash,
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},

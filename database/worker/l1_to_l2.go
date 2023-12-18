@@ -34,6 +34,7 @@ type L1ToL2 struct {
 	GasLimit              *big.Int       `gorm:"serializer:u256;column:gas_limit" json:"gasLimit"`
 	Timestamp             int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
 	TokenIds              string         `gorm:"column:token_ids" db:"token_ids" json:"tokenIds" form:"token_ids"`
+	AssetType             int64          `gorm:"column:asset_type" db:"asset_type" json:"assetType" form:"asset_type"`
 	TokenAmounts          string         `gorm:"column:token_amounts" db:"token_amounts" json:"tokenAmounts" form:"token_amounts"`
 }
 

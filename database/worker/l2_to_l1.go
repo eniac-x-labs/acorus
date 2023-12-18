@@ -36,6 +36,7 @@ type L2ToL1 struct {
 	L2TokenAddress          common.Address `gorm:"column:l2_token_address;serializer:bytes" db:"l2_token_address" json:"l2TokenAddress" form:"l2_token_address"`
 	Timestamp               int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
 	TokenIds                string         `gorm:"column:token_ids" db:"token_ids" json:"tokenIds" form:"token_ids"`
+	AssetType               int64          `gorm:"column:asset_type" db:"asset_type" json:"assetType" form:"asset_type"`
 	TokenAmounts            string         `gorm:"column:token_amounts" db:"token_amounts" json:"tokenAmounts" form:"token_amounts"`
 }
 
