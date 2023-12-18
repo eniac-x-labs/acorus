@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -125,18 +124,4 @@ func (db *DB) ExecuteSQLMigration(migrationsFolder string) error {
 	})
 
 	return err
-}
-
-func NewRedis(redisCfg config.RedisConfig) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%v", redisCfg.Host, redisCfg.Port),
-		Password: redisCfg.Password,
-		DB:       redisCfg.DB,
-	})
-	pong, err := client.Ping(context.Background()).Result()
-	if err == nil && pong == "PONG" {
-		return client, nil
-	}
-
-	return nil, err
 }
