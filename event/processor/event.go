@@ -40,7 +40,6 @@ type EventProcessor struct {
 func NewBridgeProcessor(log log.Logger, db *database.DB, l1Sync *synchronizer.L1Sync, l2Sync *synchronizer.L2Sync,
 	chainConfig config.ChainConfig, shutdown context.CancelCauseFunc) (*EventProcessor, error) {
 	log = log.New("processor", "bridge")
-
 	latestL1Header, err := db.L1ToL2.L1LatestBlockHeader()
 	if err != nil {
 		return nil, err
@@ -86,8 +85,6 @@ func NewBridgeProcessor(log log.Logger, db *database.DB, l1Sync *synchronizer.L1
 
 func (ep *EventProcessor) Start() error {
 	ep.log.Info("starting bridge processor...")
-
-	// start L1 worker
 	ep.tasks.Go(func() error {
 		l1SyncUpdates := ep.l1Sync.Notify()
 		for range l1SyncUpdates {

@@ -199,10 +199,8 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 
 func (as *Acorus) startHttpServer(ctx context.Context, cfg config.ServerConfig) error {
 	as.log.Debug("starting http server...", "port", cfg.Port)
-
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
-
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	srv, err := httputil.StartHTTPServer(addr, r)
 	if err != nil {
