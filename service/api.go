@@ -4,121 +4,165 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net"
-	"runtime/debug"
 	"strconv"
-	"sync"
+	"sync/atomic"
+	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/cornerstone-labs/acorus/cache"
 	"github.com/cornerstone-labs/acorus/config"
-	common2 "github.com/cornerstone-labs/acorus/database/common"
-	"github.com/cornerstone-labs/acorus/database/worker"
+	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/service/routes"
+	"github.com/cornerstone-labs/acorus/service/service"
 )
 
 const ethereumAddressRegex = `^0x[a-fA-F0-9]{40}$`
 
+const (
+	MetricsNamespace = "lithosphere_api"
+	idParam          = "{id}"
+	indexParam       = "{index}"
+
+	HealthPath           = "/healthz"
+	MetricsPath          = "/api/metrics"
+	DepositsV1Path       = "/api/v1/deposits"
+	WithdrawalsV1Path    = "/api/v1/withdrawals"
+	DataStoreListPath    = "/api/v1/datastore/list"
+	DataStoreByIDPath    = "/api/v1/datastore/id/"
+	DataStoreTxByIDPath  = "/api/v1/datastore/transaction/id/"
+	StateRootListPath    = "/api/v1/stateroot/list"
+	StateRootByIndexPath = "/api/v1/stateroot/index/"
+)
+
+type APIConfig struct {
+	HTTPServer    config.ServerConfig
+	MetricsServer config.ServerConfig
+}
+
 type API struct {
 	log             log.Logger
 	router          *chi.Mux
-	serverConfig    config.ServerConfig
-	metricsConfig   config.ServerConfig
 	metricsRegistry *prometheus.Registry
+	apiServer       *httputil.HTTPServer
+	metricsServer   *httputil.HTTPServer
+	db              *database.DB
+	stopped         atomic.Bool
 }
 
-const (
-	MetricsNamespace = "acorus_api"
+func NewApi(ctx context.Context, log log.Logger, cfg *config.Config) (*API, error) {
+	out := &API{log: log}
+	if err := out.initFromConfig(ctx, cfg, log); err != nil {
+		return nil, errors.Join(err, out.Stop(ctx))
+	}
+	return out, nil
+}
 
-	HealthPath        = "/healthz"
-	DepositsV1Path    = "/service/v1/deposits"
-	WithdrawalsV1Path = "/service/v1/withdrawals"
-)
+func (a *API) initFromConfig(ctx context.Context, cfg *config.Config, log log.Logger) error {
+	if err := a.initDB(ctx, cfg, log); err != nil {
+		return fmt.Errorf("failed to init DB: %w", err)
+	}
+	if err := a.startMetricsServer(cfg.MetricsServer); err != nil {
+		return fmt.Errorf("failed to start metrics server: %w", err)
+	}
+	a.initRouter(cfg.HTTPServer, cfg.ApiCacheEnable)
+	if err := a.startServer(cfg.HTTPServer); err != nil {
+		return fmt.Errorf("failed to start API server: %w", err)
+	}
+	return nil
+}
 
-func NewApi(logger log.Logger, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View, blv common2.BlocksView, srv worker.StateRootView, serverConfig config.ServerConfig, metricsConfig config.ServerConfig) *API {
+func (a *API) initRouter(conf config.ServerConfig, enableApiCache bool) {
+	v := new(service.Validator)
+
+	var lruCache = new(cache.LruCache)
+	if enableApiCache {
+		lruCache = cache.NewLruCache()
+	}
+
+	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1, a.db.Blocks, a.db.StateRoots, a.log)
 	apiRouter := chi.NewRouter()
-	h := routes.NewRoutes(logger, l1l2v, l2l1v, blv, srv, apiRouter)
+	h := routes.NewRoutes(a.log, apiRouter, svc, enableApiCache, lruCache)
 
+	apiRouter.Use(middleware.Timeout(time.Second * 12))
 	apiRouter.Use(middleware.Recoverer)
+
 	apiRouter.Use(middleware.Heartbeat(HealthPath))
 
 	apiRouter.Get(fmt.Sprintf(DepositsV1Path), h.L1ToL2ListHandler)
 	apiRouter.Get(fmt.Sprintf(WithdrawalsV1Path), h.L2ToL1ListHandler)
 
-	return &API{log: logger, router: apiRouter, serverConfig: serverConfig, metricsConfig: metricsConfig}
+	a.router = apiRouter
 }
 
-func (a *API) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
-	processCtx, processCancel := context.WithCancel(ctx)
-	runProcess := func(start func(ctx context.Context) error) {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				if err := recover(); err != nil {
-					a.log.Error("halting service on panic", "err", err)
-					debug.PrintStack()
-					errCh <- fmt.Errorf("panic: %v", err)
-				}
-				processCancel()
-				wg.Done()
-			}()
-
-			errCh <- start(processCtx)
-		}()
-	}
-
-	runProcess(a.startServer)
-	runProcess(a.startMetricsServer)
-
-	wg.Wait()
-	err := <-errCh
-	if err != nil {
-		a.log.Error("service stopped", "err", err)
+func (a *API) initDB(ctx context.Context, cfg *config.Config, log log.Logger) error {
+	var initDb *database.DB
+	var err error
+	if !cfg.SlaveDbEnable {
+		initDb, err = database.NewDB(ctx, log, cfg.MasterDB)
+		if err != nil {
+			log.Error("failed to connect to master database", "err", err)
+			return err
+		}
 	} else {
-		a.log.Info("service stopped")
+		initDb, err = database.NewDB(ctx, log, cfg.SlaveDB)
+		if err != nil {
+			log.Error("failed to connect to slave database", "err", err)
+			return err
+		}
 	}
-
-	return err
+	a.db = initDb
+	return nil
 }
 
-func (a *API) Port() int {
-	return a.serverConfig.Port
+func (a *API) Start(ctx context.Context) error {
+	return nil
 }
 
-func (a *API) startServer(ctx context.Context) error {
-	a.log.Debug("service server listening...", "port", a.serverConfig.Port)
-	addr := net.JoinHostPort(a.serverConfig.Host, strconv.Itoa(a.serverConfig.Port))
+func (a *API) Stop(ctx context.Context) error {
+	var result error
+	if a.apiServer != nil {
+		if err := a.apiServer.Stop(ctx); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to stop API server: %w", err))
+		}
+	}
+	if a.metricsServer != nil {
+		if err := a.metricsServer.Stop(ctx); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to stop metrics server: %w", err))
+		}
+	}
+	if a.db != nil {
+		if err := a.db.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close DB: %w", err))
+		}
+	}
+	a.stopped.Store(true)
+	a.log.Info("API service shutdown complete")
+	return result
+}
+
+func (a *API) startServer(serverConfig config.ServerConfig) error {
+	a.log.Debug("API server listening...", "port", serverConfig.Port)
+	addr := net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
 	srv, err := httputil.StartHTTPServer(addr, a.router)
 	if err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
-
-	host, portStr, err := net.SplitHostPort(srv.Addr().String())
-	if err != nil {
-		return errors.Join(err, srv.Close())
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return errors.Join(err, srv.Close())
-	}
-
-	a.serverConfig.Host = host
-	a.serverConfig.Port = port
-
-	<-ctx.Done()
-	if err := srv.Stop(context.Background()); err != nil {
-		return fmt.Errorf("failed to shutdown service server: %w", err)
-	}
+	a.log.Info("API server started", "addr", srv.Addr().String())
+	a.apiServer = srv
 	return nil
 }
 
-func (a *API) startMetricsServer(ctx context.Context) error {
+func (a *API) startMetricsServer(metricsConfig config.ServerConfig) error {
 	return nil
+}
+
+func (a *API) Stopped() bool {
+	return a.stopped.Load()
 }

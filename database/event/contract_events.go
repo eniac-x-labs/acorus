@@ -11,56 +11,38 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/utils"
 )
 
-/**
- * Types
- */
-
 type ContractEvent struct {
-	GUID uuid.UUID `gorm:"primaryKey"`
-
-	// Some useful derived fields
+	GUID            uuid.UUID      `gorm:"primaryKey"`
 	BlockHash       common.Hash    `gorm:"serializer:bytes"`
 	ContractAddress common.Address `gorm:"serializer:bytes"`
 	TransactionHash common.Hash    `gorm:"serializer:bytes"`
 	LogIndex        uint64
-
-	EventSignature common.Hash `gorm:"serializer:bytes"`
-	Timestamp      uint64
-	ChainId        uint64 `gorm:"column:chain_id"`
-	// NOTE: NOT ALL THE DERIVED FIELDS ON `types.Log` ARE
-	// AVAILABLE. FIELDS LISTED ABOVE ARE FILLED IN
-	RLPLog *types.Log `gorm:"serializer:rlp;column:rlp_bytes"`
+	EventSignature  common.Hash `gorm:"serializer:bytes"`
+	Timestamp       uint64
+	RLPLog          *types.Log `gorm:"serializer:rlp;column:rlp_bytes"`
 }
 
-func ContractEventFromLog(log *types.Log, timestamp uint64, chainId uint64) ContractEvent {
+func ContractEventFromLog(log *types.Log, timestamp uint64) ContractEvent {
 	eventSig := common.Hash{}
 	if len(log.Topics) > 0 {
 		eventSig = log.Topics[0]
 	}
-
 	return ContractEvent{
-		GUID: uuid.New(),
-
+		GUID:            uuid.New(),
 		BlockHash:       log.BlockHash,
 		TransactionHash: log.TxHash,
 		ContractAddress: log.Address,
-
-		EventSignature: eventSig,
-		LogIndex:       uint64(log.Index),
-		ChainId:        chainId,
-		Timestamp:      timestamp,
-
-		RLPLog: log,
+		EventSignature:  eventSig,
+		LogIndex:        uint64(log.Index),
+		Timestamp:       timestamp,
+		RLPLog:          log,
 	}
 }
 
 func (c *ContractEvent) AfterFind(tx *gorm.DB) error {
-	// Fill in some of the derived fields that are not
-	// populated when decoding the RLPLog from RLP
 	c.RLPLog.BlockHash = c.BlockHash
 	c.RLPLog.TxHash = c.TransactionHash
 	c.RLPLog.Index = uint(c.LogIndex)
@@ -87,10 +69,6 @@ type ContractEventsView interface {
 	L2LatestContractEventWithFilter(ContractEvent) (*L2ContractEvent, error)
 
 	ContractEventsWithFilter(ContractEvent, string, *big.Int, *big.Int) ([]ContractEvent, error)
-
-	L1LatestBlockHeader(chainId uint64) (*common2.L1BlockHeader, error)
-
-	L2LatestBlockHeader(chainId uint64) (*common2.L2BlockHeader, error)
 }
 
 type ContractEventsDB interface {
@@ -100,10 +78,6 @@ type ContractEventsDB interface {
 	StoreL2ContractEvents([]L2ContractEvent) error
 }
 
-/**
- * Implementation
- */
-
 type contractEventsDB struct {
 	gorm *gorm.DB
 }
@@ -111,42 +85,6 @@ type contractEventsDB struct {
 func NewContractEventsDB(db *gorm.DB) ContractEventsDB {
 	return &contractEventsDB{gorm: db}
 }
-
-func (db *contractEventsDB) L1LatestBlockHeader(chainId uint64) (*common2.L1BlockHeader, error) {
-	l1ToL2Query := db.gorm.Table("l1_to_l2").Where("chain_id=?", chainId).Order("l1_to_l2.timestamp DESC").Limit(1)
-	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l1_contract_events ON l1_contract_events.block_hash=l1_to_l2.l1_block_hash").Limit(1)
-	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l1_block_headers ON l1_block_headers.hash=l1_contract_events.block_hash")
-	l1ToL2Query = l1ToL2Query.Order("l1_block_headers.timestamp DESC").Limit(1)
-	l1ToL2Query = l1ToL2Query.Select("l1_block_headers.*")
-	var l1Header common2.L1BlockHeader
-	result := l1ToL2Query.Take(&l1Header)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, result.Error
-	}
-	return &l1Header, nil
-}
-
-func (db *contractEventsDB) L2LatestBlockHeader(chainId uint64) (*common2.L2BlockHeader, error) {
-	l1ToL2Query := db.gorm.Table("l2_to_l1").Where("chain_id=?", chainId).Order("l2_to_l1.timestamp DESC").Limit(1)
-	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l2_contract_events ON l2_contract_events.block_hash=l2_to_l1.l2_block_hash").Limit(1)
-	l1ToL2Query = l1ToL2Query.Joins("INNER JOIN l2_block_headers ON l2_block_headers.hash=l2_contract_events.block_hash")
-	l1ToL2Query = l1ToL2Query.Order("l2_block_headers.timestamp DESC").Limit(1)
-	l1ToL2Query = l1ToL2Query.Select("l2_block_headers.*")
-	var l2Header common2.L2BlockHeader
-	result := l1ToL2Query.Take(&l2Header)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, result.Error
-	}
-	return &l2Header, nil
-}
-
-// L1
 
 func (db *contractEventsDB) StoreL1ContractEvents(events []L1ContractEvent) error {
 	result := db.gorm.CreateInBatches(&events, utils.BatchInsertSize)
@@ -186,8 +124,6 @@ func (db *contractEventsDB) L1ContractEventsWithFilter(filter ContractEvent, fro
 	query = query.Where("l1_block_headers.number >= ? AND l1_block_headers.number <= ?", fromHeight, toHeight)
 	query = query.Order("l1_block_headers.number ASC").Select("l1_contract_events.*")
 
-	// NOTE: We use `Find` here instead of `Scan` since `Scan` does not support
-	// model hooks like `ContractEvent#AfterFind`. Functionally they are the same
 	var events []L1ContractEvent
 	result := query.Find(&events)
 	if result.Error != nil {
@@ -196,7 +132,6 @@ func (db *contractEventsDB) L1ContractEventsWithFilter(filter ContractEvent, fro
 		}
 		return nil, result.Error
 	}
-
 	return events, nil
 }
 
@@ -209,11 +144,8 @@ func (db *contractEventsDB) L1LatestContractEventWithFilter(filter ContractEvent
 		}
 		return nil, result.Error
 	}
-
 	return &l1ContractEvent, nil
 }
-
-// L2
 
 func (db *contractEventsDB) StoreL2ContractEvents(events []L2ContractEvent) error {
 	result := db.gorm.CreateInBatches(&events, utils.BatchInsertSize)
@@ -233,7 +165,6 @@ func (db *contractEventsDB) L2ContractEventWithFilter(filter ContractEvent) (*L2
 		}
 		return nil, result.Error
 	}
-
 	return &l2ContractEvent, nil
 }
 
@@ -247,14 +178,10 @@ func (db *contractEventsDB) L2ContractEventsWithFilter(filter ContractEvent, fro
 	if fromHeight.Cmp(toHeight) > 0 {
 		return nil, fmt.Errorf("fromHeight %d is greater than toHeight %d", fromHeight, toHeight)
 	}
-
 	query := db.gorm.Table("l2_contract_events").Where(&filter)
 	query = query.Joins("INNER JOIN l2_block_headers ON l2_contract_events.block_hash = l2_block_headers.hash")
 	query = query.Where("l2_block_headers.number >= ? AND l2_block_headers.number <= ?", fromHeight, toHeight)
 	query = query.Order("l2_block_headers.number ASC").Select("l2_contract_events.*")
-
-	// NOTE: We use `Find` here instead of `Scan` since `Scan` doesn't not support
-	// model hooks like `ContractEvent#AfterFind`. Functionally they are the same
 	var events []L2ContractEvent
 	result := query.Find(&events)
 	if result.Error != nil {
@@ -263,7 +190,6 @@ func (db *contractEventsDB) L2ContractEventsWithFilter(filter ContractEvent, fro
 		}
 		return nil, result.Error
 	}
-
 	return events, nil
 }
 
@@ -276,13 +202,9 @@ func (db *contractEventsDB) L2LatestContractEventWithFilter(filter ContractEvent
 		}
 		return nil, result.Error
 	}
-
 	return &l2ContractEvent, nil
 }
 
-// Auxiliary methods for both L1 and L2
-
-// ContractEventsWithFilter will retrieve contract events within the specified range according to the `chainSelector`.
 func (db *contractEventsDB) ContractEventsWithFilter(filter ContractEvent, chainSelector string, fromHeight, toHeight *big.Int) ([]ContractEvent, error) {
 	switch chainSelector {
 	case "l1":

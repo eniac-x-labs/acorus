@@ -123,7 +123,7 @@ func (l2Sync *L2Sync) handleBatch(batch *SynchronizerBatch) error {
 	l2ContractEvents := make([]event.L2ContractEvent, len(batch.Logs))
 	for i := range batch.Logs {
 		timestamp := batch.HeaderMap[batch.Logs[i].BlockHash].Time
-		l2ContractEvents[i] = event.L2ContractEvent{ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp, 1)}
+		l2ContractEvents[i] = event.L2ContractEvent{ContractEvent: event.ContractEventFromLog(&batch.Logs[i], timestamp)}
 	}
 
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
