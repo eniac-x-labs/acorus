@@ -35,6 +35,8 @@ type L2ToL1 struct {
 	L1TokenAddress          common.Address `gorm:"column:l1_token_address;serializer:bytes" db:"l1_token_address" json:"l1TokenAddress" form:"l1_token_address"`
 	L2TokenAddress          common.Address `gorm:"column:l2_token_address;serializer:bytes" db:"l2_token_address" json:"l2TokenAddress" form:"l2_token_address"`
 	Timestamp               int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
+	TokenIds                string         `gorm:"column:token_ids" db:"token_ids" json:"tokenIds" form:"token_ids"`
+	TokenAmounts            string         `gorm:"column:token_amounts" db:"token_amounts" json:"tokenAmounts" form:"token_amounts"`
 }
 
 func (L2ToL1) TableName() string {

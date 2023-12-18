@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS base_l1_to_l2 (
     l2_token_address        VARCHAR,
     asset_type              SMALLINT NOT NULL,
     eth_amount              UINT256,
-    token_amount            UINT256,
+    token_amounts            VARCHAR,
     gas_limit               UINT256 NOT NULL,
     timestamp               INTEGER NOT NULL CHECK (timestamp > 0)
 );
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS base_l2_to_l1 (
     l2_token_address             VARCHAR,
     asset_type                   SMALLINT NOT NULL,
     eth_amount                   UINT256,
-        token_amount                 UINT256,
+        token_amounts                 VARCHAR,
     gas_limit                    UINT256 NOT NULL,
     time_left                    UINT256 NOT NULL,
     timestamp                    INTEGER NOT NULL CHECK (timestamp > 0)
