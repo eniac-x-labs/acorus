@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processor/op-stack"
+	common2 "github.com/cornerstone-labs/acorus/event/processor/op-stack/common"
 
 	"math/big"
 
@@ -18,7 +18,7 @@ import (
 
 func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) CanonicalTransactionChain
-	ctcTxDepositEvents, err := contracts2.LegacyCTCDepositEvents(common.HexToAddress(op_stack.LegacyCanonicalTransactionChain), db, fromHeight, toHeight)
+	ctcTxDepositEvents, err := contracts2.LegacyCTCDepositEvents(common.HexToAddress(common2.LegacyCanonicalTransactionChain), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 	}
 
 	// (2) L1CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents("l1", common.HexToAddress(op_stack.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents("l1", common.HexToAddress(common2.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 	}
 
 	// (3) L1StandardBridge
-	initiatedBridges, err := contracts2.L1StandardBridgeLegacyDepositInitiatedEvents(common.HexToAddress(op_stack.L1StandardBridgeProxy), db, fromHeight, toHeight)
+	initiatedBridges, err := contracts2.L1StandardBridgeLegacyDepositInitiatedEvents(common.HexToAddress(common2.L1StandardBridgeProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 
 func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents("l2", common.HexToAddress(op_stack.L2CrossDomainMessenger), db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents("l2", common.HexToAddress(common2.L2CrossDomainMessenger), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 		sentMessages[logKey{sentMessage.Event.BlockHash, sentMessage.Event.LogIndex}] = &sentMessage
 		withdrawnWEI = new(big.Int).Add(withdrawnWEI, sentMessage.ETHAmount)
 
-		l2CrossDomainMessenger := common.HexToAddress(op_stack.L2CrossDomainMessenger)
+		l2CrossDomainMessenger := common.HexToAddress(common2.L2CrossDomainMessenger)
 		withdrawalHash := crypto.Keccak256Hash(append(sentMessage.MessageCalldata, l2CrossDomainMessenger[:]...))
 		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(sentMessage.Event.BlockHash)
 		if err != nil {
@@ -180,7 +180,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 	}
 
 	// (2) L2StandardBridge
-	initiatedBridges, err := contracts2.L2StandardBridgeLegacyWithdrawalInitiatedEvents(common.HexToAddress(op_stack.L2StandardBridge), db, fromHeight, toHeight)
+	initiatedBridges, err := contracts2.L2StandardBridgeLegacyWithdrawalInitiatedEvents(common.HexToAddress(common2.L2StandardBridge), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 }
 
 func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l1", common.HexToAddress(op_stack.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l1", common.HexToAddress(common2.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromH
 
 func LegacyL2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l2", common.HexToAddress(op_stack.L2CrossDomainMessenger), db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l2", common.HexToAddress(common2.L2CrossDomainMessenger), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}

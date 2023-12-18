@@ -1,7 +1,7 @@
 package stateroot
 
 import (
-	op_stack "github.com/cornerstone-labs/acorus/event/processor/op-stack"
+	op_stack "github.com/cornerstone-labs/acorus/event/processor/op-stack/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/log"

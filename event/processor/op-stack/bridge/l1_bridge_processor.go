@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processor/op-stack"
+	common4 "github.com/cornerstone-labs/acorus/event/processor/op-stack/common"
 	"github.com/google/uuid"
 	"math/big"
 
@@ -21,7 +21,7 @@ import (
 
 func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) OptimismPortal
-	optimismPortalTxDeposits, err := contracts.OptimismPortalTransactionDepositEvents(common3.HexToAddress(op_stack.OptimismPortalProxy), db, fromHeight, toHeight)
+	optimismPortalTxDeposits, err := contracts.OptimismPortalTransactionDepositEvents(common3.HexToAddress(common4.OptimismPortalProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (2) L1CrossDomainMessenger
-	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents("l1", common3.HexToAddress(op_stack.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents("l1", common3.HexToAddress(common4.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (3) L1StandardBridge
-	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("l1", common3.HexToAddress(op_stack.L1StandardBridgeProxy), db, fromHeight, toHeight)
+	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("l1", common3.HexToAddress(common4.L1StandardBridgeProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 
 func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) OptimismPortal (proven withdrawals)
-	provenWithdrawals, err := contracts.OptimismPortalWithdrawalProvenEvents(common3.HexToAddress(op_stack.OptimismPortalProxy), db, fromHeight, toHeight)
+	provenWithdrawals, err := contracts.OptimismPortalWithdrawalProvenEvents(common3.HexToAddress(common4.OptimismPortalProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (2) OptimismPortal (finalized withdrawals)
-	finalizedWithdrawals, err := contracts.OptimismPortalWithdrawalFinalizedEvents(common3.HexToAddress(op_stack.OptimismPortalProxy), db, fromHeight, toHeight)
+	finalizedWithdrawals, err := contracts.OptimismPortalWithdrawalFinalizedEvents(common3.HexToAddress(common4.OptimismPortalProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (3) L1CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l1", common3.HexToAddress(op_stack.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l1", common3.HexToAddress(common4.L1CrossDomainMessengerProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 		}
 	}
 	// (4) L1StandardBridge
-	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("l1", common3.HexToAddress(op_stack.L1StandardBridgeProxy), db, fromHeight, toHeight)
+	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("l1", common3.HexToAddress(common4.L1StandardBridgeProxy), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package op_stack
+package common
 
 var (
 	OptimismPortalProxy             = ""
