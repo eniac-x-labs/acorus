@@ -1,18 +1,18 @@
 package flag
 
 import (
-	"github.com/urfave/cli/v2"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
-const envVarPrefix = "LITHOSPHERE"
+const envVarPrefix = "ACORUS"
 
 func prefixEnvVars(name string) []string {
 	return []string{envVarPrefix + "_" + name}
 }
 
 var (
-	// Required flags
 	MigrationsFlag = &cli.StringFlag{
 		Name:    "migrations-dir",
 		Value:   "./migrations",
@@ -282,9 +282,7 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-
 	Flags = append(requiredFlags, optionalFlags...)
 }
 
-// Flags contains the list of configuration options available to the binary.
 var Flags []cli.Flag
