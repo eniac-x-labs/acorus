@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processor/op-stack"
+	common3 "github.com/cornerstone-labs/acorus/event/processor/op-stack/common"
 	"github.com/google/uuid"
 	"math/big"
 
@@ -19,7 +19,7 @@ import (
 
 func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2ToL1MessagePasser
-	l2ToL1MPMessagesPassed, err := contracts.L2ToL1MessagePasserMessagePassedEvents(common.HexToAddress(op_stack.L2ToL1MessagePasser), db, fromHeight, toHeight)
+	l2ToL1MPMessagesPassed, err := contracts.L2ToL1MessagePasserMessagePassedEvents(common.HexToAddress(common3.L2ToL1MessagePasser), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (2) L2CrossDomainMessenger
-	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents("l2", common.HexToAddress(op_stack.L2CrossDomainMessenger), db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents("l2", common.HexToAddress(common3.L2CrossDomainMessenger), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (3) L2StandardBridge
-	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("l2", common.HexToAddress(op_stack.L2StandardBridge), db, fromHeight, toHeight)
+	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("l2", common.HexToAddress(common3.L2StandardBridge), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 
 func L2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l2", common.HexToAddress(op_stack.L2CrossDomainMessenger), db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l2", common.HexToAddress(common3.L2CrossDomainMessenger), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func L2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	}
 
 	// (2) L2StandardBridge
-	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("l2", common.HexToAddress(op_stack.L2StandardBridge), db, fromHeight, toHeight)
+	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("l2", common.HexToAddress(common3.L2StandardBridge), db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
