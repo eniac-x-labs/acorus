@@ -1,173 +1,103 @@
 package main
 
 import (
+	"context"
+
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/cornerstone-labs/acorus"
-	common2 "github.com/cornerstone-labs/acorus/common"
+	"github.com/cornerstone-labs/acorus/common/cliapp"
 	oplog "github.com/cornerstone-labs/acorus/common/log"
+	"github.com/cornerstone-labs/acorus/common/opio"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	flag2 "github.com/cornerstone-labs/acorus/flag"
 	"github.com/cornerstone-labs/acorus/service"
 )
 
-var (
-	ConfigFlag = &cli.StringFlag{
-		Name:    "config",
-		Value:   "./acorus_scroll.toml",
-		Aliases: []string{"c"},
-		Usage:   "path to config file",
-		EnvVars: []string{"ACORUS_CONFIG"},
-	}
-	MigrationsFlag = &cli.StringFlag{
-		Name:    "migrations-dir",
-		Value:   "./migrations",
-		Usage:   "path to migrations folder",
-		EnvVars: []string{"ACORUS_MIGRATIONS_DIR"},
-	}
-	ChainBridgeFlag = &cli.StringFlag{
-		Name:    "chain-bridge",
-		Value:   common2.Scroll,
-		Usage:   "sync chain bridge event",
-		EnvVars: []string{"ACORUS_CHAIN_BRIDGE"},
-	}
-)
-
-func runAcorus(ctx *cli.Context) error {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "acorus")
+func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Lifecycle, error) {
+	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "lithosphere")
 	oplog.SetGlobalLogHandler(log.GetHandler())
-	chainBridge := ctx.String(ChainBridgeFlag.Name)
+	log.Info("running indexer...")
 
-	cfg, err := config.LoadConfig(log, ctx.String(ConfigFlag.Name), chainBridge)
+	cfg, err := config.LoadConfig(log, ctx)
+	if err != nil {
+		log.Error("failed to load config", "err", err)
+		return nil, err
+	}
+
+	return acorus.NewAcorus(ctx.Context, log, &cfg, shutdown)
+}
+
+func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
+	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "api")
+	oplog.SetGlobalLogHandler(log.GetHandler())
+	log.Info("running api...")
+	cfg, err := config.LoadConfig(log, ctx)
+	if err != nil {
+		log.Error("failed to load config", "err", err)
+		return nil, err
+	}
+	return service.NewApi(ctx.Context, log, &cfg)
+}
+
+func runExporter(ctx *cli.Context) error {
+	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "exporter")
+	oplog.SetGlobalLogHandler(log.GetHandler())
+	cfg, err := config.LoadConfig(log, ctx)
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return err
 	}
-	log.Info("load config success", "L1RPC", cfg.Chain.L1RPC, "chainBridge", chainBridge)
+	log.Info("running exporter...", "cfg", cfg)
+	// todo please write exporter here
+	return nil
+}
 
-	db, err := database.NewDB(log, cfg.MasterDB)
+func runMigrations(ctx *cli.Context) error {
+	ctx.Context = opio.CancelOnInterrupt(ctx.Context)
+	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "migrations")
+	oplog.SetGlobalLogHandler(log.GetHandler())
+	log.Info("running migrations...")
+	cfg, err := config.LoadConfig(log, ctx)
+	if err != nil {
+		log.Error("failed to load config", "err", err)
+		return err
+	}
+	db, err := database.NewDB(ctx.Context, log, cfg.MasterDB)
 	if err != nil {
 		log.Error("failed to connect to database", "err", err)
 		return err
 	}
 	defer db.Close()
-	log.Info("new master db success", "dbName", cfg.MasterDB.Name)
-
-	redis, err := database.NewRedis(cfg.Redis)
-	if err != nil {
-		log.Error("failed to connect to redis", "err", err)
-		return err
-	}
-	defer redis.Close()
-	log.Info("new redis db success", "dbName", cfg.Redis.DB)
-
-	newAcorus, err := acorus.NewAcorus(log, db, redis, &cfg, chainBridge)
-	if err != nil {
-		log.Error("failed to create acorus", "err", err)
-		return err
-	}
-	return newAcorus.Run(ctx.Context)
-}
-
-func runApi(ctx *cli.Context) error {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "service")
-	oplog.SetGlobalLogHandler(log.GetHandler())
-	chainBridge := ctx.String(ChainBridgeFlag.Name)
-	cfg, err := config.LoadConfig(log, ctx.String(ConfigFlag.Name), chainBridge)
-	if err != nil {
-		log.Error("failed to load config", "err", err)
-		return err
-	}
-	var db *database.DB
-	if !cfg.SlaveDbEnable {
-		db, err = database.NewDB(log, cfg.MasterDB)
-		if err != nil {
-			log.Error("failed to connect to master database", "err", err)
-			return err
-		}
-	} else {
-		db, err = database.NewDB(log, cfg.SlaveDB)
-		if err != nil {
-			log.Error("failed to connect to slave database", "err", err)
-			return err
-		}
-	}
-	defer db.Close()
-
-	log.Info("running service...")
-	api := service.NewApi(log, db.L1ToL2, db.L2ToL1, db.Blocks, db.StateRoots, cfg.HTTPServer, cfg.MetricsServer)
-	return api.Run(ctx.Context)
-}
-
-func runMigrations(ctx *cli.Context) error {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "migrations")
-	oplog.SetGlobalLogHandler(log.GetHandler())
-	chainBridge := ctx.String(ChainBridgeFlag.Name)
-	cfg, err := config.LoadConfig(log, ctx.String(ConfigFlag.Name), chainBridge)
-	migrationsDir := ctx.String(MigrationsFlag.Name)
-	if err != nil {
-		log.Error("failed to load config", "err", err)
-		return err
-	}
-
-	if cfg.SlaveDbEnable {
-		slaveDB, err := database.NewDB(log, cfg.SlaveDB)
-		if err != nil {
-			log.Error("failed to connect to slave database", "err", err)
-			return err
-		}
-		defer slaveDB.Close()
-		err = slaveDB.ExecuteSQLMigration(migrationsDir)
-		if err != nil {
-			log.Error("migrate slave database fail", "err", err)
-			return err
-		}
-	}
-
-	masterDB, err := database.NewDB(log, cfg.MasterDB)
-	if err != nil {
-		log.Error("failed to connect to master database", "err", err)
-		return err
-	}
-	defer masterDB.Close()
-
-	err = masterDB.ExecuteSQLMigration(migrationsDir)
-	if err != nil {
-		log.Error("migrate master database fail", "err", err)
-		return err
-	}
-	return nil
+	return db.ExecuteSQLMigration(cfg.Migrations)
 }
 
 func newCli(GitCommit string, GitDate string) *cli.App {
-	flags := []cli.Flag{ConfigFlag}
-	flags = append(flags, oplog.CLIFlags("ACORUS")...)
-	migrationFlags := []cli.Flag{MigrationsFlag, ConfigFlag}
-	migrationFlags = append(migrationFlags, oplog.CLIFlags("ACORUS")...)
-	IndexFlags := []cli.Flag{ChainBridgeFlag, ConfigFlag}
-	IndexFlags = append(IndexFlags, oplog.CLIFlags("ACORUS")...)
+	flags := oplog.CLIFlags("LITHOSPHERE")
+	flags = append(flags, flag2.Flags...)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
-		Description:          "An acorus of all optimism events with a serving service layer",
+		Description:          "An indexer of all optimism events with a serving api layer",
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
 			{
-				Name:        "service",
+				Name:        "api",
 				Flags:       flags,
-				Description: "Runs the service service",
-				Action:      runApi,
+				Description: "Runs the api service",
+				Action:      cliapp.LifecycleCmd(runApi),
 			},
 			{
 				Name:        "index",
-				Flags:       IndexFlags,
+				Flags:       flags,
 				Description: "Runs the indexing service",
-				Action:      runAcorus,
+				Action:      cliapp.LifecycleCmd(runIndexer),
 			},
 			{
 				Name:        "migrate",
-				Flags:       migrationFlags,
+				Flags:       flags,
 				Description: "Runs the database migrations",
 				Action:      runMigrations,
 			},

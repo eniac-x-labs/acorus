@@ -2,236 +2,217 @@ package acorus
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event"
-	"github.com/cornerstone-labs/acorus/event/processor"
 	"math/big"
 	"net"
-	"runtime/debug"
 	"strconv"
-	"sync"
+	"sync/atomic"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-redis/redis/v8"
 )
 
-var ZeroAddr = common.Address{}
-
 type Acorus struct {
-	log         log.Logger
-	db          *database.DB
-	redis       *redis.Client
-	httpConfig  config.ServerConfig
-	L1Sync      *synchronizer.L1Sync
-	L2Sync      *synchronizer.L2Sync
-	Chain       config.ChainConfig
-	ChainBridge string
+	log             log.Logger
+	DB              *database.DB
+	l1Client        node.EthClient
+	l2Client        node.EthClient
+	apiServer       *httputil.HTTPServer
+	metricsServer   *httputil.HTTPServer
+	metricsRegistry *prometheus.Registry
+	L1Sync          *synchronizer.L1Sync
+	L2Sync          *synchronizer.L2Sync
+	shutdown        context.CancelCauseFunc
+	stopped         atomic.Bool
 }
 
-func NewAcorus(
-	log log.Logger,
-	db *database.DB,
-	redis *redis.Client,
-	config *config.Config,
-	chainBridge string,
-) (*Acorus, error) {
-	l1EthClient, err := node.DialEthClient(config.Chain.L1RPC)
-	if err != nil {
-		log.Error("Dail eth client err", "err", err)
-		return nil, err
+func NewAcorus(ctx context.Context, log log.Logger, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
+	out := &Acorus{
+		log:      log,
+		shutdown: shutdown,
 	}
+	if err := out.initFromConfig(ctx, cfg); err != nil {
+		return nil, errors.Join(err, out.Stop(ctx))
+	}
+	return out, nil
+}
+
+func (as *Acorus) Start(ctx context.Context) error {
+	if err := as.L1Sync.Start(); err != nil {
+		return fmt.Errorf("failed to start L1 Sync: %w", err)
+	}
+	if err := as.L2Sync.Start(); err != nil {
+		return fmt.Errorf("failed to start L2 Sync: %w", err)
+	}
+	return nil
+}
+
+func (as *Acorus) Stop(ctx context.Context) error {
+	var result error
+	if as.L1Sync != nil {
+		if err := as.L1Sync.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close L1 Sync: %w", err))
+		}
+	}
+
+	if as.L2Sync != nil {
+		if err := as.L2Sync.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close L2 Sync: %w", err))
+		}
+	}
+
+	if as.l1Client != nil {
+		as.l1Client.Close()
+	}
+	if as.l2Client != nil {
+		as.l2Client.Close()
+	}
+
+	if as.apiServer != nil {
+		if err := as.apiServer.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close lithosphere API server: %w", err))
+		}
+	}
+
+	if as.DB != nil {
+		if err := as.DB.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close DB: %w", err))
+		}
+	}
+
+	if as.metricsServer != nil {
+		if err := as.metricsServer.Close(); err != nil {
+			result = errors.Join(result, fmt.Errorf("failed to close metrics server: %w", err))
+		}
+	}
+
+	as.stopped.Store(true)
+
+	as.log.Info("lithosphere stopped")
+
+	return result
+}
+
+func (as *Acorus) Stopped() bool {
+	return as.stopped.Load()
+}
+
+func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error {
+	if err := as.initRPCClients(ctx, cfg.RPCs); err != nil {
+		return fmt.Errorf("failed to start RPC clients: %w", err)
+	}
+	if err := as.initDB(ctx, cfg.MasterDB); err != nil {
+		return fmt.Errorf("failed to init DB: %w", err)
+	}
+	if err := as.initL1Syncer(cfg.Chain); err != nil {
+		return fmt.Errorf("failed to init L1 Sync: %w", err)
+	}
+	if err := as.initL2ETL(cfg.Chain); err != nil {
+		return fmt.Errorf("failed to init L2 Sync: %w", err)
+	}
+	if err := as.initBridgeProcessor(cfg.Chain); err != nil {
+		return fmt.Errorf("failed to init Bridge Processor: %w", err)
+	}
+	if err := as.initBusinessProcessor(*cfg); err != nil {
+		return fmt.Errorf("failed to init Business Processor: %w", err)
+	}
+	if err := as.startHttpServer(ctx, cfg.HTTPServer); err != nil {
+		return fmt.Errorf("failed to start HTTP server: %w", err)
+	}
+	if err := as.startMetricsServer(ctx, cfg.MetricsServer); err != nil {
+		return fmt.Errorf("failed to start Metrics server: %w", err)
+	}
+	return nil
+}
+
+func (as *Acorus) initRPCClients(ctx context.Context, rpcsConfig config.RPCsConfig) error {
+	l1EthClient, err := node.DialEthClient(ctx, rpcsConfig.L1RPC)
+	if err != nil {
+		return fmt.Errorf("failed to dial L1 client: %w", err)
+	}
+	as.l1Client = l1EthClient
+
+	l2EthClient, err := node.DialEthClient(ctx, rpcsConfig.L2RPC)
+	if err != nil {
+		return fmt.Errorf("failed to dial L2 client: %w", err)
+	}
+	as.l2Client = l2EthClient
+	return nil
+}
+
+func (as *Acorus) initDB(ctx context.Context, cfg config.DBConfig) error {
+	db, err := database.NewDB(ctx, as.log, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	as.DB = db
+	return nil
+}
+
+func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig) error {
 	l1Cfg := synchronizer.Config{
-		LoopIntervalMsec:  config.Chain.L1PollingInterval,
-		HeaderBufferSize:  config.Chain.L1HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(config.Chain.L1ConfirmationDepth)),
-		StartHeight:       big.NewInt(int64(config.Chain.L1StartHeight)),
+		LoopIntervalMsec:  chainConfig.L1PollingInterval,
+		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
+		ConfirmationDepth: big.NewInt(int64(chainConfig.L1ConfirmationDepth)),
+		StartHeight:       big.NewInt(int64(chainConfig.L1StartingHeight)),
 	}
-
-	//l1Contracts, l2Contracts, _, err := nil,nil,nil,nil;ChainContractsSelect(chainBridge, config)
+	l1Sync, err := synchronizer.NewL1Sync(l1Cfg, as.log, as.DB, as.l1Client, chainConfig, as.shutdown)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	log.Info("chain select success", "chain", chainBridge)
-
-	l1Syncer, err := synchronizer.NewL1Sync(l1Cfg, log, db, l1EthClient, config.Chain.L1Contracts, config.Chain)
-	if err != nil {
-		return nil, err
-	}
-	log.Info("l1 syncer new success", "rpc", config.Chain.L1RPC)
-
-	l2EthClient, err := node.DialEthClient(config.Chain.L2RPC)
-	if err != nil {
-		return nil, err
-	}
-	l2Cfg := synchronizer.Config{
-		LoopIntervalMsec:  config.Chain.L2PollingInterval,
-		HeaderBufferSize:  config.Chain.L2HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(config.Chain.L2ConfirmationDepth)),
-	}
-
-	l2Syncer, err := synchronizer.NewL2Sync(l2Cfg, log, db, l2EthClient, config.Chain.L2Contracts, config.Chain)
-	if err != nil {
-		return nil, err
-	}
-
-	//dispatcher, err := event.NewEventDispatcher(log, db, l1Syncer, config.Chain, chainBridge, resultContracts)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	acorus := &Acorus{
-		log:         log,
-		db:          db,
-		redis:       redis,
-		httpConfig:  config.HTTPServer,
-		L1Sync:      l1Syncer,
-		L2Sync:      l2Syncer,
-		Chain:       config.Chain,
-		ChainBridge: chainBridge,
-	}
-	return acorus, nil
+	as.L1Sync = l1Sync
+	return nil
 }
 
-func (i *Acorus) startHttpServer(ctx context.Context) error {
-	i.log.Debug("starting http server...", "port", i.httpConfig.Host)
+func (as *Acorus) initL2ETL(chainConfig config.ChainConfig) error {
+	l2Cfg := synchronizer.Config{
+		LoopIntervalMsec:  chainConfig.L2PollingInterval,
+		HeaderBufferSize:  chainConfig.L2HeaderBufferSize,
+		ConfirmationDepth: big.NewInt(int64(chainConfig.L2ConfirmationDepth)),
+		StartHeight:       big.NewInt(int64(chainConfig.L2StartingHeight)),
+	}
+	l2Sync, err := synchronizer.NewL2Sync(l2Cfg, as.log, as.DB, as.l2Client, chainConfig, as.shutdown)
+	if err != nil {
+		return err
+	}
+	as.L2Sync = l2Sync
+	return nil
+}
+
+func (as *Acorus) initBridgeProcessor(chainConfig config.ChainConfig) error {
+	return nil
+}
+
+func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
+	return nil
+}
+
+func (as *Acorus) startHttpServer(ctx context.Context, cfg config.ServerConfig) error {
+	as.log.Debug("starting http server...", "port", cfg.Port)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
 
-	addr := net.JoinHostPort(i.httpConfig.Host, strconv.Itoa(i.httpConfig.Port))
+	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
 	srv, err := httputil.StartHTTPServer(addr, r)
 	if err != nil {
 		return fmt.Errorf("http server failed to start: %w", err)
 	}
-	i.log.Info("http server started", "addr", srv.Addr())
-	<-ctx.Done()
-	defer i.log.Info("http server stopped")
-	return srv.Stop(context.Background())
-}
-
-func (i *Acorus) startMetricsServer(ctx context.Context) error {
+	as.apiServer = srv
+	as.log.Info("http server started", "addr", srv.Addr())
 	return nil
 }
 
-func (i *Acorus) Run(ctx context.Context) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error, 5)
-
-	// if any goroutine halts, we stop the entire Acorus
-	processCtx, processCancel := context.WithCancel(ctx)
-	runProcess := func(start func(ctx context.Context) error) {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				if err := recover(); err != nil {
-					i.log.Error("halting acorus on panic", "err", err)
-					debug.PrintStack()
-					errCh <- fmt.Errorf("panic: %v", err)
-				}
-				processCancel()
-				wg.Done()
-			}()
-			errCh <- start(processCtx)
-		}()
-	}
-
-	// synchronizer engine
-	runProcess(i.L1Sync.Start)
-	runProcess(i.L2Sync.Start)
-
-	// event engine
-	factoryParams := processor.GetEventFactoryParams{
-		ChainBridge: i.ChainBridge,
-		Log:         i.log,
-		Db:          i.db,
-		L1Syncer:    i.L1Sync,
-		ChainConfig: i.Chain,
-	}
-	factory, factoryErr := event.GetEventFactory(factoryParams)
-	if factoryErr != nil {
-		return factoryErr
-	}
-	runProcess(factory.GetChainUnpackService(factoryParams).Start)
-
-	// service server
-	runProcess(i.startHttpServer)
-
-	wg.Wait()
-
-	err := <-errCh
-	if err != nil {
-		i.log.Error("acorus stopped", "err", err)
-	} else {
-		i.log.Info("acorus stopped")
-	}
-	return err
+func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.ServerConfig) error {
+	return nil
 }
-
-//func ChainContractsSelect(chainBridge string, config2 *config.Config) (l1Contracts []common.Address, l2Contracts []common.Address, contracts interface{}, err error) {
-//	var resultContracts interface{}
-//	var l1ResultContracts []common.Address
-//	var l2ResultContracts []common.Address
-//	if chainBridge == common2.Op {
-//		if err := config2.OpContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
-//			if addr == ZeroAddr {
-//				log.Error("address not configured", "name", name)
-//				return errors.New("all L2Contracts must be configured")
-//			}
-//			log.Info("configured contract", "name", name, "addr", addr)
-//			l2ResultContracts = append(l2ResultContracts, addr)
-//			return nil
-//		}); err != nil {
-//			return nil, nil, nil, err
-//		}
-//		if err := config2.OpContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
-//			if addr == ZeroAddr && !strings.HasPrefix(name, "Legacy") {
-//				log.Error("address not configured", "name", name)
-//				return errors.New("all L1Contracts must be configured")
-//			}
-//			log.Info("configured contract", "name", name, "addr", addr)
-//			l1ResultContracts = append(l1ResultContracts, addr)
-//			return nil
-//		}); err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		resultContracts = config2.OpContracts
-//
-//	} else if chainBridge == common2.Polygon {
-//		// todo: handle polygon logic
-//	} else if chainBridge == common2.Scroll {
-//		if err := config2.SclContracts.L2Contracts.ForEach(func(name string, addr common.Address) error {
-//			if addr == ZeroAddr {
-//				log.Error("address not configured", "name", name)
-//				return errors.New("all L2Contracts must be configured")
-//			}
-//			log.Info("configured contract", "name", name, "addr", addr)
-//			l2ResultContracts = append(l2ResultContracts, addr)
-//			return nil
-//		}); err != nil {
-//			return nil, nil, nil, err
-//		}
-//		if err := config2.SclContracts.L1Contracts.ForEach(func(name string, addr common.Address) error {
-//			if addr == ZeroAddr && !strings.HasPrefix(name, "Legacy") {
-//				log.Error("address not configured", "name", name)
-//				return errors.New("all L1Contracts must be configured")
-//			}
-//			log.Info("configured contract", "name", name, "addr", addr)
-//			l1ResultContracts = append(l1ResultContracts, addr)
-//			return nil
-//		}); err != nil {
-//			return nil, nil, nil, err
-//		}
-//
-//		resultContracts = config2.SclContracts
-//	}
-//	return l1ResultContracts, l2ResultContracts, resultContracts, nil
-//}
