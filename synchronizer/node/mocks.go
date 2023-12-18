@@ -16,9 +16,14 @@ type MockEthClient struct {
 	mock.Mock
 }
 
-func (m *MockEthClient) TxReceiptByHash(hash common.Hash) (*types.Receipt, error) {
-	args := m.Called(hash)
-	return args.Get(0).(*types.Receipt), args.Error(1)
+func (m *MockEthClient) LatestSafeBlockHeader() (*types.Header, error) {
+	args := m.Called()
+	return args.Get(0).(*types.Header), args.Error(1)
+}
+
+func (m *MockEthClient) LatestFinalizedBlockHeader() (*types.Header, error) {
+	args := m.Called()
+	return args.Get(0).(*types.Header), args.Error(1)
 }
 
 func (m *MockEthClient) BlockHeaderByNumber(number *big.Int) (*types.Header, error) {
@@ -46,7 +51,10 @@ func (m *MockEthClient) StorageHash(address common.Address, blockNumber *big.Int
 	return args.Get(0).(common.Hash), args.Error(1)
 }
 
-func (m *MockEthClient) FilterLogs(query ethereum.FilterQuery) ([]types.Log, error) {
+func (m *MockEthClient) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
 	args := m.Called(query)
-	return args.Get(0).([]types.Log), args.Error(1)
+	return args.Get(0).(Logs), args.Error(1)
+}
+
+func (m *MockEthClient) Close() {
 }

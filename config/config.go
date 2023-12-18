@@ -1,11 +1,13 @@
 package config
 
 import (
-	"os"
+	"time"
 
-	"github.com/BurntSushi/toml"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/urfave/cli/v2"
+
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/cornerstone-labs/acorus/flag"
 )
 
 const (
@@ -13,88 +15,133 @@ const (
 	defaultHeaderBufferSize = 500
 )
 
+type Config struct {
+	Migrations        string
+	Chain             ChainConfig
+	RPCs              RPCsConfig
+	DA                DAConfig
+	MasterDB          DBConfig
+	SlaveDB           DBConfig
+	SlaveDbEnable     bool
+	ApiCacheEnable    bool
+	HTTPServer        ServerConfig
+	MetricsServer     ServerConfig
+	StartDataStoreId  uint32
+	FraudProofWindows time.Duration
+}
+
 type ChainConfig struct {
-	ChainId uint64 `toml:"chainId"`
-	L1RPC   string `toml:"l1-rpc"`
-	L2RPC   string `toml:"l2-rpc"`
+	L1StartingHeight        uint
+	L2StartingHeight        uint
+	L1BedrockStartingHeight uint
+	L2BedrockStartingHeight uint
+	L1Contracts             []string
+	L2Contracts             []string
+	L1ConfirmationDepth     uint
+	L2ConfirmationDepth     uint
+	L1PollingInterval       uint
+	L2PollingInterval       uint
+	L1HeaderBufferSize      uint
+	L2HeaderBufferSize      uint
+}
 
-	L1StartHeight uint `toml:"l1-start-height"`
-	L2StartHeight uint `toml:"l2-start-height"`
-
-	L1ConfirmationDepth uint `toml:"l1-confirmation-depth"`
-	L2ConfirmationDepth uint `toml:"l2-confirmation-depth"`
-
-	L1PollingInterval uint `toml:"l1-polling-interval"`
-	L2PollingInterval uint `toml:"l2-polling-interval"`
-
-	L1HeaderBufferSize uint `toml:"l1-header-buffer-size"`
-	L2HeaderBufferSize uint `toml:"l2-header-buffer-size"`
-
-	L1Contracts []common.Address `toml:"l1-contracts"`
-	L2Contracts []common.Address `toml:"l2-contracts"`
+type RPCsConfig struct {
+	L1RPC string
+	L2RPC string
 }
 
 type DBConfig struct {
-	Host     string `toml:"host"`
-	Port     int    `toml:"port"`
-	Name     string `toml:"name"`
-	User     string `toml:"user"`
-	Password string `toml:"password"`
+	Host     string
+	Port     int
+	Name     string
+	User     string
+	Password string
 }
 
 type ServerConfig struct {
-	Host string `toml:"host"`
-	Port int    `toml:"port"`
+	Host string
+	Port int
 }
 
-type RedisConfig struct {
-	Host     string `toml:"host"`
-	Port     int    `toml:"port"`
-	Password string `toml:"password"`
-	DB       int    `toml:"db"`
+type DAConfig struct {
+	RetrieverSocket          string
+	RetrieverTimeout         time.Duration
+	GraphProvider            string
+	DataStorePollingDuration time.Duration
 }
 
-type Config struct {
-	Chain         ChainConfig  `toml:"chain"`
-	Redis         RedisConfig  `toml:"redis"`
-	MasterDB      DBConfig     `toml:"master_db"`
-	SlaveDB       DBConfig     `toml:"slave_db"`
-	SlaveDbEnable bool         `toml:"slave_db_enable"`
-	HTTPServer    ServerConfig `toml:"http"`
-	MetricsServer ServerConfig `toml:"metrics"`
-}
-
-func LoadConfig(log log.Logger, path string, chainBridge string) (Config, error) {
-	log.Info("loading config", "path", path)
+func LoadConfig(log log.Logger, cliCtx *cli.Context) (Config, error) {
 	var cfg Config
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return cfg, err
-	}
-
-	data = []byte(os.ExpandEnv(string(data)))
-	log.Info("parsed config file", "data", string(data))
-
-	if _, err := toml.Decode(string(data), &cfg); err != nil {
-		log.Error("failed to decode config file", "err", err)
-		return cfg, err
-	}
-
+	cfg = NewConfig(cliCtx)
 	if cfg.Chain.L1PollingInterval == 0 {
 		cfg.Chain.L1PollingInterval = defaultLoopInterval
 	}
-
 	if cfg.Chain.L2PollingInterval == 0 {
 		cfg.Chain.L2PollingInterval = defaultLoopInterval
 	}
-
 	if cfg.Chain.L1HeaderBufferSize == 0 {
 		cfg.Chain.L1HeaderBufferSize = defaultHeaderBufferSize
 	}
-
 	if cfg.Chain.L2HeaderBufferSize == 0 {
 		cfg.Chain.L2HeaderBufferSize = defaultHeaderBufferSize
 	}
-
 	return cfg, nil
+}
+
+func NewConfig(ctx *cli.Context) Config {
+	return Config{
+		Migrations: ctx.String(flag.MigrationsFlag.Name),
+		Chain: ChainConfig{
+			L1StartingHeight:        ctx.Uint(flag.L1StartingHeightFlag.Name),
+			L2StartingHeight:        ctx.Uint(flag.L2StartingHeightFlag.Name),
+			L1BedrockStartingHeight: ctx.Uint(flag.L1BedrockStartingHeightFlag.Name),
+			L2BedrockStartingHeight: ctx.Uint(flag.L2BedrockStartingHeightFlag.Name),
+			L1Contracts:             ctx.StringSlice(flag.L1ContractsFlag.String()),
+			L2Contracts:             ctx.StringSlice(flag.L1ContractsFlag.String()),
+			L1ConfirmationDepth:     ctx.Uint(flag.L1ConfirmationDepthFlag.Name),
+			L2ConfirmationDepth:     ctx.Uint(flag.L2ConfirmationDepthFlag.Name),
+			L1PollingInterval:       ctx.Uint(flag.L1PollingIntervalFlag.Name),
+			L2PollingInterval:       ctx.Uint(flag.L2PollingIntervalFlag.Name),
+			L1HeaderBufferSize:      ctx.Uint(flag.L1HeaderBufferSizeFlag.Name),
+			L2HeaderBufferSize:      ctx.Uint(flag.L2HeaderBufferSizeFlag.Name),
+		},
+
+		RPCs: RPCsConfig{
+			L1RPC: ctx.String(flag.L1EthRpcFlag.Name),
+			L2RPC: ctx.String(flag.L2EthRpcFlag.Name),
+		},
+		DA: DAConfig{
+			RetrieverSocket:          ctx.String(flag.RetrieverSocketFlag.Name),
+			RetrieverTimeout:         ctx.Duration(flag.RetrieverTimeoutFlag.Name),
+			GraphProvider:            ctx.String(flag.GraphProviderFlag.Name),
+			DataStorePollingDuration: ctx.Duration(flag.DataStorePollingDurationFlag.Name),
+		},
+
+		MasterDB: DBConfig{
+			Host:     ctx.String(flag.MasterDbHostFlag.Name),
+			Port:     ctx.Int(flag.MasterDbPortFlag.Name),
+			Name:     ctx.String(flag.MasterDbNameFlag.Name),
+			User:     ctx.String(flag.MasterDbUserFlag.Name),
+			Password: ctx.String(flag.MasterDbPasswordFlag.Name),
+		},
+		SlaveDB: DBConfig{
+			Host:     ctx.String(flag.SlaveDbHostFlag.Name),
+			Port:     ctx.Int(flag.SlaveDbPortFlag.Name),
+			Name:     ctx.String(flag.SlaveDbNameFlag.Name),
+			User:     ctx.String(flag.SlaveDbUserFlag.Name),
+			Password: ctx.String(flag.SlaveDbPasswordFlag.Name),
+		},
+		SlaveDbEnable:  ctx.Bool(flag.SlaveDbEnableFlag.Name),
+		ApiCacheEnable: ctx.Bool(flag.EnableApiCacheFlag.Name),
+		HTTPServer: ServerConfig{
+			Host: ctx.String(flag.HttpHostFlag.Name),
+			Port: ctx.Int(flag.HttpPortFlag.Name),
+		},
+		MetricsServer: ServerConfig{
+			Host: ctx.String(flag.MetricsHostFlag.Name),
+			Port: ctx.Int(flag.MetricsPortFlag.Name),
+		},
+		StartDataStoreId:  uint32(ctx.Uint64(flag.StartDataStoreIdFlag.Name)),
+		FraudProofWindows: ctx.Duration(flag.FraudProofWindowsFlags.Name),
+	}
 }
