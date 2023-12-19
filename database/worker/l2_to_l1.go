@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"math/big"
 	"strings"
@@ -57,10 +58,10 @@ type L2ToL1DB interface {
 
 type L2ToL1View interface {
 	L2ToL1List(string, int, int, string) (*gplus.Page[L2ToL1], error)
-	L2LatestBlockHeader() (*common2.L2BlockHeader, error)
+	L2LatestBlockHeader(chainId uint) (*common2.L2BlockHeader, error)
 	L2ToL1TransactionWithdrawal(common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(blockHash common.Hash) (*big.Int, error)
-	L1LatestFinalizedBlockHeader() (*common2.L1BlockHeader, error)
+	L1LatestFinalizedBlockHeader(chainId uint) (*common2.L1BlockHeader, error)
 }
 
 /**
@@ -248,8 +249,9 @@ func (l2l1 l2ToL1DB) L2ToL1TransactionWithdrawal(withdrawalHash common.Hash) (*L
 	return &l2ToL1Withdrawal, nil
 }
 
-func (l2l1 l2ToL1DB) L2LatestBlockHeader() (*common2.L2BlockHeader, error) {
-	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table("l2_to_l1").Select("MAX(timestamp)"))
+func (l2l1 l2ToL1DB) L2LatestBlockHeader(chainId uint) (*common2.L2BlockHeader, error) {
+	tableName := fmt.Sprintf("l2_to_l1_%d", chainId)
+	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l2Header common2.L2BlockHeader
 	result := l2Query.Take(&l2Header)
 	if result.Error != nil {
@@ -261,8 +263,9 @@ func (l2l1 l2ToL1DB) L2LatestBlockHeader() (*common2.L2BlockHeader, error) {
 	return &l2Header, nil
 }
 
-func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader() (*common2.L1BlockHeader, error) {
-	l1Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table("l2_to_l1").Where("status != (?)", 4).Select("MAX(l1_block_number)"))
+func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId uint) (*common2.L1BlockHeader, error) {
+	tableName := fmt.Sprintf("l2_to_l1_%d", chainId)
+	l1Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table(tableName).Where("status != (?)", 4).Select("MAX(l1_block_number)"))
 	var l1Header common2.L1BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

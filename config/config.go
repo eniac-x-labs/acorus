@@ -31,6 +31,7 @@ type Config struct {
 }
 
 type ChainConfig struct {
+	ChainId                 uint
 	L1StartingHeight        uint
 	L2StartingHeight        uint
 	L1BedrockStartingHeight uint

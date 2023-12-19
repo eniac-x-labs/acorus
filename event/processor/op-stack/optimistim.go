@@ -14,6 +14,7 @@ import (
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
+	common3 "github.com/cornerstone-labs/acorus/event/processor/common"
 	"github.com/cornerstone-labs/acorus/event/processor/op-stack/bridge"
 	"github.com/cornerstone-labs/acorus/event/processor/op-stack/stateroot"
 	"github.com/cornerstone-labs/acorus/synchronizer"
@@ -22,103 +23,74 @@ import (
 var blocksLimit = 10_000
 
 type OpProcessor struct {
-	log                   log.Logger
-	db                    *database.DB
-	resourceCtx           context.Context
-	resourceCancel        context.CancelFunc
-	tasks                 tasks.Group
-	l1Sync                *synchronizer.L1Sync
-	l2Sync                *synchronizer.L2Sync
-	chainConfig           config.ChainConfig
-	LastL1Header          *common2.L1BlockHeader
-	LastL2Header          *common2.L2BlockHeader
-	LastRollupL1Header    *common2.L1BlockHeader
-	LastFinalizedL1Header *common2.L1BlockHeader
-	LastFinalizedL2Header *common2.L2BlockHeader
+	common3.IProcessor
 }
 
 func NewBridgeProcessor(log log.Logger, db *database.DB, l1Sync *synchronizer.L1Sync, l2Sync *synchronizer.L2Sync,
-	chainConfig config.ChainConfig, shutdown context.CancelCauseFunc) (*OpProcessor, error) {
+	chainConfig config.ChainConfig, shutdown context.CancelCauseFunc) (*common3.IProcessor, error) {
 	log = log.New("processor", "bridge")
-	latestL1Header, err := db.L1ToL2.L1LatestBlockHeader()
+	latestL1Header, latestL2Header,
+		latestFinalizedL1Header, latestFinalizedL2Header,
+		err := common3.GetLastBlockHeardByChain(log, db, chainConfig)
 	if err != nil {
 		return nil, err
 	}
-	latestL2Header, err := db.L2ToL1.L2LatestBlockHeader()
-	if err != nil {
-		return nil, err
-	}
-
-	latestFinalizedL1Header, err := db.L2ToL1.L1LatestFinalizedBlockHeader()
-	if err != nil {
-		return nil, err
-	}
-
-	latestFinalizedL2Header, err := db.L1ToL2.L2LatestFinalizedBlockHeader()
-	if err != nil {
-		return nil, err
-	}
-
-	log.Info("detected indexed bridge state",
-		"l1_block", latestL1Header, "l2_block", latestL2Header,
-		"finalized_l1_block", latestFinalizedL1Header, "finalized_l2_block", latestFinalizedL2Header)
-
 	resCtx, resCancel := context.WithCancel(context.Background())
-	return &OpProcessor{
-		log:                   log,
-		db:                    db,
-		l1Sync:                l1Sync,
-		l2Sync:                l2Sync,
-		resourceCtx:           resCtx,
-		resourceCancel:        resCancel,
-		chainConfig:           chainConfig,
+	return &common3.IProcessor{
+		Log:                   log,
+		Db:                    db,
+		L1Sync:                l1Sync,
+		L2Sync:                l2Sync,
+		ResourceCtx:           resCtx,
+		ResourceCancel:        resCancel,
+		ChainConfig:           chainConfig,
 		LastL1Header:          latestL1Header,
 		LastL2Header:          latestL2Header,
 		LastRollupL1Header:    latestL1Header,
 		LastFinalizedL1Header: latestFinalizedL1Header,
 		LastFinalizedL2Header: latestFinalizedL2Header,
-		tasks: tasks.Group{HandleCrit: func(err error) {
+		Tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
 	}, nil
 }
 
 func (ep *OpProcessor) Start() error {
-	ep.log.Info("starting bridge processor...")
-	ep.tasks.Go(func() error {
-		l1SyncUpdates := ep.l1Sync.Notify()
+	ep.Log.Info("starting bridge processor...")
+	ep.Tasks.Go(func() error {
+		l1SyncUpdates := ep.L1Sync.Notify()
 		for range l1SyncUpdates {
 			err := ep.onL1Data()
 			if err != nil {
 				return err
 			}
 		}
-		ep.log.Info("no more l1 etl updates. shutting down l1 task")
+		ep.Log.Info("no more l1 etl updates. shutting down l1 task")
 		return nil
 	})
 	// start L2 worker
-	ep.tasks.Go(func() error {
-		l2SyncUpdates := ep.l2Sync.Notify()
+	ep.Tasks.Go(func() error {
+		l2SyncUpdates := ep.L2Sync.Notify()
 		for range l2SyncUpdates {
 			err := ep.onL2Data()
 			if err != nil {
 				return err
 			}
 		}
-		ep.log.Info("no more l2 etl updates. shutting down l2 task")
+		ep.Log.Info("no more l2 etl updates. shutting down l2 task")
 		return nil
 	})
 	return nil
 }
 
 func (ep *OpProcessor) Close() error {
-	ep.resourceCancel()
-	return ep.tasks.Wait()
+	ep.ResourceCancel()
+	return ep.Tasks.Wait()
 }
 
 func (ep *OpProcessor) processRollup() error {
-	rollupLog := ep.log.New("rollup", "l1", "kind", "mantleDa and state root")
-	lastRollupL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight) - 1)
+	rollupLog := ep.Log.New("rollup", "l1", "kind", "mantleDa and state root")
+	lastRollupL1BlockNumber := big.NewInt(int64(ep.ChainConfig.L1StartingHeight) - 1)
 	if ep.LastRollupL1Header != nil {
 		lastRollupL1BlockNumber = ep.LastRollupL1Header.Number
 	}
@@ -128,7 +100,7 @@ func (ep *OpProcessor) processRollup() error {
 		headers := newQuery.Model(common2.L1BlockHeader{}).Where("number > ?", lastRollupL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
 	}
-	latestL1RollupHeader, err := ep.db.Blocks.L1BlockHeaderWithScope(latestRollupL1HeaderScope)
+	latestL1RollupHeader, err := ep.Db.Blocks.L1BlockHeaderWithScope(latestRollupL1HeaderScope)
 	if err != nil {
 		return fmt.Errorf("failed to query new L1 state: %w", err)
 	} else if latestL1RollupHeader == nil {
@@ -136,12 +108,12 @@ func (ep *OpProcessor) processRollup() error {
 	}
 
 	fromL1Height, toL1Height := new(big.Int).Add(lastRollupL1BlockNumber, bigint.One), latestL1RollupHeader.Number
-	if err := ep.db.Transaction(func(tx *database.DB) error {
+	if err := ep.Db.Transaction(func(tx *database.DB) error {
 		rollupLog = rollupLog.New("from_block_number", fromL1Height, "to_block_number", toL1Height)
 		rollupLog.Info("scanning for mantle da and state root events")
 
 		if err := stateroot.L2OutputEvent(rollupLog, tx, fromL1Height, toL1Height); err != nil {
-			ep.log.Error("failed to index l1 l2output proposed events", "err", err)
+			ep.Log.Error("failed to index l1 l2output proposed events", "err", err)
 			return err
 		}
 
@@ -154,24 +126,24 @@ func (ep *OpProcessor) processRollup() error {
 }
 
 func (ep *OpProcessor) onL1Data() error {
-	latestL1Header := ep.l1Sync.LatestHeader
-	ep.log.Info("notified of new L1 state", "l1_etl_block_number", latestL1Header.Number)
+	latestL1Header := ep.L1Sync.LatestHeader
+	ep.Log.Info("notified of new L1 state", "l1_etl_block_number", latestL1Header.Number)
 
 	var errs error
 	if err := ep.processInitiatedL1Ops(); err != nil {
-		ep.log.Error("failed to process initiated L1 events", "err", err)
+		ep.Log.Error("failed to process initiated L1 events", "err", err)
 		errs = errors.Join(errs, err)
 	}
 
 	if ep.LastFinalizedL2Header == nil || ep.LastFinalizedL2Header.Timestamp < ep.LastL1Header.Timestamp {
 		if err := ep.processFinalizedL2Ops(); err != nil {
-			ep.log.Error("failed to process finalized L2 events", "err", err)
+			ep.Log.Error("failed to process finalized L2 events", "err", err)
 			errs = errors.Join(errs, err)
 		}
 	}
 
 	if err := ep.processRollup(); err != nil {
-		ep.log.Error("failed to process rollup events", "err", err)
+		ep.Log.Error("failed to process rollup events", "err", err)
 		errs = errors.Join(errs, err)
 	}
 
@@ -179,20 +151,20 @@ func (ep *OpProcessor) onL1Data() error {
 }
 
 func (ep *OpProcessor) onL2Data() error {
-	if ep.l2Sync.LatestHeader.Number.Cmp(bigint.Zero) == 0 {
+	if ep.L2Sync.LatestHeader.Number.Cmp(bigint.Zero) == 0 {
 		return nil
 	}
-	ep.log.Info("notified of new L2 state", "l2_etl_block_number", ep.l2Sync.LatestHeader.Number)
+	ep.Log.Info("notified of new L2 state", "l2_etl_block_number", ep.L2Sync.LatestHeader.Number)
 
 	var errs error
 	if err := ep.processInitiatedL2Ops(); err != nil {
-		ep.log.Error("failed to process initiated L2 events", "err", err)
+		ep.Log.Error("failed to process initiated L2 events", "err", err)
 		errs = errors.Join(errs, err)
 	}
 
 	if ep.LastFinalizedL1Header == nil || ep.LastFinalizedL1Header.Timestamp < ep.LastL2Header.Timestamp {
 		if err := ep.processFinalizedL1Ops(); err != nil {
-			ep.log.Error("failed to process finalized L1 events", "err", err)
+			ep.Log.Error("failed to process finalized L1 events", "err", err)
 			errs = errors.Join(errs, err)
 		}
 	}
@@ -200,8 +172,8 @@ func (ep *OpProcessor) onL2Data() error {
 }
 
 func (ep *OpProcessor) processInitiatedL1Ops() error {
-	l1BridgeLog := ep.log.New("bridge", "l1", "kind", "initiated")
-	lastL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight) - 1)
+	l1BridgeLog := ep.Log.New("bridge", "l1", "kind", "initiated")
+	lastL1BlockNumber := big.NewInt(int64(ep.ChainConfig.L1StartingHeight) - 1)
 	if ep.LastL1Header != nil {
 		lastL1BlockNumber = ep.LastL1Header.Number
 	}
@@ -211,7 +183,7 @@ func (ep *OpProcessor) processInitiatedL1Ops() error {
 		headers := newQuery.Model(common2.L1BlockHeader{}).Where("number > ?", lastL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
 	}
-	latestL1Header, err := ep.db.Blocks.L1BlockHeaderWithScope(latestL1HeaderScope)
+	latestL1Header, err := ep.Db.Blocks.L1BlockHeaderWithScope(latestL1HeaderScope)
 	if err != nil {
 		return fmt.Errorf("failed to query new L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -219,8 +191,8 @@ func (ep *OpProcessor) processInitiatedL1Ops() error {
 	}
 
 	fromL1Height, toL1Height := new(big.Int).Add(lastL1BlockNumber, bigint.One), latestL1Header.Number
-	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l1BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L1BedrockStartingHeight))
+	if err := ep.Db.Transaction(func(tx *database.DB) error {
+		l1BedrockStartingHeight := big.NewInt(int64(ep.ChainConfig.L1BedrockStartingHeight))
 		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
 			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
 			if l1BedrockStartingHeight.Cmp(toL1Height) <= 0 {
@@ -249,7 +221,7 @@ func (ep *OpProcessor) processInitiatedL1Ops() error {
 }
 
 func (ep *OpProcessor) processInitiatedL2Ops() error {
-	l2BridgeLog := ep.log.New("bridge", "l2", "kind", "initiated")
+	l2BridgeLog := ep.Log.New("bridge", "l2", "kind", "initiated")
 	lastL2BlockNumber := bigint.Zero
 	if ep.LastL2Header != nil {
 		lastL2BlockNumber = ep.LastL2Header.Number
@@ -260,7 +232,7 @@ func (ep *OpProcessor) processInitiatedL2Ops() error {
 		headers := newQuery.Model(common2.L2BlockHeader{}).Where("number > ?", lastL2BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
 	}
-	latestL2Header, err := ep.db.Blocks.L2BlockHeaderWithScope(latestL2HeaderScope)
+	latestL2Header, err := ep.Db.Blocks.L2BlockHeaderWithScope(latestL2HeaderScope)
 	if err != nil {
 		return fmt.Errorf("failed to query new L2 state: %w", err)
 	} else if latestL2Header == nil {
@@ -268,8 +240,8 @@ func (ep *OpProcessor) processInitiatedL2Ops() error {
 	}
 
 	fromL2Height, toL2Height := new(big.Int).Add(lastL2BlockNumber, bigint.One), latestL2Header.Number
-	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l2BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L2BedrockStartingHeight))
+	if err := ep.Db.Transaction(func(tx *database.DB) error {
+		l2BedrockStartingHeight := big.NewInt(int64(ep.ChainConfig.L2BedrockStartingHeight))
 		if l2BedrockStartingHeight.Cmp(fromL2Height) > 0 { // OP Mainnet & OP Goerli Only
 			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
 			if l2BedrockStartingHeight.Cmp(toL2Height) <= 0 {
@@ -299,8 +271,8 @@ func (ep *OpProcessor) processInitiatedL2Ops() error {
 }
 
 func (ep *OpProcessor) processFinalizedL1Ops() error {
-	l1BridgeLog := ep.log.New("bridge", "l1", "kind", "finalization")
-	lastFinalizedL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight) - 1)
+	l1BridgeLog := ep.Log.New("bridge", "l1", "kind", "finalization")
+	lastFinalizedL1BlockNumber := big.NewInt(int64(ep.ChainConfig.L1StartingHeight) - 1)
 	if ep.LastFinalizedL1Header != nil {
 		lastFinalizedL1BlockNumber = ep.LastFinalizedL1Header.Number
 	}
@@ -310,7 +282,7 @@ func (ep *OpProcessor) processFinalizedL1Ops() error {
 		headers := newQuery.Model(common2.L1BlockHeader{}).Where("number > ? AND timestamp <= ?", lastFinalizedL1BlockNumber, ep.LastL2Header.Timestamp)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
 	}
-	latestL1Header, err := ep.db.Blocks.L1BlockHeaderWithScope(latestL1HeaderScope)
+	latestL1Header, err := ep.Db.Blocks.L1BlockHeaderWithScope(latestL1HeaderScope)
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -319,8 +291,8 @@ func (ep *OpProcessor) processFinalizedL1Ops() error {
 	}
 
 	fromL1Height, toL1Height := new(big.Int).Add(lastFinalizedL1BlockNumber, bigint.One), latestL1Header.Number
-	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l1BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L1BedrockStartingHeight))
+	if err := ep.Db.Transaction(func(tx *database.DB) error {
+		l1BedrockStartingHeight := big.NewInt(int64(ep.ChainConfig.L1BedrockStartingHeight))
 		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
 			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
 			if l1BedrockStartingHeight.Cmp(toL1Height) <= 0 {
@@ -349,7 +321,7 @@ func (ep *OpProcessor) processFinalizedL1Ops() error {
 }
 
 func (ep *OpProcessor) processFinalizedL2Ops() error {
-	l2BridgeLog := ep.log.New("bridge", "l2", "kind", "finalization")
+	l2BridgeLog := ep.Log.New("bridge", "l2", "kind", "finalization")
 	lastFinalizedL2BlockNumber := bigint.Zero
 	if ep.LastFinalizedL2Header != nil {
 		lastFinalizedL2BlockNumber = ep.LastFinalizedL2Header.Number
@@ -360,7 +332,7 @@ func (ep *OpProcessor) processFinalizedL2Ops() error {
 		headers := newQuery.Model(common2.L2BlockHeader{}).Where("number > ? AND timestamp <= ?", lastFinalizedL2BlockNumber, ep.LastL1Header.Timestamp)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
 	}
-	latestL2Header, err := ep.db.Blocks.L2BlockHeaderWithScope(latestL2HeaderScope)
+	latestL2Header, err := ep.Db.Blocks.L2BlockHeaderWithScope(latestL2HeaderScope)
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L2 state: %w", err)
 	} else if latestL2Header == nil {
@@ -369,8 +341,8 @@ func (ep *OpProcessor) processFinalizedL2Ops() error {
 	}
 
 	fromL2Height, toL2Height := new(big.Int).Add(lastFinalizedL2BlockNumber, bigint.One), latestL2Header.Number
-	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l2BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L2BedrockStartingHeight))
+	if err := ep.Db.Transaction(func(tx *database.DB) error {
+		l2BedrockStartingHeight := big.NewInt(int64(ep.ChainConfig.L2BedrockStartingHeight))
 		if l2BedrockStartingHeight.Cmp(fromL2Height) > 0 {
 			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
 			if l2BedrockStartingHeight.Cmp(toL2Height) <= 0 {

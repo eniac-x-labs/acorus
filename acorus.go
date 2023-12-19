@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/processor"
 	"math/big"
 	"net"
 	"strconv"
@@ -32,6 +33,7 @@ type Acorus struct {
 	metricsRegistry *prometheus.Registry
 	L1Sync          *synchronizer.L1Sync
 	L2Sync          *synchronizer.L2Sync
+	EventProcessor  *processor.EventProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 }
@@ -53,6 +55,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 	}
 	if err := as.L2Sync.Start(); err != nil {
 		return fmt.Errorf("failed to start L2 Sync: %w", err)
+	}
+	if err := as.EventProcessor.Start(); err != nil {
+		return fmt.Errorf("failed to start EventProcessor: %w", err)
 	}
 	return nil
 }
@@ -190,6 +195,11 @@ func (as *Acorus) initL2ETL(chainConfig config.ChainConfig) error {
 }
 
 func (as *Acorus) initBridgeProcessor(chainConfig config.ChainConfig) error {
+	processor, err := processor.NewEventProcessor(as.log, as.DB, as.L1Sync, as.L2Sync, chainConfig, as.shutdown)
+	if err != nil {
+		return err
+	}
+	as.EventProcessor = processor
 	return nil
 }
 

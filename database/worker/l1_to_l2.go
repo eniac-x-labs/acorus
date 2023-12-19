@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"math/big"
 	"strings"
@@ -53,8 +54,8 @@ type L1ToL2DB interface {
 
 type L1ToL2View interface {
 	GetBlockNumberFromHash(blockHash common.Hash) (*big.Int, error)
-	L1LatestBlockHeader() (*common2.L1BlockHeader, error)
-	L2LatestFinalizedBlockHeader() (*common2.L2BlockHeader, error)
+	L1LatestBlockHeader(chainId uint) (*common2.L1BlockHeader, error)
+	L2LatestFinalizedBlockHeader(chainId uint) (*common2.L2BlockHeader, error)
 	L1ToL2List(string, int, int, string) (*gplus.Page[L1ToL2], error)
 	L1ToL2Transaction(common.Hash) (*L1ToL2, error)
 }
@@ -189,8 +190,9 @@ func (l1l2 l1ToL2DB) GetBlockNumberFromHash(blockHash common.Hash) (*big.Int, er
 	return new(big.Int).SetUint64(l1BlockNumber), nil
 }
 
-func (l1l2 *l1ToL2DB) L1LatestBlockHeader() (*common2.L1BlockHeader, error) {
-	l1Query := l1l2.gorm.Where("timestamp = (?)", l1l2.gorm.Table("l1_to_l2").Select("MAX(timestamp)"))
+func (l1l2 *l1ToL2DB) L1LatestBlockHeader(chainId uint) (*common2.L1BlockHeader, error) {
+	tableName := fmt.Sprintf("l1_to_l2_%d", chainId)
+	l1Query := l1l2.gorm.Where("timestamp = (?)", l1l2.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l1Header common2.L1BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {
@@ -202,8 +204,9 @@ func (l1l2 *l1ToL2DB) L1LatestBlockHeader() (*common2.L1BlockHeader, error) {
 	return &l1Header, nil
 }
 
-func (l1l2 *l1ToL2DB) L2LatestFinalizedBlockHeader() (*common2.L2BlockHeader, error) {
-	l1Query := l1l2.gorm.Where("number = (?)", l1l2.gorm.Table("l1_to_l2").Where("status != (?)", common3.L1ToL2Claimed).Select("MAX(l2_block_number)"))
+func (l1l2 *l1ToL2DB) L2LatestFinalizedBlockHeader(chainId uint) (*common2.L2BlockHeader, error) {
+	tableName := fmt.Sprintf("l1_to_l2_%d", chainId)
+	l1Query := l1l2.gorm.Where("number = (?)", l1l2.gorm.Table(tableName).Where("status != (?)", common3.L1ToL2Claimed).Select("MAX(l2_block_number)"))
 	var l2Header common2.L2BlockHeader
 	result := l1Query.Take(&l2Header)
 	if result.Error != nil {
