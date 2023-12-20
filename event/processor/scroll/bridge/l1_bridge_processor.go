@@ -1,17 +1,18 @@
 package bridge
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/google/uuid"
+
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
 	"github.com/cornerstone-labs/acorus/event/processor/scroll/utils"
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/google/uuid"
 )
 
 func L1DepositETH(event event.L1ContractEvent) (*worker.L1ToL2, error) {
@@ -198,7 +199,7 @@ func L1SentMessageEvent(event event.L1ContractEvent, db *database.DB) (*worker.L
 	msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
 		sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
 	// update l1tol2  set msgHash by txHash
-	if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
+	if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MessageHash: msgHash}); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -214,7 +215,7 @@ func L1RelayedMessageEvent(event event.L1ContractEvent, db *database.DB) (*worke
 	// update l2 to l1 Set l1_tx_hash by msg_hash
 	if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
 		worker.L2ToL1{
-			MsgHash:          l1RelayedMessageEvent.MessageHash,
+			MessageHash:      l1RelayedMessageEvent.MessageHash,
 			L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
 		return nil, err
 	}

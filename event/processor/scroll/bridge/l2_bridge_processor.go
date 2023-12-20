@@ -1,17 +1,18 @@
 package bridge
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/google/uuid"
+
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
 	"github.com/cornerstone-labs/acorus/event/processor/scroll/utils"
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/google/uuid"
 )
 
 func L2WithdrawETH(event event.L2ContractEvent) (*worker.L2ToL1, error) {
@@ -22,25 +23,23 @@ func L2WithdrawETH(event event.L2ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               depositEvent.From,
-		ToAddress:                 depositEvent.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 depositEvent.Amount,
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ETH),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       depositEvent.From,
+		ToAddress:         depositEvent.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         depositEvent.Amount,
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ETH),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 
 }
@@ -54,25 +53,23 @@ func L2WithdrawERC20(event event.L2ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               withdrawErc20Event.From,
-		ToAddress:                 withdrawErc20Event.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 withdrawErc20Event.Amount,
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ERC20),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       withdrawErc20Event.From,
+		ToAddress:         withdrawErc20Event.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         withdrawErc20Event.Amount,
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ERC20),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 }
 
@@ -84,27 +81,25 @@ func L2WithdrawERC721(event event.L2ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               withdrawERC721Event.From,
-		ToAddress:                 withdrawERC721Event.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 big.NewInt(0),
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		TokenAmounts:              withdrawERC721Event.Amount.String(),
-		TokenIds:                  withdrawERC721Event.TokenID.String(),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ERC721),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       withdrawERC721Event.From,
+		ToAddress:         withdrawERC721Event.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         big.NewInt(0),
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		TokenAmounts:      withdrawERC721Event.Amount.String(),
+		TokenIds:          withdrawERC721Event.TokenID.String(),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ERC721),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 
 }
@@ -117,27 +112,25 @@ func L2WithdrawERC1155(event event.L2ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               withdrawERC1155Event.From,
-		ToAddress:                 withdrawERC1155Event.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 big.NewInt(0),
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		TokenAmounts:              withdrawERC1155Event.Amount.String(),
-		TokenIds:                  withdrawERC1155Event.TokenID.String(),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ERC1155),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       withdrawERC1155Event.From,
+		ToAddress:         withdrawERC1155Event.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         big.NewInt(0),
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		TokenAmounts:      withdrawERC1155Event.Amount.String(),
+		TokenIds:          withdrawERC1155Event.TokenID.String(),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ERC1155),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 }
 
@@ -149,27 +142,25 @@ func L2BatchWithdrawERC721(event event.L2ContractEvent) (*worker.L2ToL1, error) 
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               batchWithdrawERC721Event.From,
-		ToAddress:                 batchWithdrawERC721Event.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 big.NewInt(0),
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		TokenAmounts:              "1",
-		TokenIds:                  utils.ConvertBigIntArrayToString(batchWithdrawERC721Event.TokenIDs),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ERC721),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       batchWithdrawERC721Event.From,
+		ToAddress:         batchWithdrawERC721Event.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         big.NewInt(0),
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		TokenAmounts:      "1",
+		TokenIds:          utils.ConvertBigIntArrayToString(batchWithdrawERC721Event.TokenIDs),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ERC721),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 }
 
@@ -181,27 +172,25 @@ func L2BatchWithdrawERC1155(event event.L2ContractEvent) (*worker.L2ToL1, error)
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:                      uuid.New(),
-		L2BlockHash:               rlpLog.BlockHash,
-		L1FinalizeTxHash:          common.Hash{},
-		L2TransactionHash:         rlpLog.TxHash,
-		L2WithdrawTransactionHash: common.Hash{},
-		L1ProveTxHash:             common.Hash{},
-		Status:                    0,
-		TimeLeft:                  big.NewInt(0),
-		FromAddress:               batchWithdrawERC1155Event.From,
-		ToAddress:                 batchWithdrawERC1155Event.To,
-		L1TokenAddress:            common.Address{},
-		L2TokenAddress:            common.Address{},
-		ETHAmount:                 big.NewInt(0),
-		ERC20Amount:               big.NewInt(0),
-		GasLimit:                  big.NewInt(0),
-		TokenAmounts:              utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenAmounts),
-		TokenIds:                  utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenIDs),
-		Timestamp:                 int64(event.Timestamp),
-		AssetType:                 int64(common2.ERC721),
-		MsgNonce:                  big.NewInt(0),
-		MsgHash:                   common.Hash{},
+		GUID:              uuid.New(),
+		L1FinalizeTxHash:  common.Hash{},
+		L2TransactionHash: rlpLog.TxHash,
+		L1ProveTxHash:     common.Hash{},
+		Status:            0,
+		TimeLeft:          big.NewInt(0),
+		FromAddress:       batchWithdrawERC1155Event.From,
+		ToAddress:         batchWithdrawERC1155Event.To,
+		L1TokenAddress:    common.Address{},
+		L2TokenAddress:    common.Address{},
+		ETHAmount:         big.NewInt(0),
+		ERC20Amount:       big.NewInt(0),
+		GasLimit:          big.NewInt(0),
+		TokenAmounts:      utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenAmounts),
+		TokenIds:          utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenIDs),
+		Timestamp:         int64(event.Timestamp),
+		AssetType:         int64(common2.ERC721),
+		MsgNonce:          big.NewInt(0),
+		MessageHash:       common.Hash{},
 	}, nil
 
 }
@@ -218,7 +207,7 @@ func L2SentMessageEvent(event event.L2ContractEvent, db *database.DB) (*worker.L
 	msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
 		sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
 	// update l1tol2  set msgHash by txHash
-	if err := db.L2ToL1.UpdateL2ToL1MsgHashByL2TxHash(worker.L2ToL1{L2TransactionHash: rlpLog.TxHash, MsgHash: msgHash}); err != nil {
+	if err := db.L2ToL1.UpdateL2ToL1MsgHashByL2TxHash(worker.L2ToL1{L2TransactionHash: rlpLog.TxHash, MessageHash: msgHash}); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -234,7 +223,7 @@ func L2RelayedMessageEvent(event event.L2ContractEvent, db *database.DB) (*worke
 	// update l2 to l1 Set l1_tx_hash by msg_hash
 	if err := db.L1ToL2.UpdateL1ToL2L2TxHashByMsgHash(
 		worker.L1ToL2{
-			MsgHash:           l2RelayedMessageEvent.MessageHash,
+			MessageHash:       l2RelayedMessageEvent.MessageHash,
 			L2TransactionHash: rlpLog.TxHash}); err != nil {
 		return nil, err
 	}

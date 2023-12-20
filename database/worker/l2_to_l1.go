@@ -54,6 +54,8 @@ type L2ToL1DB interface {
 	UpdateTimeLeft() error
 	MarkL2ToL1TransactionWithdrawalProven(l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalized(l2L1List []L2ToL1) error
+	UpdateL2ToL1MsgHashByL2TxHash(l2L1 L2ToL1) error
+	UpdateL2ToL1L1TxHashByMsgHash(l2L1 L2ToL1) error
 }
 
 type L2ToL1View interface {
@@ -75,6 +77,18 @@ type l2ToL1DB struct {
 func NewL21ToL1DB(db *gorm.DB) L2ToL1DB {
 	gplus.Init(db)
 	return &l2ToL1DB{gorm: db}
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1MsgHashByL2TxHash(l2L1Stu L2ToL1) error {
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{L2TransactionHash: l2L1Stu.L2TransactionHash})
+	result = result.UpdateColumn("message_hash", l2L1Stu.MessageHash.String())
+	return result.Error
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(l2L1Stu L2ToL1) error {
+	result := l2l1.gorm.Model(&l2L1Stu).Where(&L2ToL1{MessageHash: l2L1Stu.MessageHash})
+	result = result.UpdateColumn("l1_finalize_tx_hash", l2L1Stu.L1FinalizeTxHash.String()).UpdateColumn("status", 1)
+	return result.Error
 }
 
 func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(l1L2List []L2ToL1) error {

@@ -50,6 +50,8 @@ type L1ToL2DB interface {
 	UpdateMessageHash(l1L2List []L1ToL2) error
 	RelayedL1ToL2Transaction(l1L2List []L1ToL2) error
 	FinalizedL1ToL2Transaction(l1L2List []L1ToL2) error
+	UpdateL1ToL2MsgHashByL1TxHash(l1L2 L1ToL2) error
+	UpdateL1ToL2L2TxHashByMsgHash(l1L2 L1ToL2) error
 }
 
 type L1ToL2View interface {
@@ -75,6 +77,17 @@ func NewL1ToL2DB(db *gorm.DB) L1ToL2DB {
 
 func (l1l2 l1ToL2DB) StoreL1ToL2Transactions(l1L2List []L1ToL2) error {
 	result := l1l2.gorm.CreateInBatches(&l1L2List, len(l1L2List))
+	return result.Error
+}
+
+func (l1l2 l1ToL2DB) UpdateL1ToL2MsgHashByL1TxHash(l1L2Stu L1ToL2) error {
+	result := l1l2.gorm.Model(&l1L2Stu).Where(&L1ToL2{L1TransactionHash: l1L2Stu.L1TransactionHash})
+	result = result.UpdateColumn("message_hash", l1L2Stu.MessageHash.String())
+	return result.Error
+}
+func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(l1L2Stu L1ToL2) error {
+	result := l1l2.gorm.Model(&l1L2Stu).Where(&L1ToL2{MessageHash: l1L2Stu.MessageHash})
+	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash.String()).UpdateColumn("status", 1)
 	return result.Error
 }
 
