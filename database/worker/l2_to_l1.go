@@ -243,7 +243,7 @@ func (l2l1 l2ToL1DB) UpdateTimeLeft() error {
 
 func (l2l1 l2ToL1DB) GetBlockNumberFromHash(blockHash common.Hash) (*big.Int, error) {
 	var l2BlockNumber uint64
-	result := l2l1.gorm.Table("basel2_block_headers").Where("hash = ?", blockHash.String()).Select("number").Take(&l2BlockNumber)
+	result := l2l1.gorm.Table("l2_block_headers").Where("hash = ?", blockHash.String()).Select("number").Take(&l2BlockNumber)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
