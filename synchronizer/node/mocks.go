@@ -36,7 +36,7 @@ func (m *MockEthClient) BlockHeaderByHash(hash common.Hash) (*types.Header, erro
 	return args.Get(0).(*types.Header), args.Error(1)
 }
 
-func (m *MockEthClient) BlockHeadersByRange(from, to *big.Int) ([]types.Header, error) {
+func (m *MockEthClient) BlockHeadersByRange(from, to *big.Int, chainId uint) ([]types.Header, error) {
 	args := m.Called(from, to)
 	return args.Get(0).([]types.Header), args.Error(1)
 }

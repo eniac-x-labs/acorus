@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -36,7 +37,7 @@ type EthClient interface {
 	LatestSafeBlockHeader() (*types.Header, error)
 	LatestFinalizedBlockHeader() (*types.Header, error)
 	BlockHeaderByHash(common.Hash) (*types.Header, error)
-	BlockHeadersByRange(*big.Int, *big.Int) ([]types.Header, error)
+	BlockHeadersByRange(*big.Int, *big.Int, uint) ([]types.Header, error)
 
 	TxByHash(common.Hash) (*types.Transaction, error)
 
@@ -147,7 +148,7 @@ func (c *clnt) BlockHeaderByNumber(number *big.Int) (*types.Header, error) {
 // BlockHeadersByRange will retrieve block headers within the specified range -- inclusive. No restrictions
 // are placed on the range such as blocks in the "latest", "safe" or "finalized" states. If the specified
 // range is too large, `endHeight > latest`, the resulting list is truncated to the available headers
-func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int) ([]types.Header, error) {
+func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint) ([]types.Header, error) {
 	// avoid the batch call if there's no range
 	if startHeight.Cmp(endHeight) == 0 {
 		header, err := c.BlockHeaderByNumber(startHeight)
@@ -161,41 +162,79 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int) ([]types.Hea
 	headers := make([]types.Header, count)
 	batchElems := make([]rpc.BatchElem, count)
 
-	for i := uint64(0); i < count; i++ {
-		height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
-		batchElems[i] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(height), false}, Result: &headers[i]}
-	}
+	if chainId != 3 {
+		for i := uint64(0); i < count; i++ {
+			height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
+			batchElems[i] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(height), false}, Result: &headers[i]}
+		}
 
-	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
-	defer cancel()
-	err := c.rpc.BatchCallContext(ctxwt, batchElems)
-	if err != nil {
-		return nil, err
-	}
+		ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+		defer cancel()
+		err := c.rpc.BatchCallContext(ctxwt, batchElems)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		groupSize := 100
+		var wg sync.WaitGroup
+		numGroups := (int(count)-1)/groupSize + 1
+		wg.Add(numGroups)
 
+		for i := 0; i < int(count); i += groupSize {
+			start := i
+			end := i + groupSize - 1
+			if end > int(count) {
+				end = int(count) - 1
+			}
+			go func(start, end int) {
+				defer wg.Done()
+				for j := start; j <= end; j++ {
+					ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+					defer cancel()
+					height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(uint64(j)))
+					batchElems[j] = rpc.BatchElem{
+						Method: "eth_getBlockByNumber",
+						Result: new(types.Header),
+						Error:  nil,
+					}
+					header := new(types.Header)
+					batchElems[j].Error = c.rpc.CallContext(ctxwt, header, batchElems[j].Method, toBlockNumArg(height), false)
+					batchElems[j].Result = header
+				}
+			}(start, end)
+		}
+
+		wg.Wait()
+	}
 	// Parse the headers.
 	//  - Ensure integrity that they build on top of each other
 	//  - Truncate out headers that do not exist (endHeight > "latest")
 	size := 0
 	for i, batchElem := range batchElems {
-		if batchElem.Error != nil {
-			if size == 0 {
-				return nil, batchElem.Error
-			} else {
-				break // try return whatever headers are available
-			}
-		} else if batchElem.Result == nil {
-			break
+		//if batchElem.Error != nil {
+		//	if size == 0 {
+		//		return nil, batchElem.Error
+		//	} else {
+		//		break // try return whatever headers are available
+		//	}
+		//} else if batchElem.Result == nil {
+		//	break
+		//}
+		header, ok := batchElem.Result.(*types.Header)
+		if !ok {
+			return nil, fmt.Errorf("unable to transform rpc response %v into types.Header", batchElem.Result)
 		}
 
-		if i > 0 && headers[i].ParentHash != headers[i-1].Hash() {
-			return nil, fmt.Errorf("queried header %s does not follow parent %s", headers[i].Hash(), headers[i-1].Hash())
-		}
+		headers[i] = *header
+
+		//if i > 0 && headers[i].ParentHash != headers[i-1].Hash() {
+		//	return nil, fmt.Errorf("queried header %s does not follow parent %s", headers[i].Hash(), headers[i-1].Hash())
+		//}
 
 		size = size + 1
 	}
-
 	headers = headers[:size]
+
 	return headers, nil
 }
 
@@ -253,7 +292,7 @@ func (c *clnt) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
 	batchElems[0] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(query.ToBlock), false}, Result: &header}
 	batchElems[1] = rpc.BatchElem{Method: "eth_getLogs", Args: []interface{}{arg}, Result: &logs}
 
-	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*10)
 	defer cancel()
 	err = c.rpc.BatchCallContext(ctxwt, batchElems)
 	if err != nil {

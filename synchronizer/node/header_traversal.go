@@ -17,6 +17,7 @@ var (
 
 type HeaderTraversal struct {
 	ethClient EthClient
+	chainId   uint
 
 	latestHeader        *types.Header
 	lastTraversedHeader *types.Header
@@ -26,11 +27,12 @@ type HeaderTraversal struct {
 
 // NewHeaderTraversal instantiates a new instance of HeaderTraversal against the supplied rpc client.
 // The HeaderTraversal will start fetching blocks starting from the supplied header unless nil, indicating genesis.
-func NewHeaderTraversal(ethClient EthClient, fromHeader *types.Header, confDepth *big.Int) *HeaderTraversal {
+func NewHeaderTraversal(ethClient EthClient, fromHeader *types.Header, confDepth *big.Int, chainId uint) *HeaderTraversal {
 	return &HeaderTraversal{
 		ethClient:              ethClient,
 		lastTraversedHeader:    fromHeader,
 		blockConfirmationDepth: confDepth,
+		chainId:                chainId,
 	}
 }
 
@@ -82,7 +84,7 @@ func (f *HeaderTraversal) NextHeaders(maxSize uint64) ([]types.Header, error) {
 
 	// endHeight = (nextHeight - endHeight) <= maxSize
 	endHeight = bigint.Clamp(nextHeight, endHeight, maxSize)
-	headers, err := f.ethClient.BlockHeadersByRange(nextHeight, endHeight)
+	headers, err := f.ethClient.BlockHeadersByRange(nextHeight, endHeight, f.chainId)
 	if err != nil {
 		return nil, fmt.Errorf("error querying blocks by range: %w", err)
 	}
@@ -93,6 +95,9 @@ func (f *HeaderTraversal) NextHeaders(maxSize uint64) ([]types.Header, error) {
 	} else if f.lastTraversedHeader != nil && headers[0].ParentHash != f.lastTraversedHeader.Hash() {
 		// The indexer's state is in an irrecoverable state relative to the provider. This
 		// should never happen since the indexer is dealing with only finalized blocks.
+		fmt.Println(f.lastTraversedHeader.Number)
+		fmt.Println(headers[0].Number)
+		fmt.Println(len(headers))
 		return nil, ErrHeaderTraversalAndProviderMismatchedState
 	}
 

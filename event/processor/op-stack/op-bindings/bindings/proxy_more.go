@@ -5,7 +5,7 @@ package bindings
 
 import (
 	"encoding/json"
-	"github.com/mantlenetworkio/lithosphere/event/op-bindings/solc"
+	"github.com/cornerstone-labs/acorus/event/processor/op-stack/op-bindings/solc"
 )
 
 const ProxyStorageLayoutJSON = "{\"storage\":null,\"types\":{}}"

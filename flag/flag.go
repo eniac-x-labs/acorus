@@ -19,6 +19,12 @@ var (
 		Usage:   "path to migrations folder",
 		EnvVars: prefixEnvVars("MIGRATIONS_DIR"),
 	}
+	ChainIdFlag = &cli.IntFlag{
+		Name:     "chain-id",
+		Usage:    "The id of the chain",
+		EnvVars:  prefixEnvVars("CHAIN_ID"),
+		Required: true,
+	}
 	L1EthRpcFlag = &cli.StringFlag{
 		Name:     "l1-eth-rpc",
 		Usage:    "HTTP provider URL for L1",
@@ -240,6 +246,7 @@ var (
 
 var requiredFlags = []cli.Flag{
 	MigrationsFlag,
+	ChainIdFlag,
 	L1EthRpcFlag,
 	L2EthRpcFlag,
 	HttpPortFlag,

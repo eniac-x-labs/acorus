@@ -21,6 +21,7 @@ type Config struct {
 	HeaderBufferSize  uint
 	StartHeight       *big.Int
 	ConfirmationDepth *big.Int
+	ChainId           uint
 }
 
 type Synchronizer struct {

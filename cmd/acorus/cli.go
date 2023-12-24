@@ -18,7 +18,7 @@ import (
 )
 
 func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "lithosphere")
+	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "acorus")
 	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running indexer...")
 
@@ -76,7 +76,7 @@ func runMigrations(ctx *cli.Context) error {
 }
 
 func newCli(GitCommit string, GitDate string) *cli.App {
-	flags := oplog.CLIFlags("LITHOSPHERE")
+	flags := oplog.CLIFlags("ACORUS")
 	flags = append(flags, flag2.Flags...)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),

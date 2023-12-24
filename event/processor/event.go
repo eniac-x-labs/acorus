@@ -3,18 +3,18 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/cornerstone-labs/acorus/synchronizer"
 
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/event/processor/common"
 	op_stack "github.com/cornerstone-labs/acorus/event/processor/op-stack"
+	"github.com/cornerstone-labs/acorus/event/processor/polygon"
+	"github.com/cornerstone-labs/acorus/event/processor/scroll"
+	"github.com/cornerstone-labs/acorus/synchronizer"
 )
 
 type EventProcessor struct {
@@ -29,6 +29,7 @@ func NewEventProcessor(
 	l1Sync *synchronizer.L1Sync,
 	OpSync *synchronizer.L2Sync,
 	chainConfig config.ChainConfig,
+	rpcsConfig config.RPCsConfig,
 	shutdown context.CancelCauseFunc,
 ) (*EventProcessor, error) {
 	var processor *common.IProcessor
@@ -37,6 +38,8 @@ func NewEventProcessor(
 		processor, err = op_stack.NewBridgeProcessor(log, db, l1Sync, OpSync, chainConfig, shutdown)
 	} else if chainConfig.ChainId == common.ScrollChainId {
 		processor, err = scroll.NewBridgeProcessor(log, db, l1Sync, OpSync, chainConfig, shutdown)
+	} else if chainConfig.ChainId == common.PolygonChainId {
+		processor, err = polygon.NewBridgeProcessor(log, db, l1Sync, OpSync, chainConfig, rpcsConfig, shutdown)
 	}
 
 	if err != nil {
