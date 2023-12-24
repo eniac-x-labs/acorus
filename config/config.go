@@ -93,6 +93,7 @@ func NewConfig(ctx *cli.Context) Config {
 	return Config{
 		Migrations: ctx.String(flag.MigrationsFlag.Name),
 		Chain: ChainConfig{
+			ChainId:                 ctx.Uint(flag.ChainIdFlag.Name),
 			L1StartingHeight:        ctx.Uint(flag.L1StartingHeightFlag.Name),
 			L2StartingHeight:        ctx.Uint(flag.L2StartingHeightFlag.Name),
 			L1BedrockStartingHeight: ctx.Uint(flag.L1BedrockStartingHeightFlag.Name),

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processor"
 	"math/big"
 	"net"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/event/processor"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
@@ -85,7 +85,7 @@ func (as *Acorus) Stop(ctx context.Context) error {
 
 	if as.apiServer != nil {
 		if err := as.apiServer.Close(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to close lithosphere API server: %w", err))
+			result = errors.Join(result, fmt.Errorf("failed to close acorus API server: %w", err))
 		}
 	}
 
@@ -103,7 +103,7 @@ func (as *Acorus) Stop(ctx context.Context) error {
 
 	as.stopped.Store(true)
 
-	as.log.Info("lithosphere stopped")
+	as.log.Info("acorus stopped")
 
 	return result
 }
@@ -119,13 +119,13 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initDB(ctx, cfg.MasterDB); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
-	if err := as.initL1Syncer(cfg.Chain); err != nil {
+	if err := as.initL1Syncer(cfg.Chain, cfg.Chain.ChainId); err != nil {
 		return fmt.Errorf("failed to init L1 Sync: %w", err)
 	}
-	if err := as.initL2ETL(cfg.Chain); err != nil {
+	if err := as.initL2ETL(cfg.Chain, cfg.Chain.ChainId); err != nil {
 		return fmt.Errorf("failed to init L2 Sync: %w", err)
 	}
-	if err := as.initBridgeProcessor(cfg.Chain); err != nil {
+	if err := as.initBridgeProcessor(cfg.Chain, cfg.RPCs); err != nil {
 		return fmt.Errorf("failed to init Bridge Processor: %w", err)
 	}
 	if err := as.initBusinessProcessor(*cfg); err != nil {
@@ -164,14 +164,15 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.DBConfig) error {
 	return nil
 }
 
-func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig) error {
+func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig, chainId uint) error {
 	l1Cfg := synchronizer.Config{
 		LoopIntervalMsec:  chainConfig.L1PollingInterval,
 		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
 		ConfirmationDepth: big.NewInt(int64(chainConfig.L1ConfirmationDepth)),
 		StartHeight:       big.NewInt(int64(chainConfig.L1StartingHeight)),
+		ChainId:           chainId,
 	}
-	l1Sync, err := synchronizer.NewL1Sync(l1Cfg, as.log, as.DB, as.l1Client, chainConfig, as.shutdown)
+	l1Sync, err := synchronizer.NewL1Sync(l1Cfg, as.log, as.DB, as.l1Client, chainConfig, as.shutdown, chainId)
 	if err != nil {
 		return err
 	}
@@ -179,14 +180,14 @@ func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig) error {
 	return nil
 }
 
-func (as *Acorus) initL2ETL(chainConfig config.ChainConfig) error {
+func (as *Acorus) initL2ETL(chainConfig config.ChainConfig, chainId uint) error {
 	l2Cfg := synchronizer.Config{
 		LoopIntervalMsec:  chainConfig.L2PollingInterval,
 		HeaderBufferSize:  chainConfig.L2HeaderBufferSize,
 		ConfirmationDepth: big.NewInt(int64(chainConfig.L2ConfirmationDepth)),
 		StartHeight:       big.NewInt(int64(chainConfig.L2StartingHeight)),
 	}
-	l2Sync, err := synchronizer.NewL2Sync(l2Cfg, as.log, as.DB, as.l2Client, chainConfig, as.shutdown)
+	l2Sync, err := synchronizer.NewL2Sync(l2Cfg, as.log, as.DB, as.l2Client, chainConfig, as.shutdown, chainId)
 	if err != nil {
 		return err
 	}
@@ -194,8 +195,8 @@ func (as *Acorus) initL2ETL(chainConfig config.ChainConfig) error {
 	return nil
 }
 
-func (as *Acorus) initBridgeProcessor(chainConfig config.ChainConfig) error {
-	processor, err := processor.NewEventProcessor(as.log, as.DB, as.L1Sync, as.L2Sync, chainConfig, as.shutdown)
+func (as *Acorus) initBridgeProcessor(chainConfig config.ChainConfig, rpcsConfig config.RPCsConfig) error {
+	processor, err := processor.NewEventProcessor(as.log, as.DB, as.L1Sync, as.L2Sync, chainConfig, rpcsConfig, as.shutdown)
 	if err != nil {
 		return err
 	}

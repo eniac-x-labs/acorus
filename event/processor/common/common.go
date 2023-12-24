@@ -9,12 +9,14 @@ import (
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
+	"github.com/cornerstone-labs/acorus/event/processor/polygon/abi"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 )
 
 const (
-	OpChainId     = 1
-	ScrollChainId = 2
+	OpChainId      = 1
+	ScrollChainId  = 2
+	PolygonChainId = 3
 )
 
 type IProcessor struct {
@@ -31,6 +33,8 @@ type IProcessor struct {
 	LastRollupL1Header    *common2.L1BlockHeader
 	LastFinalizedL1Header *common2.L1BlockHeader
 	LastFinalizedL2Header *common2.L2BlockHeader
+	L1PolygonBridge       *abi.Polygonzkevmbridge
+	L2PolygonBridge       *abi.Polygonzkevmbridge
 }
 
 func (i *IProcessor) Start() error {

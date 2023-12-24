@@ -5,7 +5,7 @@ package bindings
 
 import (
 	"encoding/json"
-	"github.com/mantlenetworkio/lithosphere/event/op-bindings/solc"
+	"github.com/cornerstone-labs/acorus/event/processor/op-stack/op-bindings/solc"
 )
 
 const L2ERC721BridgeStorageLayoutJSON = "{\"storage\":[{\"astId\":1000,\"contract\":\"contracts/L2/L2ERC721Bridge.sol:L2ERC721Bridge\",\"label\":\"__gap\",\"offset\":0,\"slot\":\"0\",\"type\":\"t_array(t_uint256)1001_storage\"}],\"types\":{\"t_array(t_uint256)1001_storage\":{\"encoding\":\"inplace\",\"label\":\"uint256[49]\",\"numberOfBytes\":\"1568\"},\"t_uint256\":{\"encoding\":\"inplace\",\"label\":\"uint256\",\"numberOfBytes\":\"32\"}}}"

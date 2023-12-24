@@ -31,7 +31,7 @@ type L2Sync struct {
 	listeners      []chan interface{}
 }
 
-func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, contracts config.ChainConfig, shutdown context.CancelCauseFunc) (*L2Sync, error) {
+func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClient, contracts config.ChainConfig, shutdown context.CancelCauseFunc, chainId uint) (*L2Sync, error) {
 	log = log.New("syncer", "l2")
 
 	l2Contracts := []common.Address{}
@@ -61,7 +61,7 @@ func NewL2Sync(cfg Config, log log.Logger, db *database.DB, client node.EthClien
 		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Millisecond,
 		headerBufferSize: uint64(cfg.HeaderBufferSize),
 		log:              log,
-		headerTraversal:  node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth),
+		headerTraversal:  node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth, chainId),
 		contracts:        l2Contracts,
 		syncerBatches:    syncerBatches,
 		EthClient:        client,

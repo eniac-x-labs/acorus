@@ -26,7 +26,7 @@ import (
 const ethereumAddressRegex = `^0x[a-fA-F0-9]{40}$`
 
 const (
-	MetricsNamespace = "lithosphere_api"
+	MetricsNamespace = "acorus_api"
 	idParam          = "{id}"
 	indexParam       = "{index}"
 

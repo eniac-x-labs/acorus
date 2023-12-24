@@ -39,6 +39,7 @@ type L2ToL1 struct {
 	TokenIds                string         `gorm:"column:token_ids" db:"token_ids" json:"tokenIds" form:"token_ids"`
 	AssetType               int64          `gorm:"column:asset_type" db:"asset_type" json:"assetType" form:"asset_type"`
 	TokenAmounts            string         `gorm:"column:token_amounts" db:"token_amounts" json:"tokenAmounts" form:"token_amounts"`
+	ClaimedIndex            int64          `gorm:"column:claimed_index" db:"claimed_index" json:"claimed_index"`
 }
 
 func (L2ToL1) TableName() string {
@@ -56,6 +57,7 @@ type L2ToL1DB interface {
 	MarkL2ToL1TransactionWithdrawalFinalized(l2L1List []L2ToL1) error
 	UpdateL2ToL1MsgHashByL2TxHash(l2L1 L2ToL1) error
 	UpdateL2ToL1L1TxHashByMsgHash(l2L1 L2ToL1) error
+	UpdateL2ToL1ClaimedStatus(l1L2 L2ToL1) error
 }
 
 type L2ToL1View interface {
@@ -241,7 +243,7 @@ func (l2l1 l2ToL1DB) UpdateTimeLeft() error {
 
 func (l2l1 l2ToL1DB) GetBlockNumberFromHash(blockHash common.Hash) (*big.Int, error) {
 	var l2BlockNumber uint64
-	result := l2l1.gorm.Table("l2_block_headers").Where("hash = ?", blockHash.String()).Select("number").Take(&l2BlockNumber)
+	result := l2l1.gorm.Table("basel2_block_headers").Where("hash = ?", blockHash.String()).Select("number").Take(&l2BlockNumber)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -289,4 +291,16 @@ func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId uint) (*common2.L1Bloc
 		return nil, result.Error
 	}
 	return &l1Header, nil
+}
+
+func (l2l1 l2ToL1DB) UpdateL2ToL1ClaimedStatus(l2L1 L2ToL1) error {
+
+	result := l2l1.gorm.Model(&L2ToL1{}).Where("claimed_index = ?", l2L1.ClaimedIndex).Updates(map[string]interface{}{"status": l2L1.Status, "l1_finalize_tx_hash": l2L1.L1FinalizeTxHash})
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return result.Error
+	}
+	return nil
 }
