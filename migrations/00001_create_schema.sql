@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS base_l1_to_l2 (
     l2_token_address        VARCHAR,
     asset_type              SMALLINT NOT NULL,
     eth_amount              UINT256,
-    token_amounts            VARCHAR,
+    token_amounts           VARCHAR,
     gas_limit               UINT256 NOT NULL,
     timestamp               INTEGER NOT NULL CHECK (timestamp > 0)
 );
@@ -89,7 +89,6 @@ CREATE INDEX IF NOT EXISTS base_l1_to_l2_from_address ON base_l1_to_l2(from_addr
 CREATE INDEX IF NOT EXISTS base_l1_to_l2_to_address ON base_l1_to_l2(to_address);
 CREATE INDEX IF NOT EXISTS base_l1_to_l2_message_hash ON base_l1_to_l2(message_hash);
 CREATE INDEX IF NOT EXISTS base_l1_to_l2_transaction_source_hash ON base_l1_to_l2(transaction_source_hash);
-
 
 CREATE TABLE IF NOT EXISTS base_l2_to_l1 (
     guid                         VARCHAR PRIMARY KEY,
@@ -109,7 +108,7 @@ CREATE TABLE IF NOT EXISTS base_l2_to_l1 (
     l2_token_address             VARCHAR,
     asset_type                   SMALLINT NOT NULL,
     eth_amount                   UINT256,
-        token_amounts                 VARCHAR,
+    token_amounts                 VARCHAR,
     gas_limit                    UINT256 NOT NULL,
     time_left                    UINT256 NOT NULL,
     timestamp                    INTEGER NOT NULL CHECK (timestamp > 0)
@@ -140,3 +139,35 @@ CREATE TABLE IF NOT EXISTS base_state_root (
  );
 CREATE INDEX IF NOT EXISTS base_state_root_block_hash ON base_state_root(block_hash);
 CREATE INDEX IF NOT EXISTS base_state_root_transaction_hash ON base_state_root(transaction_hash);
+
+CREATE TABLE IF NOT EXISTS base_transactions (
+   guid                      VARCHAR PRIMARY KEY,
+   block_hash                VARCHAR NOT NULL,
+   block_number              UINT256 DEFAULT 0,
+   from_address              VARCHAR NOT NULL,
+   to_address                VARCHAR,
+   gas                       UINT256 NOT NULL,
+   gas_price                 UINT256 NOT NULL,
+   hash                      VARCHAR NOT NULL,
+   input_data                VARCHAR,
+   max_fee_per_gas           UINT256 DEFAULT 0,
+   max_priority_fee_per_gas  UINT256 DEFAULT 0,
+   gas_used                  UINT256 DEFAULT 0,
+   cumulative_gas_used       UINT256 DEFAULT 0,
+   effective_gas_price       UINT256 DEFAULT 0,
+   nonce                     UINT256,
+   transaction_index         UINT256 NOT NULL,
+   tx_type                   SMALLINT NOT NULL default 0,
+   r                         VARCHAR NOT NULL,
+   s                         VARCHAR NOT NULL,
+   v                         VARCHAR NOT NULL,,
+   status                    SMALLINT NOT NULL default 0,
+   contract_address          VARCHAR,
+   amount                    UINT256 DEFAULT 0,
+   y_parity                  VARCHAR NOT NULL,,
+   timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS base_transactions_block_number ON base_transactions(block_number);
+CREATE INDEX IF NOT EXISTS base_transactions_hash ON base_transactions(hash);
+CREATE INDEX IF NOT EXISTS base_transactions_timestamp ON base_transactions(timestamp);
+
