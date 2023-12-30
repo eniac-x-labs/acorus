@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/database/create_table"
 	"math/big"
 	"net"
 	"strconv"
@@ -119,6 +120,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initDB(ctx, cfg.MasterDB); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
+	// init table
+	as.initTable(cfg)
+
 	if err := as.initL1Syncer(cfg.Chain, cfg.Chain.ChainId); err != nil {
 		return fmt.Errorf("failed to init L1 Sync: %w", err)
 	}
@@ -162,6 +166,10 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.DBConfig) error {
 	}
 	as.DB = db
 	return nil
+}
+
+func (as *Acorus) initTable(cfg *config.Config) {
+	create_table.CreateTableService.CreateInit(int64(cfg.Chain.ChainId), as.DB)
 }
 
 func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig, chainId uint) error {

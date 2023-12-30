@@ -16,59 +16,59 @@ const (
 )
 
 type Config struct {
-	Migrations        string
-	Chain             ChainConfig
-	RPCs              RPCsConfig
-	DA                DAConfig
-	MasterDB          DBConfig
-	SlaveDB           DBConfig
-	SlaveDbEnable     bool
-	ApiCacheEnable    bool
-	HTTPServer        ServerConfig
-	MetricsServer     ServerConfig
-	StartDataStoreId  uint32
-	FraudProofWindows time.Duration
+	Migrations        string        `toml:"migrations"`
+	Chain             ChainConfig   `toml:"chain"`
+	RPCs              RPCsConfig    `toml:"rpcs"`
+	DA                DAConfig      `toml:"da"`
+	MasterDB          DBConfig      `toml:"master_db"`
+	SlaveDB           DBConfig      `toml:"slave_db"`
+	SlaveDbEnable     bool          `toml:"slave_db_enable"`
+	ApiCacheEnable    bool          `toml:"api_cache_enable"`
+	HTTPServer        ServerConfig  `toml:"http_server"`
+	MetricsServer     ServerConfig  `toml:"metrics_server"`
+	StartDataStoreId  uint32        `toml:"start_data_store_id"`
+	FraudProofWindows time.Duration `toml:"fraud_proof_windows"`
 }
 
 type ChainConfig struct {
-	ChainId                 uint
-	L1StartingHeight        uint
-	L2StartingHeight        uint
-	L1BedrockStartingHeight uint
-	L2BedrockStartingHeight uint
-	L1Contracts             []string
-	L2Contracts             []string
-	L1ConfirmationDepth     uint
-	L2ConfirmationDepth     uint
-	L1PollingInterval       uint
-	L2PollingInterval       uint
-	L1HeaderBufferSize      uint
-	L2HeaderBufferSize      uint
+	ChainId                 uint     `toml:"chain_id"`
+	L1StartingHeight        uint     `toml:"l1_starting_height"`
+	L2StartingHeight        uint     `toml:"l2_starting_height"`
+	L1BedrockStartingHeight uint     `toml:"l1_bedrock_starting_height"`
+	L2BedrockStartingHeight uint     `toml:"l2_bedrock_starting_height"`
+	L1Contracts             []string `toml:"l1_contracts"`
+	L2Contracts             []string `toml:"l2_contracts"`
+	L1ConfirmationDepth     uint     `toml:"l1_confirmation_depth"`
+	L2ConfirmationDepth     uint     `toml:"l2_confirmation_depth"`
+	L1PollingInterval       uint     `toml:"l1_polling_interval"`
+	L2PollingInterval       uint     `toml:"l2_polling_interval"`
+	L1HeaderBufferSize      uint     `toml:"l1_header_buffer_size"`
+	L2HeaderBufferSize      uint     `toml:"l2_header_buffer_size"`
 }
 
 type RPCsConfig struct {
-	L1RPC string
-	L2RPC string
+	L1RPC string `toml:"l1_rpc"`
+	L2RPC string `toml:"l2_rpc"`
 }
 
 type DBConfig struct {
-	Host     string
-	Port     int
-	Name     string
-	User     string
-	Password string
+	Host     string `toml:"host"`
+	Port     int    `toml:"port"`
+	Name     string `toml:"name"`
+	User     string `toml:"user"`
+	Password string `toml:"password"`
 }
 
 type ServerConfig struct {
-	Host string
-	Port int
+	Host string `toml:"host"`
+	Port int    `toml:"port"`
 }
 
 type DAConfig struct {
-	RetrieverSocket          string
-	RetrieverTimeout         time.Duration
-	GraphProvider            string
-	DataStorePollingDuration time.Duration
+	RetrieverSocket          string        `toml:"retriever_socket"`
+	RetrieverTimeout         time.Duration `toml:"retriever_timeout"`
+	GraphProvider            string        `toml:"graph_provider"`
+	DataStorePollingDuration time.Duration `toml:"data_store_polling_duration"`
 }
 
 func LoadConfig(log log.Logger, cliCtx *cli.Context) (Config, error) {

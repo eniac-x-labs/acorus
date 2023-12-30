@@ -22,8 +22,8 @@ import (
 )
 
 type DB struct {
-	gorm *gorm.DB
-
+	gorm           *gorm.DB
+	CreateTable    worker.CreateTableDB
 	Blocks         common.BlocksDB
 	ContractEvents event.ContractEventsDB
 	StateRoots     worker.StateRootDB
@@ -66,6 +66,7 @@ func NewDB(ctx context.Context, log log.Logger, dbConfig config.DBConfig) (*DB, 
 
 	db := &DB{
 		gorm:           gorm,
+		CreateTable:    worker.NewCreateTableDB(gorm),
 		Blocks:         common.NewBlocksDB(gorm),
 		ContractEvents: event.NewContractEventsDB(gorm),
 		StateRoots:     worker.NewStateRootDB(gorm),
