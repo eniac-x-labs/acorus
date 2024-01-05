@@ -21,7 +21,7 @@ import (
 var (
 	ConfigFlag = &cli.StringFlag{
 		Name:    "config",
-		Value:   "./acorus.toml",
+		Value:   "./acorus.yaml",
 		Aliases: []string{"c"},
 		Usage:   "path to config file",
 		EnvVars: []string{"ACORUS_CONFIG"},
@@ -85,6 +85,7 @@ func runMigrations(ctx *cli.Context) error {
 		return err
 	}
 	for i := range cfg.RPCs {
+		log.Info("create chain table by chainId", "chainId", cfg.RPCs[i].ChainId)
 		create_table.CreateTableFromTemplate(strconv.Itoa(int(cfg.RPCs[i].ChainId)), db)
 	}
 	log.Info("running migrations and create table from template success")

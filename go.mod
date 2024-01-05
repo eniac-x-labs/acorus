@@ -3,14 +3,11 @@ module github.com/cornerstone-labs/acorus
 go 1.21
 
 require (
-	github.com/acmestack/gorm-plus v0.1.5
 	github.com/ethereum-optimism/optimism v1.2.1-0.20231101141359-db1ef0198049
 	github.com/ethereum/go-ethereum v1.13.1
 	github.com/go-chi/chi/v5 v5.0.10
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.4.0
 	github.com/hashicorp/golang-lru v1.0.2
-	github.com/holiman/uint256 v1.2.3
 	github.com/jackc/pgtype v1.14.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
@@ -18,6 +15,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.4.0
 	golang.org/x/term v0.13.0
+	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5
 )
@@ -43,10 +41,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20231030223232-e16eae11e492 // indirect
 	github.com/ethereum/c-kzg-4844 v0.3.1 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -55,9 +51,8 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
+	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/ipfs/go-cid v0.4.1 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect

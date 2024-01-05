@@ -17,7 +17,6 @@ import (
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/processor"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
@@ -31,7 +30,6 @@ type Acorus struct {
 	metricsServer   *httputil.HTTPServer
 	metricsRegistry *prometheus.Registry
 	Synchronizer    map[uint64]*synchronizer.Synchronizer
-	EventProcessor  *processor.EventProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
