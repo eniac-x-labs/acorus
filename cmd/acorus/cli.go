@@ -56,7 +56,7 @@ func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, erro
 		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
-	return service.NewApi(ctx.Context, log, &cfg.Server)
+	return service.NewApi(ctx.Context, log, cfg)
 }
 
 func runMigrations(ctx *cli.Context) error {

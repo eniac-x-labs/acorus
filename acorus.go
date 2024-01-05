@@ -59,7 +59,6 @@ func (as *Acorus) Start(ctx context.Context) error {
 
 func (as *Acorus) Stop(ctx context.Context) error {
 	var result error
-
 	for i := range as.chainIdList {
 		if as.Synchronizer[as.chainIdList[i]] != nil {
 			if err := as.Synchronizer[as.chainIdList[i]].Close(); err != nil {
