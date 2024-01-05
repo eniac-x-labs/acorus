@@ -1,13 +1,13 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'uint256') THEN
-CREATE DOMAIN UINT256 AS NUMERIC
-    CHECK (VALUE >= 0 AND VALUE < POWER(CAST(2 AS NUMERIC), CAST(256 AS NUMERIC)) AND SCALE(VALUE) = 0);
-ELSE
-ALTER DOMAIN UINT256 DROP CONSTRAINT uint256_check;
-ALTER DOMAIN UINT256 ADD
-    CHECK (VALUE >= 0 AND VALUE < POWER(CAST(2 AS NUMERIC), CAST(256 AS NUMERIC)) AND SCALE(VALUE) = 0);
-END IF;
+        CREATE DOMAIN UINT256 AS NUMERIC
+            CHECK (VALUE >= 0 AND VALUE < POWER(CAST(2 AS NUMERIC), CAST(256 AS NUMERIC)) AND SCALE(VALUE) = 0);
+    ELSE
+        ALTER DOMAIN UINT256 DROP CONSTRAINT uint256_check;
+        ALTER DOMAIN UINT256 ADD
+            CHECK (VALUE >= 0 AND VALUE < POWER(CAST(2 AS NUMERIC), CAST(256 AS NUMERIC)) AND SCALE(VALUE) = 0);
+    END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS template_block_headers (
@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS template_transactions (
 CREATE INDEX IF NOT EXISTS template_transactions_block_number ON template_transactions(block_number);
 CREATE INDEX IF NOT EXISTS template_transactions_hash ON template_transactions(hash);
 CREATE INDEX IF NOT EXISTS template_transactions_timestamp ON template_transactions(timestamp);
-
 
 
 CREATE TABLE IF NOT EXISTS template_l1_to_l2 (
