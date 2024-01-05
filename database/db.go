@@ -31,26 +31,24 @@ type DB struct {
 	L1ToL2         worker.L1ToL2DB
 }
 
-func NewDB(ctx context.Context, log log.Logger, dbConfig config.DBConfig) (*DB, error) {
+func NewDB(ctx context.Context, log log.Logger, dbConfig config.Database) (*DB, error) {
 	log = log.New("module", "db")
 
-	dsn := fmt.Sprintf("host=%s dbname=%s sslmode=disable", dbConfig.Host, dbConfig.Name)
-	if dbConfig.Port != 0 {
-		dsn += fmt.Sprintf(" port=%d", dbConfig.Port)
+	dsn := fmt.Sprintf("host=%s dbname=%s sslmode=disable", dbConfig.DbHost, dbConfig.DbName)
+	if dbConfig.DbPort != 0 {
+		dsn += fmt.Sprintf(" port=%d", dbConfig.DbPort)
 	}
-	if dbConfig.User != "" {
-		dsn += fmt.Sprintf(" user=%s", dbConfig.User)
+	if dbConfig.DbUser != "" {
+		dsn += fmt.Sprintf(" user=%s", dbConfig.DbUser)
 	}
-	if dbConfig.Password != "" {
-		dsn += fmt.Sprintf(" password=%s", dbConfig.Password)
+	if dbConfig.DbPassword != "" {
+		dsn += fmt.Sprintf(" password=%s", dbConfig.DbPassword)
 	}
-
 	gormConfig := gorm.Config{
 		Logger:                 utils.NewLogger(log),
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        3_000,
 	}
-
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
 	gorm, err := retry.Do[*gorm.DB](context.Background(), 10, retryStrategy, func() (*gorm.DB, error) {
 		gorm, err := gorm.Open(postgres.Open(dsn), &gormConfig)
@@ -59,11 +57,9 @@ func NewDB(ctx context.Context, log log.Logger, dbConfig config.DBConfig) (*DB, 
 		}
 		return gorm, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
-
 	db := &DB{
 		gorm:           gorm,
 		CreateTable:    worker.NewCreateTableDB(gorm),

@@ -22,11 +22,11 @@ RUN make acorus
 FROM alpine:3.18
 
 COPY --from=builder /app/acorus/acorus /usr/local/bin
-COPY --from=builder /app/acorus/acorus.toml /app/acorus/acorus.toml
+COPY --from=builder /app/acorus/acorus.yaml /app/acorus/acorus.yaml
 COPY --from=builder /app/acorus/migrations /app/acorus/migrations
 
 WORKDIR /app
 
 ENV INDEXER_MIGRATIONS_DIR="/app/acorus/migrations"
 
-CMD ["acorus", "index", "--config", "/app/acorus/acorus.toml"]
+CMD ["acorus", "index", "--config", "/app/acorus/acorus.yaml"]

@@ -3,4 +3,4 @@ docker-compose.dev.yml
 /acorus
 .idea/
 acorus.exe
-./acorus.toml
+acorus.yaml

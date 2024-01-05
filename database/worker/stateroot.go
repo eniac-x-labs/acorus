@@ -8,7 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/acmestack/gorm-plus/gplus"
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -28,33 +29,25 @@ type StateRoot struct {
 	BlockSize         uint64      `json:"blockSize"`
 }
 
-func (StateRoot) TableName() string {
-	return "state_root"
-}
-
 type StateRootDB interface {
 	StateRootView
-	StoreBatchStateRoots([]StateRoot) error
+	StoreBatchStateRoots(string, []StateRoot) error
 }
 
 type StateRootView interface {
-	StateRootList(int, int, string) (*gplus.Page[StateRoot], error)
-	StateRootByIndex(index *big.Int) (*StateRoot, error)
-	GetLatestStateRootL2BlockNumber() (uint64, error)
-	UpdateSafeStatus(safeBlockNumber *big.Int) error
-	UpdateFinalizedStatus(finalizedBlockNumber *big.Int) error
+	StateRootList(string, int, int, string) ([]StateRoot, int64)
+	GetLatestStateRootL2BlockNumber(chainId string) (uint64, error)
+	UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) error
+	UpdateFinalizedStatus(chainId string, finalizedBlockNumber *big.Int) error
 }
 
-/**
- * Implementation
- */
 type stateRootDB struct {
 	gorm *gorm.DB
 }
 
-func (s stateRootDB) StoreBatchStateRoots(roots []StateRoot) error {
+func (s stateRootDB) StoreBatchStateRoots(chainId string, roots []StateRoot) error {
 	var firstBlockSize uint64
-	result := s.gorm.Table("state_root").Where("timestamp < ?", roots[0].Timestamp).Select("l2_block_number").Take(&firstBlockSize)
+	result := s.gorm.Table(chainId+"state_root").Where("timestamp < ?", roots[0].Timestamp).Select("l2_block_number").Take(&firstBlockSize)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			roots[0].BlockSize = roots[0].L2BlockNumber.Uint64()
@@ -62,7 +55,6 @@ func (s stateRootDB) StoreBatchStateRoots(roots []StateRoot) error {
 			return result.Error
 		}
 	}
-
 	roots[0].BlockSize = new(big.Int).Sub(roots[0].L2BlockNumber, new(big.Int).SetUint64(firstBlockSize)).Uint64()
 	for i := 1; i < len(roots); i++ {
 		roots[i].BlockSize = new(big.Int).Sub(roots[i].L2BlockNumber, roots[i-1].L2BlockNumber).Uint64()
@@ -71,24 +63,29 @@ func (s stateRootDB) StoreBatchStateRoots(roots []StateRoot) error {
 	return result.Error
 }
 
-func (s stateRootDB) StateRootList(page int, pageSize int, order string) (*gplus.Page[StateRoot], error) {
-	query, _ := gplus.NewQuery[StateRoot]()
+func (s stateRootDB) StateRootList(chainId string, page int, pageSize int, order string) ([]StateRoot, int64) {
+	var totalRecord int64
+	var stateRoots []StateRoot
+	err := s.gorm.Table(chainId + "state_root").Select("output_index").Count(&totalRecord).Error
+	if err != nil {
+		log.Error("get state root count fail")
+	}
+	queryStateRoot := s.gorm.Table("state_root").Offset((page - 1) * pageSize).Limit(pageSize)
 	if strings.ToLower(order) == "asc" {
-		query.OrderByAsc("timestamp")
+		queryStateRoot.Order("timestamp asc")
 	} else {
-		query.OrderByDesc("timestamp")
+		queryStateRoot.Order("timestamp desc")
 	}
-	dbPage := gplus.NewPage[StateRoot](page, pageSize)
-	rst, rstDB := gplus.SelectPage(dbPage, query)
-	if rstDB.Error != nil {
-		return nil, rstDB.Error
+	qErr := queryStateRoot.Find(&stateRoots).Error
+	if qErr != nil {
+		log.Error("get state root list fail", "err", err)
 	}
-	return rst, nil
+	return stateRoots, totalRecord
 }
 
-func (s stateRootDB) GetLatestStateRootL2BlockNumber() (uint64, error) {
+func (s stateRootDB) GetLatestStateRootL2BlockNumber(chainId string) (uint64, error) {
 	var l2BlockNumber uint64
-	err := s.gorm.Table("state_root").Select("l2_block_number").Order("timestamp DESC").Limit(1).Find(&l2BlockNumber).Error
+	err := s.gorm.Table(chainId + "state_root").Select("l2_block_number").Order("timestamp DESC").Limit(1).Find(&l2BlockNumber).Error
 	if err != nil {
 		return 0, err
 	}
@@ -96,36 +93,22 @@ func (s stateRootDB) GetLatestStateRootL2BlockNumber() (uint64, error) {
 
 }
 
-func (s stateRootDB) UpdateSafeStatus(safeBlockNumber *big.Int) error {
-	var stateRoot StateRoot
-	err := s.gorm.Model(stateRoot).Where("l1_block_number < ? AND status = ?", safeBlockNumber.Uint64(), 0).Updates(map[string]interface{}{"status": 1}).Error
+func (s stateRootDB) UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) error {
+	err := s.gorm.Table(chainId+"state_root").Where("l1_block_number < ? AND status = ?", safeBlockNumber.Uint64(), 0).Updates(map[string]interface{}{"status": 1}).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s stateRootDB) UpdateFinalizedStatus(finalizedBlockNumber *big.Int) error {
-	var stateRoot StateRoot
-	err := s.gorm.Model(stateRoot).Where("l1_block_number < ?", finalizedBlockNumber.Uint64()).Updates(map[string]interface{}{"status": 2}).Error
+func (s stateRootDB) UpdateFinalizedStatus(chainId string, finalizedBlockNumber *big.Int) error {
+	err := s.gorm.Table(chainId+"state_root").Where("l1_block_number < ?", finalizedBlockNumber.Uint64()).Updates(map[string]interface{}{"status": 2}).Error
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func (s stateRootDB) StateRootByIndex(index *big.Int) (*StateRoot, error) {
-	query, sr := gplus.NewQuery[StateRoot]()
-	query.Eq(&sr.OutputIndex, index)
-	stateRoot, resultDb := gplus.SelectOne(query)
-	if resultDb.Error != nil {
-		return nil, resultDb.Error
-	}
-	return stateRoot, nil
-
 }
 
 func NewStateRootDB(db *gorm.DB) StateRootDB {
-	gplus.Init(db)
 	return &stateRootDB{gorm: db}
 }

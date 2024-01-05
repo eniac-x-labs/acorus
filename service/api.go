@@ -23,27 +23,15 @@ import (
 	"github.com/cornerstone-labs/acorus/service/service"
 )
 
-const ethereumAddressRegex = `^0x[a-fA-F0-9]{40}$`
-
 const (
-	MetricsNamespace = "acorus_api"
-	idParam          = "{id}"
-	indexParam       = "{index}"
-
-	HealthPath           = "/healthz"
-	MetricsPath          = "/api/metrics"
-	DepositsV1Path       = "/api/v1/deposits"
-	WithdrawalsV1Path    = "/api/v1/withdrawals"
-	DataStoreListPath    = "/api/v1/datastore/list"
-	DataStoreByIDPath    = "/api/v1/datastore/id/"
-	DataStoreTxByIDPath  = "/api/v1/datastore/transaction/id/"
-	StateRootListPath    = "/api/v1/stateroot/list"
-	StateRootByIndexPath = "/api/v1/stateroot/index/"
+	HealthPath        = "/healthz"
+	DepositsV1Path    = "/api/v1/deposits"
+	WithdrawalsV1Path = "/api/v1/withdrawals"
 )
 
 type APIConfig struct {
-	HTTPServer    config.ServerConfig
-	MetricsServer config.ServerConfig
+	HTTPServer    config.Server
+	MetricsServer config.Server
 }
 
 type API struct {
@@ -68,27 +56,27 @@ func (a *API) initFromConfig(ctx context.Context, cfg *config.Config, log log.Lo
 	if err := a.initDB(ctx, cfg, log); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
-	if err := a.startMetricsServer(cfg.MetricsServer); err != nil {
+	if err := a.startMetricsServer(cfg.Metrics); err != nil {
 		return fmt.Errorf("failed to start metrics server: %w", err)
 	}
-	a.initRouter(cfg.HTTPServer, cfg.ApiCacheEnable)
-	if err := a.startServer(cfg.HTTPServer); err != nil {
+	a.initRouter(cfg)
+	if err := a.startServer(cfg.Server); err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
 	return nil
 }
 
-func (a *API) initRouter(conf config.ServerConfig, enableApiCache bool) {
+func (a *API) initRouter(conf *config.Config) {
 	v := new(service.Validator)
 
 	var lruCache = new(cache.LruCache)
-	if enableApiCache {
+	if conf.EnableApiCache {
 		lruCache = cache.NewLruCache()
 	}
 
-	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1, a.db.Blocks, a.db.StateRoots, a.log)
+	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1, a.log)
 	apiRouter := chi.NewRouter()
-	h := routes.NewRoutes(a.log, apiRouter, svc, enableApiCache, lruCache)
+	h := routes.NewRoutes(a.log, apiRouter, svc, conf.EnableApiCache, lruCache)
 
 	apiRouter.Use(middleware.Timeout(time.Second * 12))
 	apiRouter.Use(middleware.Recoverer)
@@ -105,13 +93,13 @@ func (a *API) initDB(ctx context.Context, cfg *config.Config, log log.Logger) er
 	var initDb *database.DB
 	var err error
 	if !cfg.SlaveDbEnable {
-		initDb, err = database.NewDB(ctx, log, cfg.MasterDB)
+		initDb, err = database.NewDB(ctx, log, cfg.MasterDb)
 		if err != nil {
 			log.Error("failed to connect to master database", "err", err)
 			return err
 		}
 	} else {
-		initDb, err = database.NewDB(ctx, log, cfg.SlaveDB)
+		initDb, err = database.NewDB(ctx, log, cfg.SlaveDb)
 		if err != nil {
 			log.Error("failed to connect to slave database", "err", err)
 			return err
@@ -147,7 +135,7 @@ func (a *API) Stop(ctx context.Context) error {
 	return result
 }
 
-func (a *API) startServer(serverConfig config.ServerConfig) error {
+func (a *API) startServer(serverConfig config.Server) error {
 	a.log.Debug("API server listening...", "port", serverConfig.Port)
 	addr := net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
 	srv, err := httputil.StartHTTPServer(addr, a.router)
@@ -159,7 +147,7 @@ func (a *API) startServer(serverConfig config.ServerConfig) error {
 	return nil
 }
 
-func (a *API) startMetricsServer(metricsConfig config.ServerConfig) error {
+func (a *API) startMetricsServer(metricsConfig config.Server) error {
 	return nil
 }
 

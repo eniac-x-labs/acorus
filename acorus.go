@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/database/create_table"
 	"math/big"
 	"net"
 	"strconv"
@@ -27,16 +26,15 @@ import (
 type Acorus struct {
 	log             log.Logger
 	DB              *database.DB
-	l1Client        node.EthClient
-	l2Client        node.EthClient
+	ethClient       map[uint64]node.EthClient
 	apiServer       *httputil.HTTPServer
 	metricsServer   *httputil.HTTPServer
 	metricsRegistry *prometheus.Registry
-	L1Sync          *synchronizer.L1Sync
-	L2Sync          *synchronizer.L2Sync
+	Synchronizer    map[uint64]*synchronizer.Synchronizer
 	EventProcessor  *processor.EventProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
+	chainIdList     []uint64
 }
 
 func NewAcorus(ctx context.Context, log log.Logger, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
@@ -51,37 +49,26 @@ func NewAcorus(ctx context.Context, log log.Logger, cfg *config.Config, shutdown
 }
 
 func (as *Acorus) Start(ctx context.Context) error {
-	if err := as.L1Sync.Start(); err != nil {
-		return fmt.Errorf("failed to start L1 Sync: %w", err)
-	}
-	if err := as.L2Sync.Start(); err != nil {
-		return fmt.Errorf("failed to start L2 Sync: %w", err)
-	}
-	if err := as.EventProcessor.Start(); err != nil {
-		return fmt.Errorf("failed to start EventProcessor: %w", err)
+	for i := range as.chainIdList {
+		if err := as.Synchronizer[as.chainIdList[i]].Start(); err != nil {
+			return fmt.Errorf("failed to start L1 Sync: %w", err)
+		}
 	}
 	return nil
 }
 
 func (as *Acorus) Stop(ctx context.Context) error {
 	var result error
-	if as.L1Sync != nil {
-		if err := as.L1Sync.Close(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to close L1 Sync: %w", err))
-		}
-	}
 
-	if as.L2Sync != nil {
-		if err := as.L2Sync.Close(); err != nil {
-			result = errors.Join(result, fmt.Errorf("failed to close L2 Sync: %w", err))
+	for i := range as.chainIdList {
+		if as.Synchronizer[as.chainIdList[i]] != nil {
+			if err := as.Synchronizer[as.chainIdList[i]].Close(); err != nil {
+				result = errors.Join(result, fmt.Errorf("failed to close L2 Synchronizer: %w", err))
+			}
 		}
-	}
-
-	if as.l1Client != nil {
-		as.l1Client.Close()
-	}
-	if as.l2Client != nil {
-		as.l2Client.Close()
+		if as.ethClient[as.chainIdList[i]] != nil {
+			as.ethClient[as.chainIdList[i]].Close()
+		}
 	}
 
 	if as.apiServer != nil {
@@ -114,52 +101,33 @@ func (as *Acorus) Stopped() bool {
 }
 
 func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error {
-	if err := as.initRPCClients(ctx, cfg.RPCs); err != nil {
+	if err := as.initRPCClients(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to start RPC clients: %w", err)
 	}
-	if err := as.initDB(ctx, cfg.MasterDB); err != nil {
+	if err := as.initDB(ctx, cfg.MasterDb); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
-	// init table
-	as.initTable(cfg)
-
-	if err := as.initL1Syncer(cfg.Chain, cfg.Chain.ChainId); err != nil {
+	if err := as.initSynchronizer(cfg); err != nil {
 		return fmt.Errorf("failed to init L1 Sync: %w", err)
 	}
-	if err := as.initL2ETL(cfg.Chain, cfg.Chain.ChainId); err != nil {
-		return fmt.Errorf("failed to init L2 Sync: %w", err)
-	}
-	if err := as.initBridgeProcessor(cfg.Chain, cfg.RPCs); err != nil {
-		return fmt.Errorf("failed to init Bridge Processor: %w", err)
-	}
-	if err := as.initBusinessProcessor(*cfg); err != nil {
-		return fmt.Errorf("failed to init Business Processor: %w", err)
-	}
-	if err := as.startHttpServer(ctx, cfg.HTTPServer); err != nil {
-		return fmt.Errorf("failed to start HTTP server: %w", err)
-	}
-	if err := as.startMetricsServer(ctx, cfg.MetricsServer); err != nil {
-		return fmt.Errorf("failed to start Metrics server: %w", err)
+
+	return nil
+}
+
+func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error {
+	for i := range conf.RPCs {
+		rpc := conf.RPCs[i]
+		ethClient, err := node.DialEthClient(ctx, rpc.RpcUrl)
+		if err != nil {
+			return fmt.Errorf("failed to dial L1 client: %w", err)
+		}
+		as.ethClient[rpc.ChainId] = ethClient
+		as.chainIdList = append(as.chainIdList, rpc.ChainId)
 	}
 	return nil
 }
 
-func (as *Acorus) initRPCClients(ctx context.Context, rpcsConfig config.RPCsConfig) error {
-	l1EthClient, err := node.DialEthClient(ctx, rpcsConfig.L1RPC)
-	if err != nil {
-		return fmt.Errorf("failed to dial L1 client: %w", err)
-	}
-	as.l1Client = l1EthClient
-
-	l2EthClient, err := node.DialEthClient(ctx, rpcsConfig.L2RPC)
-	if err != nil {
-		return fmt.Errorf("failed to dial L2 client: %w", err)
-	}
-	as.l2Client = l2EthClient
-	return nil
-}
-
-func (as *Acorus) initDB(ctx context.Context, cfg config.DBConfig) error {
+func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 	db, err := database.NewDB(ctx, as.log, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
@@ -168,47 +136,30 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.DBConfig) error {
 	return nil
 }
 
-func (as *Acorus) initTable(cfg *config.Config) {
-	create_table.CreateTableService.CreateInit(int64(cfg.Chain.ChainId), as.DB)
-}
-
-func (as *Acorus) initL1Syncer(chainConfig config.ChainConfig, chainId uint) error {
-	l1Cfg := synchronizer.Config{
-		LoopIntervalMsec:  chainConfig.L1PollingInterval,
-		HeaderBufferSize:  chainConfig.L1HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(chainConfig.L1ConfirmationDepth)),
-		StartHeight:       big.NewInt(int64(chainConfig.L1StartingHeight)),
-		ChainId:           chainId,
+func (as *Acorus) initSynchronizer(config *config.Config) error {
+	for i := range config.RPCs {
+		rpcItem := config.RPCs[i]
+		cfg := synchronizer.Config{
+			LoopIntervalMsec:  5,
+			HeaderBufferSize:  500,
+			ConfirmationDepth: big.NewInt(int64(1)),
+			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
+			ChainId:           uint(rpcItem.ChainId),
+		}
+		ethClient, err := node.DialEthClient(context.Background(), rpcItem.RpcUrl)
+		if err != nil {
+			return fmt.Errorf("failed to dial L1 client: %w", err)
+		}
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.log, as.DB, ethClient, as.shutdown)
+		if err != nil {
+			return err
+		}
+		as.Synchronizer[rpcItem.ChainId] = synchronizerTemp
 	}
-	l1Sync, err := synchronizer.NewL1Sync(l1Cfg, as.log, as.DB, as.l1Client, chainConfig, as.shutdown, chainId)
-	if err != nil {
-		return err
-	}
-	as.L1Sync = l1Sync
 	return nil
 }
 
-func (as *Acorus) initL2ETL(chainConfig config.ChainConfig, chainId uint) error {
-	l2Cfg := synchronizer.Config{
-		LoopIntervalMsec:  chainConfig.L2PollingInterval,
-		HeaderBufferSize:  chainConfig.L2HeaderBufferSize,
-		ConfirmationDepth: big.NewInt(int64(chainConfig.L2ConfirmationDepth)),
-		StartHeight:       big.NewInt(int64(chainConfig.L2StartingHeight)),
-	}
-	l2Sync, err := synchronizer.NewL2Sync(l2Cfg, as.log, as.DB, as.l2Client, chainConfig, as.shutdown, chainId)
-	if err != nil {
-		return err
-	}
-	as.L2Sync = l2Sync
-	return nil
-}
-
-func (as *Acorus) initBridgeProcessor(chainConfig config.ChainConfig, rpcsConfig config.RPCsConfig) error {
-	processor, err := processor.NewEventProcessor(as.log, as.DB, as.L1Sync, as.L2Sync, chainConfig, rpcsConfig, as.shutdown)
-	if err != nil {
-		return err
-	}
-	as.EventProcessor = processor
+func (as *Acorus) initBridgeProcessor(config config.Config) error {
 	return nil
 }
 
@@ -216,7 +167,7 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 	return nil
 }
 
-func (as *Acorus) startHttpServer(ctx context.Context, cfg config.ServerConfig) error {
+func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error {
 	as.log.Debug("starting http server...", "port", cfg.Port)
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
@@ -230,6 +181,6 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.ServerConfig) 
 	return nil
 }
 
-func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.ServerConfig) error {
+func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
 	return nil
 }

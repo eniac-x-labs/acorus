@@ -3,10 +3,9 @@ package cache
 import (
 	"errors"
 
-	"github.com/acmestack/gorm-plus/gplus"
 	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/cornerstone-labs/acorus/database/worker"
+	"github.com/cornerstone-labs/acorus/service/models"
 )
 
 const ListSize = 1200000
@@ -31,26 +30,26 @@ func NewLruCache() *LruCache {
 	}
 }
 
-func (lc *LruCache) GetL1ToL2List(key string) (*gplus.Page[worker.L1ToL2], error) {
+func (lc *LruCache) GetL1ToL2List(key string) (*models.DepositsResponse, error) {
 	result, ok := lc.lruL1ToL2List.Get(key)
 	if !ok {
 		return nil, errors.New("lru get L1ToL2 list fail")
 	}
-	return result.(*gplus.Page[worker.L1ToL2]), nil
+	return result.(*models.DepositsResponse), nil
 }
 
-func (lc *LruCache) AddL1ToL2List(key string, data *gplus.Page[worker.L1ToL2]) {
+func (lc *LruCache) AddL1ToL2List(key string, data *models.DepositsResponse) {
 	lc.lruL1ToL2List.PeekOrAdd(key, data)
 }
 
-func (lc *LruCache) GetL2ToL1List(key string) (*gplus.Page[worker.L2ToL1], error) {
+func (lc *LruCache) GetL2ToL1List(key string) (*models.WithdrawsResponse, error) {
 	result, ok := lc.lruL2ToL1List.Get(key)
 	if !ok {
 		return nil, errors.New("lru get L2ToL1 list fail")
 	}
-	return result.(*gplus.Page[worker.L2ToL1]), nil
+	return result.(*models.WithdrawsResponse), nil
 }
 
-func (lc *LruCache) AddL2ToL1List(key string, data *gplus.Page[worker.L2ToL1]) {
+func (lc *LruCache) AddL2ToL1List(key string, data *models.WithdrawsResponse) {
 	lc.lruL2ToL1List.PeekOrAdd(key, data)
 }

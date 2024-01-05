@@ -11,15 +11,16 @@ func (h Routes) L1ToL2ListHandler(w http.ResponseWriter, r *http.Request) {
 	pageQuery := r.URL.Query().Get("page")
 	pageSizeQuery := r.URL.Query().Get("pageSize")
 	order := r.URL.Query().Get("order")
+	chainId := r.URL.Query().Get("chainId")
 
-	params, err := h.svc.QueryDWParams(address, pageQuery, pageSizeQuery, order)
+	params, err := h.svc.QueryDWParams(chainId, address, pageQuery, pageSizeQuery, order)
 	if err != nil {
 		http.Error(w, "invalid query params", http.StatusBadRequest)
 		h.logger.Error("error reading request params", "err", err.Error())
 		return
 	}
 
-	cacheKey := fmt.Sprintf("l1ToL2List{%s,page:%s,pageSize:%s,order:%s}", address, pageQuery, pageSizeQuery, order)
+	cacheKey := fmt.Sprintf("l1ToL2List{chainId:%s,address:%s,page:%s,pageSize:%s,order:%s}", chainId, address, pageQuery, pageSizeQuery, order)
 	if h.enableCache {
 		response, _ := h.cache.GetL1ToL2List(cacheKey)
 		if response != nil {
@@ -48,15 +49,16 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 	pageQuery := r.URL.Query().Get("page")
 	pageSizeQuery := r.URL.Query().Get("pageSize")
 	order := r.URL.Query().Get("order")
+	chainId := r.URL.Query().Get("chainId")
 
-	params, err := h.svc.QueryDWParams(address, pageQuery, pageSizeQuery, order)
+	params, err := h.svc.QueryDWParams(chainId, address, pageQuery, pageSizeQuery, order)
 	if err != nil {
 		http.Error(w, "invalid query params", http.StatusBadRequest)
 		h.logger.Error("error reading request params", "err", err.Error())
 		return
 	}
 
-	cacheKey := fmt.Sprintf("l2ToL1List{address:s%,page:%s,pageSize:%s,order:%s}", address, pageQuery, pageSizeQuery, order)
+	cacheKey := fmt.Sprintf("l1ToL2List{chainId:%s,address:%s,page:%s,pageSize:%s,order:%s}", chainId, address, pageQuery, pageSizeQuery, order)
 	if h.enableCache {
 		response, _ := h.cache.GetL2ToL1List(cacheKey)
 		if response != nil {

@@ -1,0 +1,45 @@
+server:
+    host: 127.0.0.1
+    port: 120s
+
+metrics:
+    host: 127.0.0.1
+    port: 120s
+
+rpcs:
+    - rpc_url: 'https://btc.getblock.io/7350dbd9-4f17-4917-9555-bfadbc6b8a21/mainnet/'
+      chain_id: 1
+      start_block: 0
+      contracts:
+          - "0x000"
+          - "0x000"
+      event_contracts:
+          - "0x000"
+          - "0x000"
+
+    - rpc_url: 'https://btc.getblock.io/7350dbd9-4f17-4917-9555-bfadbc6b8a21/mainnet/'
+      chain_id: 1
+      start_block: 0
+      contracts:
+          - "0x000"
+          - "0x000"
+      event_contracts:
+          - "0x000"
+          - "0x000"
+
+slave_db_enable: false
+
+master_db:
+    db_host: "120.77.251.247"
+    db_port: "5432"
+    db_user: "postgres"
+    db_password: "galamini"
+    db_name: "acorus"
+
+slave_db:
+    db_host: "120.77.251.247"
+    db_port: 5432
+    db_user: "postgres"
+    db_password: "galamini"
+    db_name: "acorus"
+

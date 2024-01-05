@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/cornerstone-labs/acorus/database/create_table"
+	"strconv"
 
 	"github.com/urfave/cli/v2"
 
@@ -13,8 +15,23 @@ import (
 	"github.com/cornerstone-labs/acorus/common/opio"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	flag2 "github.com/cornerstone-labs/acorus/flag"
 	"github.com/cornerstone-labs/acorus/service"
+)
+
+var (
+	ConfigFlag = &cli.StringFlag{
+		Name:    "config",
+		Value:   "./acorus.toml",
+		Aliases: []string{"c"},
+		Usage:   "path to config file",
+		EnvVars: []string{"ACORUS_CONFIG"},
+	}
+	MigrationsFlag = &cli.StringFlag{
+		Name:    "migrations-dir",
+		Value:   "./migrations",
+		Usage:   "path to migrations folder",
+		EnvVars: []string{"ACORUS_MIGRATIONS_DIR"},
+	}
 )
 
 func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Lifecycle, error) {
@@ -22,38 +39,24 @@ func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Life
 	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running indexer...")
 
-	cfg, err := config.LoadConfig(log, ctx)
+	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
-
-	return acorus.NewAcorus(ctx.Context, log, &cfg, shutdown)
+	return acorus.NewAcorus(ctx.Context, log, cfg, shutdown)
 }
 
 func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
 	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "api")
 	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running api...")
-	cfg, err := config.LoadConfig(log, ctx)
+	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
-	return service.NewApi(ctx.Context, log, &cfg)
-}
-
-func runExporter(ctx *cli.Context) error {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "exporter")
-	oplog.SetGlobalLogHandler(log.GetHandler())
-	cfg, err := config.LoadConfig(log, ctx)
-	if err != nil {
-		log.Error("failed to load config", "err", err)
-		return err
-	}
-	log.Info("running exporter...", "cfg", cfg)
-	// todo please write exporter here
-	return nil
+	return service.NewApi(ctx.Context, log, &cfg.Server)
 }
 
 func runMigrations(ctx *cli.Context) error {
@@ -61,23 +64,38 @@ func runMigrations(ctx *cli.Context) error {
 	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "migrations")
 	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running migrations...")
-	cfg, err := config.LoadConfig(log, ctx)
+	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return err
 	}
-	db, err := database.NewDB(ctx.Context, log, cfg.MasterDB)
+	db, err := database.NewDB(ctx.Context, log, cfg.MasterDb)
 	if err != nil {
 		log.Error("failed to connect to database", "err", err)
 		return err
 	}
-	defer db.Close()
-	return db.ExecuteSQLMigration(cfg.Migrations)
+	defer func(db *database.DB) {
+		err := db.Close()
+		if err != nil {
+			return
+		}
+	}(db)
+	err = db.ExecuteSQLMigration(ctx.String(MigrationsFlag.Name))
+	if err != nil {
+		return err
+	}
+	for i := range cfg.RPCs {
+		create_table.CreateTableFromTemplate(strconv.Itoa(int(cfg.RPCs[i].ChainId)), db)
+	}
+	log.Info("running migrations and create table from template success")
+	return nil
 }
 
 func newCli(GitCommit string, GitDate string) *cli.App {
-	flags := oplog.CLIFlags("ACORUS")
-	flags = append(flags, flag2.Flags...)
+	flags := []cli.Flag{ConfigFlag}
+	flags = append(flags, oplog.CLIFlags("ACORUS")...)
+	migrationFlags := []cli.Flag{MigrationsFlag, ConfigFlag}
+	migrationFlags = append(migrationFlags, oplog.CLIFlags("ACORUS")...)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
 		Description:          "An indexer of all optimism events with a serving api layer",
@@ -97,7 +115,7 @@ func newCli(GitCommit string, GitDate string) *cli.App {
 			},
 			{
 				Name:        "migrate",
-				Flags:       flags,
+				Flags:       migrationFlags,
 				Description: "Runs the database migrations",
 				Action:      runMigrations,
 			},
