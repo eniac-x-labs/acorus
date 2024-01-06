@@ -1,12 +1,11 @@
 package service
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/service/models"
@@ -20,15 +19,13 @@ type Service interface {
 }
 
 type HandlerSvc struct {
-	logger     log.Logger
 	v          *Validator
 	l1ToL2View worker.L1ToL2View
 	l2ToL1View worker.L2ToL1View
 }
 
-func New(v *Validator, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View, l log.Logger) Service {
+func New(v *Validator, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View) Service {
 	return &HandlerSvc{
-		logger:     l,
 		v:          v,
 		l1ToL2View: l1l2v,
 		l2ToL1View: l2l1v,
@@ -64,7 +61,7 @@ func (h HandlerSvc) QueryDWParams(chainId string, address string, page string, p
 	} else {
 		addr, err := h.v.ParseValidateAddress(address)
 		if err != nil {
-			h.logger.Error("invalid address param", "address", address, "err", err)
+			log.Error("invalid address param", "address", address, "err", err)
 			return nil, err
 		}
 		paraAddress = addr.String()
@@ -75,7 +72,7 @@ func (h HandlerSvc) QueryDWParams(chainId string, address string, page string, p
 	}
 	err = h.v.ValidatePage(pageVal)
 	if err != nil {
-		h.logger.Error("invalid page param", "page", page, "err", err)
+		log.Error("invalid page param", "page", page, "err", err)
 		return nil, err
 	}
 
@@ -85,13 +82,13 @@ func (h HandlerSvc) QueryDWParams(chainId string, address string, page string, p
 	}
 	err = h.v.ValidatePageSize(pageSizeVal)
 	if err != nil {
-		h.logger.Error("invalid query param", "pageSize", pageSize, "err", err)
+		log.Error("invalid query param", "pageSize", pageSize, "err", err)
 		return nil, err
 	}
 
 	err = h.v.ValidateOrder(order)
 	if err != nil {
-		h.logger.Error("invalid query param", "pageSize", pageSize, "err", err)
+		log.Error("invalid query param", "pageSize", pageSize, "err", err)
 		return nil, err
 	}
 	return &models.QueryDWParams{

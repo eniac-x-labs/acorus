@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/cornerstone-labs/acorus/database/create_table"
+	"github.com/ethereum/go-ethereum/log"
 	"strconv"
 
 	"github.com/urfave/cli/v2"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/cornerstone-labs/acorus"
 	"github.com/cornerstone-labs/acorus/common/cliapp"
-	oplog "github.com/cornerstone-labs/acorus/common/log"
 	"github.com/cornerstone-labs/acorus/common/opio"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
@@ -35,41 +35,34 @@ var (
 )
 
 func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "acorus")
-	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running indexer...")
-
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
-	return acorus.NewAcorus(ctx.Context, log, cfg, shutdown)
+	return acorus.NewAcorus(ctx.Context, cfg, shutdown)
 }
 
 func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "api")
-	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running api...")
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
-	return service.NewApi(ctx.Context, log, cfg)
+	return service.NewApi(ctx.Context, cfg)
 }
 
 func runMigrations(ctx *cli.Context) error {
 	ctx.Context = opio.CancelOnInterrupt(ctx.Context)
-	log := oplog.NewLogger(oplog.AppOut(ctx), oplog.ReadCLIConfig(ctx)).New("role", "migrations")
-	oplog.SetGlobalLogHandler(log.GetHandler())
 	log.Info("running migrations...")
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
 		log.Error("failed to load config", "err", err)
 		return err
 	}
-	db, err := database.NewDB(ctx.Context, log, cfg.MasterDb)
+	db, err := database.NewDB(ctx.Context, cfg.MasterDb)
 	if err != nil {
 		log.Error("failed to connect to database", "err", err)
 		return err
@@ -94,9 +87,7 @@ func runMigrations(ctx *cli.Context) error {
 
 func newCli(GitCommit string, GitDate string) *cli.App {
 	flags := []cli.Flag{ConfigFlag}
-	flags = append(flags, oplog.CLIFlags("ACORUS")...)
 	migrationFlags := []cli.Flag{MigrationsFlag, ConfigFlag}
-	migrationFlags = append(migrationFlags, oplog.CLIFlags("ACORUS")...)
 	return &cli.App{
 		Version:              params.VersionWithCommit(GitCommit, GitDate),
 		Description:          "An indexer of all optimism events with a serving api layer",

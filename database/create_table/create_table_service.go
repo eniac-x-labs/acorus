@@ -34,6 +34,18 @@ func createTransactions(chainId string, db *database.DB) {
 	db.CreateTable.CreateTable(tableNameByChainId, tableName)
 }
 
+func createWithdrawProven(chainId string, db *database.DB) {
+	tableName := "template_withdraw_proven"
+	tableNameByChainId := fmt.Sprintf("withdraw_proven_%s", chainId)
+	db.CreateTable.CreateTable(tableNameByChainId, tableName)
+}
+
+func createWithdrawFinalized(chainId string, db *database.DB) {
+	tableName := "template_withdraw_finalized"
+	tableNameByChainId := fmt.Sprintf("withdraw_finalized_%s", chainId)
+	db.CreateTable.CreateTable(tableNameByChainId, tableName)
+}
+
 func createL1ToL2(chainId string, db *database.DB) {
 	tableName := "template_l1_to_l2"
 	tableNameByChainId := fmt.Sprintf("l1_to_l2_%s", chainId)
