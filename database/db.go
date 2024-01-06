@@ -10,12 +10,9 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/database/utils"
 	_ "github.com/cornerstone-labs/acorus/database/utils/serializers"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
@@ -31,9 +28,7 @@ type DB struct {
 	L1ToL2         worker.L1ToL2DB
 }
 
-func NewDB(ctx context.Context, log log.Logger, dbConfig config.Database) (*DB, error) {
-	log = log.New("module", "db")
-
+func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 	dsn := fmt.Sprintf("host=%s dbname=%s sslmode=disable", dbConfig.DbHost, dbConfig.DbName)
 	if dbConfig.DbPort != 0 {
 		dsn += fmt.Sprintf(" port=%d", dbConfig.DbPort)
@@ -45,7 +40,6 @@ func NewDB(ctx context.Context, log log.Logger, dbConfig config.Database) (*DB, 
 		dsn += fmt.Sprintf(" password=%s", dbConfig.DbPassword)
 	}
 	gormConfig := gorm.Config{
-		Logger:                 utils.NewLogger(log),
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        3_000,
 	}

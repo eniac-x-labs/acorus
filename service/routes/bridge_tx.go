@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"net/http"
 )
 
@@ -16,7 +17,7 @@ func (h Routes) L1ToL2ListHandler(w http.ResponseWriter, r *http.Request) {
 	params, err := h.svc.QueryDWParams(chainId, address, pageQuery, pageSizeQuery, order)
 	if err != nil {
 		http.Error(w, "invalid query params", http.StatusBadRequest)
-		h.logger.Error("error reading request params", "err", err.Error())
+		log.Error("error reading request params", "err", err.Error())
 		return
 	}
 
@@ -26,7 +27,7 @@ func (h Routes) L1ToL2ListHandler(w http.ResponseWriter, r *http.Request) {
 		if response != nil {
 			err = jsonResponse(w, response, http.StatusOK)
 			if err != nil {
-				h.logger.Error("Error writing response", "err", err.Error())
+				log.Error("Error writing response", "err", err.Error())
 			}
 			return
 		}
@@ -39,7 +40,7 @@ func (h Routes) L1ToL2ListHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = jsonResponse(w, l1ToL2Txs, http.StatusOK)
 	if err != nil {
-		h.logger.Error("Error writing response", "err", err.Error())
+		log.Error("Error writing response", "err", err.Error())
 	}
 }
 
@@ -54,7 +55,7 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 	params, err := h.svc.QueryDWParams(chainId, address, pageQuery, pageSizeQuery, order)
 	if err != nil {
 		http.Error(w, "invalid query params", http.StatusBadRequest)
-		h.logger.Error("error reading request params", "err", err.Error())
+		log.Error("error reading request params", "err", err.Error())
 		return
 	}
 
@@ -64,7 +65,7 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 		if response != nil {
 			err = jsonResponse(w, response, http.StatusOK)
 			if err != nil {
-				h.logger.Error("Error writing response", "err", err.Error())
+				log.Error("Error writing response", "err", err.Error())
 			}
 			return
 		}
@@ -73,7 +74,7 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 	l2ToL1Txs, err := h.svc.GetWithdrawalList(params)
 	if err != nil {
 		http.Error(w, "Internal server error reading l2tol1 list", http.StatusInternalServerError)
-		h.logger.Error("Unable to read l2tol1 list from DB", "err", err.Error())
+		log.Error("Unable to read l2tol1 list from DB", "err", err.Error())
 		return
 	}
 	if h.enableCache {
@@ -82,6 +83,6 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = jsonResponse(w, l2ToL1Txs, http.StatusOK)
 	if err != nil {
-		h.logger.Error("Error writing response", "err", err.Error())
+		log.Error("Error writing response", "err", err.Error())
 	}
 }

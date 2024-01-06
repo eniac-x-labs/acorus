@@ -35,7 +35,6 @@ type APIConfig struct {
 }
 
 type API struct {
-	log             log.Logger
 	router          *chi.Mux
 	metricsRegistry *prometheus.Registry
 	apiServer       *httputil.HTTPServer
@@ -44,16 +43,16 @@ type API struct {
 	stopped         atomic.Bool
 }
 
-func NewApi(ctx context.Context, log log.Logger, cfg *config.Config) (*API, error) {
-	out := &API{log: log}
-	if err := out.initFromConfig(ctx, cfg, log); err != nil {
+func NewApi(ctx context.Context, cfg *config.Config) (*API, error) {
+	out := &API{}
+	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
 	}
 	return out, nil
 }
 
-func (a *API) initFromConfig(ctx context.Context, cfg *config.Config, log log.Logger) error {
-	if err := a.initDB(ctx, cfg, log); err != nil {
+func (a *API) initFromConfig(ctx context.Context, cfg *config.Config) error {
+	if err := a.initDB(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
 	if err := a.startMetricsServer(cfg.Metrics); err != nil {
@@ -74,9 +73,9 @@ func (a *API) initRouter(conf *config.Config) {
 		lruCache = cache.NewLruCache()
 	}
 
-	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1, a.log)
+	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1)
 	apiRouter := chi.NewRouter()
-	h := routes.NewRoutes(a.log, apiRouter, svc, conf.EnableApiCache, lruCache)
+	h := routes.NewRoutes(apiRouter, svc, conf.EnableApiCache, lruCache)
 
 	apiRouter.Use(middleware.Timeout(time.Second * 12))
 	apiRouter.Use(middleware.Recoverer)
@@ -89,17 +88,17 @@ func (a *API) initRouter(conf *config.Config) {
 	a.router = apiRouter
 }
 
-func (a *API) initDB(ctx context.Context, cfg *config.Config, log log.Logger) error {
+func (a *API) initDB(ctx context.Context, cfg *config.Config) error {
 	var initDb *database.DB
 	var err error
 	if !cfg.SlaveDbEnable {
-		initDb, err = database.NewDB(ctx, log, cfg.MasterDb)
+		initDb, err = database.NewDB(ctx, cfg.MasterDb)
 		if err != nil {
 			log.Error("failed to connect to master database", "err", err)
 			return err
 		}
 	} else {
-		initDb, err = database.NewDB(ctx, log, cfg.SlaveDb)
+		initDb, err = database.NewDB(ctx, cfg.SlaveDb)
 		if err != nil {
 			log.Error("failed to connect to slave database", "err", err)
 			return err
@@ -131,18 +130,18 @@ func (a *API) Stop(ctx context.Context) error {
 		}
 	}
 	a.stopped.Store(true)
-	a.log.Info("API service shutdown complete")
+	log.Info("API service shutdown complete")
 	return result
 }
 
 func (a *API) startServer(serverConfig config.Server) error {
-	a.log.Debug("API server listening...", "port", serverConfig.Port)
+	log.Debug("API server listening...", "port", serverConfig.Port)
 	addr := net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
 	srv, err := httputil.StartHTTPServer(addr, a.router)
 	if err != nil {
 		return fmt.Errorf("failed to start API server: %w", err)
 	}
-	a.log.Info("API server started", "addr", srv.Addr().String())
+	log.Info("API server started", "addr", srv.Addr().String())
 	a.apiServer = srv
 	return nil
 }

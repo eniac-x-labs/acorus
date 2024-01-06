@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
+	"net/url"
 	"sync"
 	"time"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
-	"github.com/ethereum-optimism/optimism/op-service/client"
 )
 
 const (
@@ -59,7 +60,7 @@ func DialEthClient(ctx context.Context, rpcUrl string) (EthClient, error) {
 
 	bOff := retry.Exponential()
 	rpcClient, err := retry.Do(ctx, defaultDialAttempts, bOff, func() (*rpc.Client, error) {
-		if !client.IsURLAvailable(rpcUrl) {
+		if !IsURLAvailable(rpcUrl) {
 			return nil, fmt.Errorf("address unavailable (%s)", rpcUrl)
 		}
 
@@ -370,4 +371,29 @@ func toFilterArg(q ethereum.FilterQuery) (interface{}, error) {
 		arg["toBlock"] = toBlockNumArg(q.ToBlock)
 	}
 	return arg, nil
+}
+
+func IsURLAvailable(address string) bool {
+	u, err := url.Parse(address)
+	if err != nil {
+		return false
+	}
+	addr := u.Host
+	if u.Port() == "" {
+		switch u.Scheme {
+		case "http", "ws":
+			addr += ":80"
+		case "https", "wss":
+			addr += ":443"
+		default:
+			// Fail open if we can't figure out what the port should be
+			return true
+		}
+	}
+	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }

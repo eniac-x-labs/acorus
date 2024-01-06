@@ -44,8 +44,7 @@ type Synchronizer struct {
 	chainId          string
 }
 
-func NewSynchronizer(cfg *Config, log log.Logger, db *database.DB, client node.EthClient, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
-	log = log.New("synchronizer")
+func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
 	latestHeader, err := db.Blocks.ChainLatestBlockHeader(strconv.Itoa(int(cfg.ChainId)))
 	if err != nil {
 		return nil, err
@@ -69,7 +68,6 @@ func NewSynchronizer(cfg *Config, log log.Logger, db *database.DB, client node.E
 	return &Synchronizer{
 		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Millisecond,
 		headerBufferSize: uint64(cfg.HeaderBufferSize),
-		log:              log,
 		headerTraversal:  node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth, uint(chainIdInt)),
 		ethClient:        client,
 		LatestHeader:     fromHeader,

@@ -80,7 +80,7 @@ func (db *contractEventsDB) ChainContractEvent(chainId string, uuid uuid.UUID) (
 
 func (db *contractEventsDB) ChainContractEventWithFilter(chainId string, filter ContractEvent) (*ContractEvent, error) {
 	var contractEvent ContractEvent
-	result := db.gorm.Table(chainId + "contract_event").Where(&filter).Take(&contractEvent)
+	result := db.gorm.Table("contract_event_" + chainId).Where(&filter).Take(&contractEvent)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -101,7 +101,7 @@ func (db *contractEventsDB) ChainContractEventsWithFilter(chainId string, filter
 		return nil, fmt.Errorf("fromHeight %d is greater than toHeight %d", fromHeight, toHeight)
 	}
 
-	query := db.gorm.Table(chainId + "contract_event").Where(&filter)
+	query := db.gorm.Table("contract_event_" + chainId).Where(&filter)
 	query = query.Joins("INNER JOIN l1_block_headers ON l1_contract_events.block_hash = l1_block_headers.hash")
 	query = query.Where("l1_block_headers.number >= ? AND l1_block_headers.number <= ?", fromHeight, toHeight)
 	query = query.Order("l1_block_headers.number ASC").Select("l1_contract_events.*")
@@ -119,7 +119,7 @@ func (db *contractEventsDB) ChainContractEventsWithFilter(chainId string, filter
 
 func (db *contractEventsDB) ChainLatestContractEventWithFilter(chainId string, filter ContractEvent) (*ContractEvent, error) {
 	var contractEvent ContractEvent
-	result := db.gorm.Table(chainId + "contract_event").Where(&filter).Order("timestamp DESC").Take(&contractEvent)
+	result := db.gorm.Table("contract_event_" + chainId).Where(&filter).Order("timestamp DESC").Take(&contractEvent)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

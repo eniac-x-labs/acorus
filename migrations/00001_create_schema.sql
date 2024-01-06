@@ -102,6 +102,38 @@ CREATE INDEX IF NOT EXISTS template_l1_to_l2_to_address ON template_l1_to_l2(to_
 CREATE INDEX IF NOT EXISTS template_l1_to_l2_message_hash ON template_l1_to_l2(message_hash);
 CREATE INDEX IF NOT EXISTS template_l1_to_l2_transaction_source_hash ON template_l1_to_l2(transaction_source_hash);
 
+CREATE TABLE IF NOT EXISTS template_withdraw_proven (
+   guid                          VARCHAR PRIMARY KEY,
+   block_number                  UINT256 NOT NULL,
+   withdraw_hash                 VARCHAR NOT NULL,
+   message_hash                  VARCHAR,
+   proven_transaction_hash       VARCHAR NOT NULL,
+   l1_token_address              VARCHAR,
+   l2_token_address              VARCHAR,
+   eth_amount                    UINT256,
+   erc20_amount                  UINT256,
+   related                       BOOLEAN DEFAULT FALSE,
+   timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS template_withdraw_proven_withdrawal_hash ON template_withdraw_proven(withdraw_hash);
+CREATE INDEX IF NOT EXISTS template_withdraw_proven_timestamp ON template_withdraw_proven(timestamp);
+
+CREATE TABLE IF NOT EXISTS template_withdraw_finalized (
+  guid                          VARCHAR PRIMARY KEY,
+  block_number                  UINT256 NOT NULL,
+  withdraw_hash                 VARCHAR NOT NULL,
+  message_hash                  VARCHAR,
+  finalized_transaction_hash    VARCHAR NOT NULL,
+  l1_token_address              VARCHAR,
+  l2_token_address              VARCHAR,
+  eth_amount                    UINT256,
+  erc20_amount                  UINT256,
+  related                       BOOLEAN DEFAULT FALSE,
+  timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS template_withdraw_finalized_withdrawal_hash ON template_withdraw_finalized(withdraw_hash);
+CREATE INDEX IF NOT EXISTS template_withdraw_finalized_timestamp ON template_withdraw_finalized(timestamp);
+
 
 CREATE TABLE IF NOT EXISTS template_l2_to_l1 (
     guid                         VARCHAR PRIMARY KEY,

@@ -17,29 +17,25 @@ import (
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/processor"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 )
 
 type Acorus struct {
-	log             log.Logger
 	DB              *database.DB
 	ethClient       map[uint64]node.EthClient
 	apiServer       *httputil.HTTPServer
 	metricsServer   *httputil.HTTPServer
 	metricsRegistry *prometheus.Registry
 	Synchronizer    map[uint64]*synchronizer.Synchronizer
-	EventProcessor  *processor.EventProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
 }
 
-func NewAcorus(ctx context.Context, log log.Logger, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
+func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	out := &Acorus{
-		log:      log,
 		shutdown: shutdown,
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
@@ -90,7 +86,7 @@ func (as *Acorus) Stop(ctx context.Context) error {
 
 	as.stopped.Store(true)
 
-	as.log.Info("acorus stopped")
+	log.Info("acorus stopped")
 
 	return result
 }
@@ -127,7 +123,7 @@ func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error
 }
 
 func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
-	db, err := database.NewDB(ctx, as.log, cfg)
+	db, err := database.NewDB(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -149,7 +145,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to dial L1 client: %w", err)
 		}
-		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.log, as.DB, ethClient, as.shutdown)
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, ethClient, as.shutdown)
 		if err != nil {
 			return err
 		}
@@ -167,7 +163,7 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 }
 
 func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error {
-	as.log.Debug("starting http server...", "port", cfg.Port)
+	log.Debug("starting http server...", "port", cfg.Port)
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
@@ -176,7 +172,7 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 		return fmt.Errorf("http server failed to start: %w", err)
 	}
 	as.apiServer = srv
-	as.log.Info("http server started", "addr", srv.Addr())
+	log.Info("http server started", "addr", srv.Addr())
 	return nil
 }
 

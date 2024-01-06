@@ -1,12 +1,8 @@
 package config
 
 import (
-	"io/ioutil"
-	"os"
-
 	"gopkg.in/yaml.v2"
-
-	"github.com/ethereum/go-ethereum/log"
+	"io/ioutil"
 )
 
 type Server struct {
@@ -42,8 +38,6 @@ type Config struct {
 
 func New(path string) (*Config, error) {
 	var config = new(Config)
-	h := log.StreamHandler(os.Stdout, log.TerminalFormat(true))
-	log.Root().SetHandler(h)
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err

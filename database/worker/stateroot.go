@@ -47,7 +47,7 @@ type stateRootDB struct {
 
 func (s stateRootDB) StoreBatchStateRoots(chainId string, roots []StateRoot) error {
 	var firstBlockSize uint64
-	result := s.gorm.Table(chainId+"state_root").Where("timestamp < ?", roots[0].Timestamp).Select("l2_block_number").Take(&firstBlockSize)
+	result := s.gorm.Table("state_root_"+chainId).Where("timestamp < ?", roots[0].Timestamp).Select("l2_block_number").Take(&firstBlockSize)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			roots[0].BlockSize = roots[0].L2BlockNumber.Uint64()
@@ -66,7 +66,7 @@ func (s stateRootDB) StoreBatchStateRoots(chainId string, roots []StateRoot) err
 func (s stateRootDB) StateRootList(chainId string, page int, pageSize int, order string) ([]StateRoot, int64) {
 	var totalRecord int64
 	var stateRoots []StateRoot
-	err := s.gorm.Table(chainId + "state_root").Select("output_index").Count(&totalRecord).Error
+	err := s.gorm.Table("state_root_" + chainId).Select("output_index").Count(&totalRecord).Error
 	if err != nil {
 		log.Error("get state root count fail")
 	}
@@ -85,7 +85,7 @@ func (s stateRootDB) StateRootList(chainId string, page int, pageSize int, order
 
 func (s stateRootDB) GetLatestStateRootL2BlockNumber(chainId string) (uint64, error) {
 	var l2BlockNumber uint64
-	err := s.gorm.Table(chainId + "state_root").Select("l2_block_number").Order("timestamp DESC").Limit(1).Find(&l2BlockNumber).Error
+	err := s.gorm.Table("state_root_" + chainId).Select("l2_block_number").Order("timestamp DESC").Limit(1).Find(&l2BlockNumber).Error
 	if err != nil {
 		return 0, err
 	}
@@ -94,7 +94,7 @@ func (s stateRootDB) GetLatestStateRootL2BlockNumber(chainId string) (uint64, er
 }
 
 func (s stateRootDB) UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) error {
-	err := s.gorm.Table(chainId+"state_root").Where("l1_block_number < ? AND status = ?", safeBlockNumber.Uint64(), 0).Updates(map[string]interface{}{"status": 1}).Error
+	err := s.gorm.Table("state_root_"+chainId).Where("l1_block_number < ? AND status = ?", safeBlockNumber.Uint64(), 0).Updates(map[string]interface{}{"status": 1}).Error
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (s stateRootDB) UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) 
 }
 
 func (s stateRootDB) UpdateFinalizedStatus(chainId string, finalizedBlockNumber *big.Int) error {
-	err := s.gorm.Table(chainId+"state_root").Where("l1_block_number < ?", finalizedBlockNumber.Uint64()).Updates(map[string]interface{}{"status": 2}).Error
+	err := s.gorm.Table("state_root_"+chainId).Where("l1_block_number < ?", finalizedBlockNumber.Uint64()).Updates(map[string]interface{}{"status": 2}).Error
 	if err != nil {
 		return err
 	}
