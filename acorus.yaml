@@ -9,25 +9,17 @@ metrics:
     port: 8081
 
 rpcs:
-    - rpc_url: 'https://btc.getblock.io/7350dbd9-4f17-4917-9555-bfadbc6b8a21/mainnet/'
+    - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
       chain_id: 1
       start_block: 0
-      contracts:
-          - "0x000"
-          - "0x000"
-      event_contracts:
-          - "0x000"
-          - "0x000"
 
-    - rpc_url: 'https://btc.getblock.io/7350dbd9-4f17-4917-9555-bfadbc6b8a21/mainnet/'
-      chain_id: 2
+    - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+      chain_id: 534352
       start_block: 0
       contracts:
-          - "0x000"
-          - "0x000"
+          - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
       event_contracts:
-          - "0x000"
-          - "0x000"
+          - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
 
 
 master_db:
