@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/cornerstone-labs/acorus/database/create_table"
 	"github.com/ethereum/go-ethereum/log"
 	"strconv"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/cornerstone-labs/acorus/common/opio"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/create_table"
 	"github.com/cornerstone-labs/acorus/service"
 )
 

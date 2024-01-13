@@ -116,6 +116,7 @@ func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error
 		if err != nil {
 			return fmt.Errorf("failed to dial L1 client: %w", err)
 		}
+		as.ethClient = make(map[uint64]node.EthClient)
 		as.ethClient[rpc.ChainId] = ethClient
 		as.chainIdList = append(as.chainIdList, rpc.ChainId)
 	}
@@ -149,6 +150,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		if err != nil {
 			return err
 		}
+		as.Synchronizer = make(map[uint64]*synchronizer.Synchronizer)
 		as.Synchronizer[rpcItem.ChainId] = synchronizerTemp
 	}
 	return nil
