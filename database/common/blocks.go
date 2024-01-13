@@ -60,7 +60,7 @@ func NewBlocksDB(db *gorm.DB) BlocksDB {
 }
 
 func (db *blocksDB) StoreBlockHeaders(chainId string, headers []ChainBlockHeader) error {
-	result := db.gorm.Table("block_header_"+chainId).CreateInBatches(&headers, common2.BatchInsertSize)
+	result := db.gorm.Table("block_headers_"+chainId).CreateInBatches(&headers, common2.BatchInsertSize)
 	return result.Error
 }
 
@@ -74,7 +74,7 @@ func (db *blocksDB) ChainBlockHeaderWithFilter(chainId string, filter BlockHeade
 
 func (db *blocksDB) ChainBlockHeaderWithScope(scope func(*gorm.DB) *gorm.DB, chainId string) (*BlockHeader, error) {
 	var header BlockHeader
-	result := db.gorm.Table("block_header_" + chainId).Scopes(scope).Take(&header)
+	result := db.gorm.Table("block_headers_" + chainId).Scopes(scope).Take(&header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -86,7 +86,7 @@ func (db *blocksDB) ChainBlockHeaderWithScope(scope func(*gorm.DB) *gorm.DB, cha
 
 func (db *blocksDB) ChainLatestBlockHeader(chainId string) (*BlockHeader, error) {
 	var header BlockHeader
-	result := db.gorm.Table("block_header_" + chainId).Order("number DESC").Take(&header)
+	result := db.gorm.Table("block_headers_" + chainId).Order("number DESC").Take(&header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -103,7 +103,7 @@ func (db *blocksDB) LatestObservedEpochForChain(chainId string, fromL1Height *bi
 	} else {
 		startBlockNumber = big.NewInt(0)
 	}
-	query := db.gorm.Table("block_header_"+chainId).Where("number >= ? AND number < ?", startBlockNumber, maxL1Range).Order("number DESC").Limit(1)
+	query := db.gorm.Table("block_headers_"+chainId).Where("number >= ? AND number < ?", startBlockNumber, maxL1Range).Order("number DESC").Limit(1)
 	var epoch BlockHeader
 	result := query.Take(&epoch)
 	if result.Error != nil {
@@ -118,7 +118,7 @@ func (db *blocksDB) LatestObservedEpochForChain(chainId string, fromL1Height *bi
 
 func (db *blocksDB) BlockTimeStampByNum(chainId string, blockNumber uint64) (int64, error) {
 	var blockTimestamp int64
-	result := db.gorm.Table("block_header_"+chainId).Where("number = ?", blockNumber).Select("timestamp").Take(&blockTimestamp)
+	result := db.gorm.Table("block_headers_"+chainId).Where("number = ?", blockNumber).Select("timestamp").Take(&blockTimestamp)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return 0, nil

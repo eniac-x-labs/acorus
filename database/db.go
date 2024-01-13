@@ -3,8 +3,12 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/logs"
+	"gorm.io/gorm/logger"
+	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
@@ -39,7 +43,18 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 	if dbConfig.DbPassword != "" {
 		dsn += fmt.Sprintf(" password=%s", dbConfig.DbPassword)
 	}
+	writer := logs.MyLogWriter()
+	DbLogger := logger.New(
+		log.New(writer, "\r\n", log.Ldate|log.Ltime|log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Second, // Slow SQL threshold
+			LogLevel:                  logger.Info, // Log level(这里记得根据需求改一下)
+			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
+			Colorful:                  false,       // Disable color
+		},
+	)
 	gormConfig := gorm.Config{
+		Logger:                 DbLogger,
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        3_000,
 	}
