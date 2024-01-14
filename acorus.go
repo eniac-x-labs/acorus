@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"strconv"
@@ -12,8 +13,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
@@ -46,9 +45,14 @@ func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelC
 
 func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
-		if err := as.Synchronizer[as.chainIdList[i]].Start(); err != nil {
-			return fmt.Errorf("failed to start L1 Sync: %w", err)
-		}
+		log.Println("starting Sync", "chainId", as.chainIdList[i])
+		go func() error {
+			if err := as.Synchronizer[as.chainIdList[i]].Start(); err != nil {
+				return fmt.Errorf("failed to start L1 Sync: %w", err)
+			}
+			return nil
+		}()
+
 	}
 	return nil
 }
@@ -86,7 +90,7 @@ func (as *Acorus) Stop(ctx context.Context) error {
 
 	as.stopped.Store(true)
 
-	log.Info("acorus stopped")
+	log.Println("acorus stopped")
 
 	return result
 }
@@ -116,7 +120,9 @@ func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error
 		if err != nil {
 			return fmt.Errorf("failed to dial L1 client: %w", err)
 		}
-		as.ethClient = make(map[uint64]node.EthClient)
+		if as.ethClient == nil {
+			as.ethClient = make(map[uint64]node.EthClient)
+		}
 		as.ethClient[rpc.ChainId] = ethClient
 		as.chainIdList = append(as.chainIdList, rpc.ChainId)
 	}
@@ -150,7 +156,9 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		if err != nil {
 			return err
 		}
-		as.Synchronizer = make(map[uint64]*synchronizer.Synchronizer)
+		if as.Synchronizer == nil {
+			as.Synchronizer = make(map[uint64]*synchronizer.Synchronizer)
+		}
 		as.Synchronizer[rpcItem.ChainId] = synchronizerTemp
 	}
 	return nil
@@ -165,7 +173,7 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 }
 
 func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error {
-	log.Debug("starting http server...", "port", cfg.Port)
+	log.Println("starting http server...", "port", cfg.Port)
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
@@ -174,7 +182,7 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 		return fmt.Errorf("http server failed to start: %w", err)
 	}
 	as.apiServer = srv
-	log.Info("http server started", "addr", srv.Addr())
+	log.Println("http server started", "addr", srv.Addr())
 	return nil
 }
 

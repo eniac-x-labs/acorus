@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS template_block_headers (
     hash        VARCHAR PRIMARY KEY,
     parent_hash VARCHAR NOT NULL UNIQUE,
     number      UINT256 NOT NULL UNIQUE,
-    timestamp   INTEGER NOT NULL UNIQUE CHECK (timestamp > 0),
+    timestamp   INTEGER NOT NULL UNIQUE ,
     rlp_bytes   VARCHAR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_block_headers_timestamp ON template_block_headers(timestamp);
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS template_contract_events (
     transaction_hash VARCHAR NOT NULL,
     log_index        INTEGER NOT NULL,
     event_signature  VARCHAR NOT NULL,
-    timestamp        INTEGER NOT NULL CHECK (timestamp > 0),
+    timestamp        INTEGER NOT NULL ,
     rlp_bytes        VARCHAR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_contract_events_timestamp ON template_contract_events(timestamp);
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS template_transactions (
      contract_address          VARCHAR,
      amount                    UINT256 DEFAULT 0,
      y_parity                  VARCHAR NOT NULL,
-     timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
+     timestamp                 INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_transactions_block_number ON template_transactions(block_number);
 CREATE INDEX IF NOT EXISTS template_transactions_hash ON template_transactions(hash);
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS template_l1_to_l2 (
     eth_amount              UINT256,
     token_amounts           VARCHAR,
     gas_limit               UINT256 NOT NULL,
-    timestamp               INTEGER NOT NULL CHECK (timestamp > 0)
+    timestamp               INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_l1_to_l2_timestamp ON template_l1_to_l2(timestamp);
 CREATE INDEX IF NOT EXISTS template_l1_to_l2_l1_transaction_hash ON template_l1_to_l2(l1_transaction_hash);
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS template_withdraw_proven (
    eth_amount                    UINT256,
    erc20_amount                  UINT256,
    related                       BOOLEAN DEFAULT FALSE,
-   timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+   timestamp                     INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_withdraw_proven_withdrawal_hash ON template_withdraw_proven(withdraw_hash);
 CREATE INDEX IF NOT EXISTS template_withdraw_proven_timestamp ON template_withdraw_proven(timestamp);
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS template_withdraw_finalized (
   eth_amount                    UINT256,
   erc20_amount                  UINT256,
   related                       BOOLEAN DEFAULT FALSE,
-  timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+  timestamp                     INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_withdraw_finalized_withdrawal_hash ON template_withdraw_finalized(withdraw_hash);
 CREATE INDEX IF NOT EXISTS template_withdraw_finalized_timestamp ON template_withdraw_finalized(timestamp);
@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS template_l2_to_l1 (
     token_amounts                VARCHAR,
     gas_limit                    UINT256 NOT NULL,
     time_left                    UINT256 NOT NULL,
-    timestamp                    INTEGER NOT NULL CHECK (timestamp > 0)
+    timestamp                    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_l2_to_l1_timestamp ON template_l2_to_l1(timestamp);
 CREATE INDEX IF NOT EXISTS template_l2_to_l1_l2_transaction_hash ON template_l2_to_l1(l2_transaction_hash);
@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS template_batches (
    l2_block_number           UINT256 DEFAULT 0,
    tx_size                   UINT256 NOT NULL,
    block_size                UINT256 NOT NULL,
-   timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
+   timestamp                 INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_batches_block_hash ON template_batches(block_hash);
 CREATE INDEX IF NOT EXISTS template_batches_transaction_hash ON template_batches(transaction_hash);
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS template_state_root (
       canonical                 BOOLEAN DEFAULT TRUE,
       batch_size                UINT256 NOT NULL,
       block_size                UINT256 NOT NULL,
-      timestamp                 INTEGER NOT NULL CHECK (timestamp > 0)
+      timestamp                 INTEGER NOT NULL
  );
 CREATE INDEX IF NOT EXISTS template_state_root_block_hash ON template_state_root(block_hash);
 CREATE INDEX IF NOT EXISTS template_state_root_transaction_hash ON template_state_root(transaction_hash);

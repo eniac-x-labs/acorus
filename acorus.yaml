@@ -9,11 +9,7 @@ metrics:
     port: 8081
 
 rpcs:
-    - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-      chain_id: 1
-      start_block: 0
-      contracts:
-      event_contracts:
+
 
     - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
       chain_id: 534352
@@ -22,6 +18,11 @@ rpcs:
           - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
       event_contracts:
           - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
+    - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+      chain_id: 1
+      start_block: 0
+      contracts:
+      event_contracts:
 
 
 master_db:
