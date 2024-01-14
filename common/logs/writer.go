@@ -36,7 +36,7 @@ func (m MyLogger) Printf(format string, v ...any) {
 			v[3] = sql
 		}
 	}
-	m.logger.Printf(" 走你"+format, v...)
+	m.logger.Printf(format, v...)
 }
 
 func init() {
