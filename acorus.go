@@ -46,11 +46,17 @@ func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelC
 func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
 		log.Println("starting Sync", "chainId", as.chainIdList[i])
-		go func() error {
-			if err := as.Synchronizer[as.chainIdList[i]].Start(); err != nil {
-				return fmt.Errorf("failed to start L1 Sync: %w", err)
+		realChainId := as.chainIdList[i]
+		go func() {
+			err := func() error {
+				if err := as.Synchronizer[realChainId].Start(); err != nil {
+					return fmt.Errorf("failed to start L1 Sync: %w", err)
+				}
+				return nil
+			}()
+			if err != nil {
+				log.Fatalf("Start sync fail", "chainId", realChainId)
 			}
-			return nil
 		}()
 
 	}
@@ -143,16 +149,12 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  500,
+			HeaderBufferSize:  10,
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
 		}
-		ethClient, err := node.DialEthClient(context.Background(), rpcItem.RpcUrl)
-		if err != nil {
-			return fmt.Errorf("failed to dial L1 client: %w", err)
-		}
-		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, ethClient, as.shutdown)
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], as.shutdown)
 		if err != nil {
 			return err
 		}
