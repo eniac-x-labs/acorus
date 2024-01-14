@@ -1,25 +1,27 @@
 slave_db_enable: false
 
 server:
-    host: 127.0.0.1
-    port: 8080
+  host: 127.0.0.1
+  port: 8080
 
 metrics:
-    host: 127.0.0.1
-    port: 8081
+  host: 127.0.0.1
+  port: 8081
 
 rpcs:
-    - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-      chain_id: 534352
-      start_block: 0
-      contracts:
-      event_contracts:
+  - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 1
+    start_block: 1
+    contracts:
+    event_contracts:
 
-    - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-      chain_id: 1
-      start_block: 1
-      contracts:
-      event_contracts:
+  - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 534352
+    start_block: 0
+    contracts:
+    event_contracts:
+
+
 
 #    - rpc-url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
 #      chain_id: 10
@@ -30,16 +32,16 @@ rpcs:
 
 
 master_db:
-    db_host: "127.0.0.1"
-    db_port: 5432
-    db_user: "graphnode"
-    db_password: ""
-    db_name: "acorus"
+  db_host: "120.77.251.247"
+  db_port: 5432
+  db_user: "postgres"
+  db_password: "galamini"
+  db_name: "acorus"
 
 slave_db:
-    db_host: "127.0.0.1"
-    db_port: 5432
-    db_user: "graphnode"
-    db_password: ""
-    db_name: "acorus"
+  db_host: "127.0.0.1"
+  db_port: 5432
+  db_user: "graphnode"
+  db_password: ""
+  db_name: "acorus"
 

@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/common/logs"
-	"gorm.io/gorm/logger"
-	"log"
-	"os"
-	"path/filepath"
-	"time"
-
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database/common"
@@ -43,9 +41,8 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 	if dbConfig.DbPassword != "" {
 		dsn += fmt.Sprintf(" password=%s", dbConfig.DbPassword)
 	}
-	writer := logs.MyLogWriter()
 	DbLogger := logger.New(
-		log.New(writer, "\r\n", log.Ldate|log.Ltime|log.LstdFlags), // io writer
+		logs.New(), // io writer
 		logger.Config{
 			SlowThreshold:             time.Second, // Slow SQL threshold
 			LogLevel:                  logger.Info, // Log level(这里记得根据需求改一下)

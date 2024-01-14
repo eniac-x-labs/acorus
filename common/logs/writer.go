@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+	"gorm.io/gorm/logger"
 	"io"
 	"log"
 	"os"
@@ -18,15 +19,40 @@ var logTime string
 
 type dateFileWriter struct {
 	io.Writer
+	LogLevel logger.LogLevel // 日志级别
+}
+
+type MyLogger struct {
+	logger *log.Logger
+}
+
+func (m MyLogger) Printf(format string, v ...any) {
+
+	// 检测到如果是gorm的sql语句，就截取sql语句
+	if global_const.GormInfoFmt == format {
+		sql := v[3].(string)
+		if len(sql) > 1000 {
+			sql = sql[:1000] + "..."
+			v[3] = sql
+		}
+	}
+	m.logger.Printf(" 走你"+format, v...)
 }
 
 func init() {
 	RefreshLogFile()
-	log.SetOutput(io.MultiWriter(os.Stdout, &myLogWriter))
+	myLogWriter = dateFileWriter{
+		LogLevel: logger.Info,
+	}
+	log.SetOutput(MyLogWriter())
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
-func (d *dateFileWriter) Write(p []byte) (n int, err error) {
+func StartLog() {
+	fmt.Println("startLog")
+}
+
+func (l *dateFileWriter) Write(p []byte) (n int, err error) {
 	if logTime != time.Now().Format(global_const.LogTimeFormat) {
 		RefreshLogFile()
 	}
@@ -46,4 +72,9 @@ func RefreshLogFile() {
 
 func MyLogWriter() io.Writer {
 	return io.MultiWriter(os.Stdout, &myLogWriter)
+}
+
+func New() *MyLogger {
+	myLogger := &MyLogger{log.New(MyLogWriter(), "\r\n", log.Ldate|log.Ltime|log.LstdFlags)}
+	return myLogger
 }
