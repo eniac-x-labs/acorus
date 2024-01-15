@@ -27,13 +27,11 @@ type MyLogger struct {
 }
 
 func (m MyLogger) Printf(format string, v ...any) {
-
-	// 检测到如果是gorm的sql语句，就截取sql语句
-	if global_const.GormInfoFmt == format {
-		sql := v[3].(string)
-		if len(sql) > 1000 {
-			sql = sql[:1000] + "..."
-			v[3] = sql
+	for i := range v {
+		if value, ok := v[i].(string); ok {
+			if len(value) > 1000 {
+				v[i] = value[:1000] + "..."
+			}
 		}
 	}
 	m.logger.Printf(format, v...)

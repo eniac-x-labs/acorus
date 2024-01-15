@@ -82,31 +82,31 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 
 func (syncer *Synchronizer) Start() error {
 	tickerSyncer := time.NewTicker(syncer.loopInterval)
-	//syncer.tasks.Go(func() error {
-	for range tickerSyncer.C {
-		if len(syncer.headers) > 0 {
-			log.Println("retrying previous batch")
-		} else {
-			newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
-			if err != nil {
-				log.Println("error querying for headers", "err", err)
-			} else if len(newHeaders) == 0 {
-				log.Println("no new headers. syncer at head?")
+	syncer.tasks.Go(func() error {
+		for range tickerSyncer.C {
+			if len(syncer.headers) > 0 {
+				log.Println("retrying previous batch")
 			} else {
-				syncer.headers = newHeaders
+				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
+				if err != nil {
+					log.Println("error querying for headers", "err", err)
+				} else if len(newHeaders) == 0 {
+					log.Println("no new headers. syncer at head?")
+				} else {
+					syncer.headers = newHeaders
+				}
+				latestHeader := syncer.headerTraversal.LatestHeader()
+				if latestHeader != nil {
+					log.Println("Latest header", "latestHeader Number", latestHeader.Number)
+				}
 			}
-			latestHeader := syncer.headerTraversal.LatestHeader()
-			if latestHeader != nil {
-				log.Println("Latest header", "latestHeader Number", latestHeader.Number)
+			err := syncer.processBatch(syncer.headers)
+			if err == nil {
+				syncer.headers = nil
 			}
 		}
-		err := syncer.processBatch(syncer.headers)
-		if err == nil {
-			syncer.headers = nil
-		}
-	}
-	//return nil
-	//})
+		return nil
+	})
 	return nil
 }
 

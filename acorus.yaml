@@ -11,7 +11,7 @@ metrics:
 rpcs:
   - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
     chain_id: 1
-    start_block: 1
+    start_block: 18310747
     contracts:
     event_contracts:
 
