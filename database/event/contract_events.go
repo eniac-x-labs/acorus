@@ -100,11 +100,12 @@ func (db *contractEventsDB) ChainContractEventsWithFilter(chainId string, filter
 	if fromHeight.Cmp(toHeight) > 0 {
 		return nil, fmt.Errorf("fromHeight %d is greater than toHeight %d", fromHeight, toHeight)
 	}
-
-	query := db.gorm.Table("contract_events_" + chainId).Where(&filter)
-	query = query.Joins("INNER JOIN l1_block_headers ON l1_contract_events.block_hash = l1_block_headers.hash")
-	query = query.Where("l1_block_headers.number >= ? AND l1_block_headers.number <= ?", fromHeight, toHeight)
-	query = query.Order("l1_block_headers.number ASC").Select("l1_contract_events.*")
+	contractEventsTable := " contract_events_" + chainId + " as contract_events "
+	blockHeadersTable := " block_headers_" + chainId + " as block_headers "
+	query := db.gorm.Table(contractEventsTable).Where(&filter)
+	query = query.Joins("INNER JOIN " + blockHeadersTable + " ON contract_events.block_hash = block_headers.hash")
+	query = query.Where("block_headers.number >= ? AND block_headers.number <= ?", fromHeight, toHeight)
+	query = query.Order("block_headers.number ASC").Select("contract_events.*")
 
 	var events []ContractEvent
 	result := query.Find(&events)

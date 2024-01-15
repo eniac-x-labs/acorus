@@ -1,11 +1,13 @@
 package bridge
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 
+	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -185,37 +187,38 @@ func L1BatchDepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 
 }
 
-//func L1SentMessageEvent(event event.ContractEvent, db *database.DB) (*worker.L1ToL2, error) {
-//	rlpLog := event.RLPLog
-//	sentMessageEvent := abi.L1SentMessageEvent{}
-//	unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &sentMessageEvent, "SentMessage", *rlpLog)
-//	if unpackErr != nil {
-//		log.Warn("Failed to unpack SentMessage event", "err", unpackErr)
-//		return nil, unpackErr
-//	}
-//	// compute msgHash
-//	msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
-//		sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
-//	// update l1tol2  set msgHash by txHash
-//	if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MessageHash: msgHash}); err != nil {
-//		return nil, err
-//	}
-//	return nil, nil
-//}
+func L1SentMessageEvent(chainId string, event event.ContractEvent, db *database.DB) (*worker.L1ToL2, error) {
+	rlpLog := event.RLPLog
+	sentMessageEvent := abi.L1SentMessageEvent{}
+	unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &sentMessageEvent, "SentMessage", *rlpLog)
+	if unpackErr != nil {
+		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
+		return nil, unpackErr
+	}
+	// compute msgHash
+	msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
+		sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
+	// update l1tol2  set msgHash by txHash
+	if err := db.L1ToL2.UpdateL1ToL2MsgHashByL1TxHash(chainId, worker.L1ToL2{L1TransactionHash: rlpLog.TxHash, MessageHash: msgHash}); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
 
-//func L1RelayedMessageEvent(event event.ContractEvent, db *database.DB) (*worker.L1ToL2, error) {
-//	rlpLog := event.RLPLog
-//	l1RelayedMessageEvent := abi.L1RelayedMessageEvent{}
-//	unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &l1RelayedMessageEvent, "RelayedMessage", *rlpLog)
-//	if unpackErr != nil {
-//		return nil, unpackErr
-//	}
-//	// update l2 to l1 Set l1_tx_hash by msg_hash
-//	if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
-//		worker.L2ToL1{
-//			MessageHash:      l1RelayedMessageEvent.MessageHash,
-//			L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
-//		return nil, err
-//	}
-//	return nil, nil
-//}
+func L1RelayedMessageEvent(chainId string, event event.ContractEvent, db *database.DB) (*worker.L1ToL2, error) {
+	rlpLog := event.RLPLog
+	l1RelayedMessageEvent := abi.L1RelayedMessageEvent{}
+	unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &l1RelayedMessageEvent, "RelayedMessage", *rlpLog)
+	if unpackErr != nil {
+		return nil, unpackErr
+	}
+	// update l2 to l1 Set l1_tx_hash by msg_hash
+	if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
+		chainId,
+		worker.L2ToL1{
+			MessageHash:      l1RelayedMessageEvent.MessageHash,
+			L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}

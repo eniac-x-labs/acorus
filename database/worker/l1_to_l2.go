@@ -53,7 +53,7 @@ type L1ToL2DB interface {
 
 type L1ToL2View interface {
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
-	L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
+	LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L1ToL2List(string, string, int, int, string) ([]L1ToL2, int64)
 	L1ToL2Transaction(string, common.Hash) (*L1ToL2, error)
@@ -206,7 +206,7 @@ func (l1l2 l1ToL2DB) GetBlockNumberFromHash(chainId string, blockHash common.Has
 	return new(big.Int).SetUint64(l1BlockNumber), nil
 }
 
-func (l1l2 *l1ToL2DB) L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
+func (l1l2 l1ToL2DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l1_to_l2_%s", chainId)
 	l1Query := l1l2.gorm.Where("timestamp = (?)", l1l2.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l1Header common2.BlockHeader
@@ -220,7 +220,7 @@ func (l1l2 *l1ToL2DB) L1LatestBlockHeader(chainId string) (*common2.BlockHeader,
 	return &l1Header, nil
 }
 
-func (l1l2 *l1ToL2DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
+func (l1l2 l1ToL2DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l1_to_l2_%s", chainId)
 	l1Query := l1l2.gorm.Where("number = (?)", l1l2.gorm.Table(tableName).Where("status != (?)", common3.L1ToL2Claimed).Select("MAX(l2_block_number)"))
 	var l2Header common2.BlockHeader
@@ -234,7 +234,7 @@ func (l1l2 *l1ToL2DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.Blo
 	return &l2Header, nil
 }
 
-func (l1l2 *l1ToL2DB) L1ToL2Transaction(chainId string, msgHash common.Hash) (*L1ToL2, error) {
+func (l1l2 l1ToL2DB) L1ToL2Transaction(chainId string, msgHash common.Hash) (*L1ToL2, error) {
 	var l1tol2Tx L1ToL2
 	filterMessageHash := L1ToL2{MessageHash: msgHash}
 	result := l1l2.gorm.Table("block_headers" + chainId).Where(&filterMessageHash).Take(&l1tol2Tx)

@@ -19,7 +19,9 @@ rpcs:
     chain_id: 534352
     start_block: 0
     contracts:
+      - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
     event_contracts:
+      - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
 
 
 
