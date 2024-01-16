@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"log"
 	"math/big"
@@ -155,6 +156,8 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 }
 
 func (as *Acorus) initProcessor(config *config.Config) error {
+	var loopInterval time.Duration = 5
+	var epoch uint64 = 10_000
 	for i := range config.RPCs {
 		if as.Processor == nil {
 			as.Processor = make(map[uint64]event2.IEventProcessor)
@@ -163,7 +166,7 @@ func (as *Acorus) initProcessor(config *config.Config) error {
 		var processor event2.IEventProcessor
 		var err error
 		if rpcItem.ChainId == global_const.ScrollChainId {
-			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown)
+			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}

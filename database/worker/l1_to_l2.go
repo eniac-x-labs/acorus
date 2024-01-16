@@ -93,7 +93,7 @@ func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSi
 		}
 		queryStateRoot.Where("from_address = ?", address).Or(" to_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
-		err := l1l2.gorm.Table("l1_to_l2").Select("l2_block_number").Count(&totalRecord).Error
+		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Select("l2_block_number").Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get l1 to l2 no address count fail ")
 		}
@@ -209,7 +209,7 @@ func (l1l2 l1ToL2DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, er
 	tableName := fmt.Sprintf("l1_to_l2_%s", chainId)
 	l1Query := l1l2.gorm.Where("timestamp = (?)", l1l2.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l1Header common2.BlockHeader
-	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_1")
 	result := l1Query.Table(blockHeaderSTableName).Take(&l1Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

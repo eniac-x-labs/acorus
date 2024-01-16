@@ -3,6 +3,7 @@ package scroll
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"log"
 	"math/big"
@@ -27,10 +28,15 @@ type ScrollEventProcessor struct {
 	resourceCtx    context.Context
 	resourceCancel context.CancelFunc
 	tasks          tasks.Group
+	loopInterval   time.Duration
+	l1StartHeight  *big.Int
+	l2StartHeight  *big.Int
+	epoch          uint64
 }
 
 func NewBridgeProcessor(db *database.DB,
-	cfg *config.RPC, shutdown context.CancelCauseFunc) (*ScrollEventProcessor, error) {
+	cfg *config.RPC, shutdown context.CancelCauseFunc,
+	loopInterval time.Duration, epoch uint64) (*ScrollEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &ScrollEventProcessor{
 		db:             db,
@@ -40,25 +46,32 @@ func NewBridgeProcessor(db *database.DB,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
+		loopInterval: loopInterval,
+		epoch:        epoch,
 	}, nil
 }
 
 func (sp *ScrollEventProcessor) StartUnpack() error {
+	tickerSyncer := time.NewTicker(sp.loopInterval)
 	log.Println("starting scroll bridge processor...")
 	sp.tasks.Go(func() error {
-		err := sp.onL1Data()
-		if err != nil {
-			log.Println("no more l1 etl updates. shutting down l1 task")
-			return err
+		for range tickerSyncer.C {
+			err := sp.onL1Data()
+			if err != nil {
+				log.Println("no more l1 etl updates. shutting down l1 task")
+				return err
+			}
 		}
 		return nil
 	})
 	// start L2 worker
 	sp.tasks.Go(func() error {
-		err := sp.onL2Data()
-		if err != nil {
-			log.Println("no more l2 etl updates. shutting down l2 task")
-			return err
+		for range tickerSyncer.C {
+			err := sp.onL2Data()
+			if err != nil {
+				log.Println("no more l2 etl updates. shutting down l2 task")
+				return err
+			}
 		}
 		return nil
 	})
@@ -73,18 +86,22 @@ func (sp *ScrollEventProcessor) ClosetUnpack() error {
 func (sp *ScrollEventProcessor) onL1Data() error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	lastBlockHeard, err := sp.db.L1ToL2.LatestBlockHeader(chainIdStr)
-	if err != nil {
-		log.Println("l1 failed to get last block heard", "err", err)
-		return err
-	}
-	if lastBlockHeard == nil {
-		lastBlockHeard = &common2.BlockHeader{
-			Number: big.NewInt(0),
+	if sp.l1StartHeight == nil {
+		lastBlockHeard, err := sp.db.L1ToL2.LatestBlockHeader(chainIdStr)
+		if err != nil {
+			log.Println("l1 failed to get last block heard", "err", err)
+			return err
 		}
+		if lastBlockHeard == nil {
+			lastBlockHeard = &common2.BlockHeader{
+				Number: big.NewInt(0),
+			}
+		}
+		sp.l1StartHeight = lastBlockHeard.Number
 	}
-	fromL1Height := new(big.Int).Add(lastBlockHeard.Number, bigint.One)
-	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(10000))
+	sp.l1StartHeight = new(big.Int).Add(sp.l1StartHeight, bigint.One)
+	fromL1Height := sp.l1StartHeight
+	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(sp.epoch)))
 	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l1EventsFetchErr := sp.l1EventsFetch(fromL1Height, toL1Height)
 		if l1EventsFetchErr != nil {
@@ -94,24 +111,29 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 	}); err != nil {
 		return err
 	}
+	sp.l1StartHeight = toL1Height
 	return nil
 }
 
 func (sp *ScrollEventProcessor) onL2Data() error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	lastBlockHeard, err := sp.db.L2ToL1.LatestBlockHeader(chainIdStr)
-	if err != nil {
-		log.Println("l2 failed to get last block heard", "err", err)
-		return err
-	}
-	if lastBlockHeard == nil {
-		lastBlockHeard = &common2.BlockHeader{
-			Number: big.NewInt(0),
+	if sp.l2StartHeight == nil {
+		lastBlockHeard, err := sp.db.L2ToL1.LatestBlockHeader(chainIdStr)
+		if err != nil {
+			log.Println("l2 failed to get last block heard", "err", err)
+			return err
 		}
+		if lastBlockHeard == nil {
+			lastBlockHeard = &common2.BlockHeader{
+				Number: big.NewInt(0),
+			}
+		}
+		sp.l2StartHeight = lastBlockHeard.Number
 	}
-	fromL2Height := new(big.Int).Add(lastBlockHeard.Number, bigint.One)
-	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(10000))
+	sp.l2StartHeight = new(big.Int).Add(sp.l2StartHeight, bigint.One)
+	fromL2Height := sp.l2StartHeight
+	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(sp.epoch)))
 	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := sp.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {
@@ -121,6 +143,7 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 	}); err != nil {
 		return err
 	}
+	sp.l2StartHeight = toL2Height
 	return nil
 }
 
