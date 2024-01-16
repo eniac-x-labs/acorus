@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
 )
 
@@ -163,7 +164,7 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint
 	headers := make([]types.Header, count)
 	batchElems := make([]rpc.BatchElem, count)
 
-	if chainId != 3 {
+	if chainId != uint(global_const.PolygonChainId) {
 		for i := uint64(0); i < count; i++ {
 			height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
 			batchElems[i] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(height), false}, Result: &headers[i]}

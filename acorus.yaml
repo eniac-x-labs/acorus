@@ -23,6 +23,14 @@ rpcs:
     event_contracts:
       - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
 
+  - rpc_url: 'https://rpc.ankr.com/polygon_zkevm/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 1101
+    start_block: 0
+    contracts:
+      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+    event_contracts:
+      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+
 
 
 #    - rpc-url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
