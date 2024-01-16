@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	backendabi "github.com/cornerstone-labs/acorus/event/scroll/abi"
 	"math/big"
 	"strings"
 
@@ -13,8 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-
-	backendabi "github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32

@@ -30,7 +30,6 @@ type L2ToL1 struct {
 	Status                  int64          `gorm:"column:status" db:"status" json:"status" form:"status"`
 	FromAddress             common.Address `gorm:"column:from_address;serializer:bytes" db:"from_address" json:"fromAddress" form:"from_address"`
 	ETHAmount               *big.Int       `gorm:"serializer:u256;column:eth_amount" json:"ETHAmount"`
-	ERC20Amount             *big.Int       `gorm:"serializer:u256;column:erc20_amount" json:"ERC20Amount"`
 	GasLimit                *big.Int       `gorm:"serializer:u256;column:gas_limit" json:"gasLimit"`
 	TimeLeft                *big.Int       `gorm:"serializer:u256;column:time_left" json:"timeLeft"`
 	ToAddress               common.Address `gorm:"column:to_address;serializer:bytes" db:"to_address" json:"toAddress" form:"to_address"`
@@ -268,7 +267,8 @@ func (l2l1 l2ToL1DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, er
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
 	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l2Header common2.BlockHeader
-	result := l2Query.Take(&l2Header)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	result := l2Query.Table(blockHeaderSTableName).Take(&l2Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -282,7 +282,8 @@ func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId string) (*common2.Bloc
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
 	l1Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table(tableName).Where("status != (?)", 4).Select("MAX(l1_block_number)"))
 	var l1Header common2.BlockHeader
-	result := l1Query.Take(&l1Header)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	result := l1Query.Table(blockHeaderSTableName).Take(&l1Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

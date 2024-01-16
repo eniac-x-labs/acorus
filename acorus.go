@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/common/logs"
+
 	"log"
 	"math/big"
 	"net"
@@ -15,9 +15,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
-	_ "github.com/cornerstone-labs/acorus/common/logs"
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/common/logs"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	event2 "github.com/cornerstone-labs/acorus/event"
+	"github.com/cornerstone-labs/acorus/event/scroll"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
@@ -30,6 +33,7 @@ type Acorus struct {
 	metricsServer   *httputil.HTTPServer
 	metricsRegistry *prometheus.Registry
 	Synchronizer    map[uint64]*synchronizer.Synchronizer
+	Processor       map[uint64]event2.IEventProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
@@ -54,6 +58,12 @@ func (as *Acorus) Start(ctx context.Context) error {
 		if err := as.Synchronizer[realChainId].Start(); err != nil {
 			return fmt.Errorf("failed to start L1 Sync: %w", err)
 		}
+		processor := as.Processor[realChainId]
+		if processor != nil {
+			if err := processor.StartUnpack(); err != nil {
+				return fmt.Errorf("failed to start event: %w", err)
+			}
+		}
 	}
 	return nil
 }
@@ -68,6 +78,9 @@ func (as *Acorus) Stop(ctx context.Context) error {
 		}
 		if as.ethClient[as.chainIdList[i]] != nil {
 			as.ethClient[as.chainIdList[i]].Close()
+		}
+		if as.Processor[as.chainIdList[i]] != nil {
+			as.Processor[as.chainIdList[i]].ClosetUnpack()
 		}
 	}
 
@@ -110,7 +123,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initSynchronizer(cfg); err != nil {
 		return fmt.Errorf("failed to init L1 Sync: %w", err)
 	}
-
+	if err := as.initProcessor(cfg); err != nil {
+		return fmt.Errorf("failed to init Processor: %w", err)
+	}
 	return nil
 }
 
@@ -136,6 +151,29 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	as.DB = db
+	return nil
+}
+
+func (as *Acorus) initProcessor(config *config.Config) error {
+	for i := range config.RPCs {
+		if as.Processor == nil {
+			as.Processor = make(map[uint64]event2.IEventProcessor)
+		}
+		rpcItem := config.RPCs[i]
+		var processor event2.IEventProcessor
+		var err error
+		if rpcItem.ChainId == global_const.ScrollChainId {
+			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown)
+			if err != nil {
+				return err
+			}
+		}
+		// todo add other chain processor
+
+		if processor != nil {
+			as.Processor[rpcItem.ChainId] = processor
+		}
+	}
 	return nil
 }
 

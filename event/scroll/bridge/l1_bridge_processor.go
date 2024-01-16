@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"github.com/cornerstone-labs/acorus/event/scroll/abi"
+	"github.com/cornerstone-labs/acorus/event/scroll/utils"
 	"log"
 	"math/big"
 
@@ -11,8 +13,6 @@ import (
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/utils"
 )
 
 func L1DepositETH(event event.ContractEvent) (*worker.L1ToL2, error) {
@@ -25,6 +25,7 @@ func L1DepositETH(event event.ContractEvent) (*worker.L1ToL2, error) {
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -34,7 +35,6 @@ func L1DepositETH(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         depositEvent.Amount,
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
@@ -51,9 +51,12 @@ func L1DepositERC20(event event.ContractEvent) (*worker.L1ToL2, error) {
 	if unpackErr != nil {
 		return nil, unpackErr
 	}
+	amounts := make([]*big.Int, 0)
+	amounts = append(amounts, depositErc20Event.Amount)
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -63,9 +66,9 @@ func L1DepositERC20(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    depositErc20Event.L1Token,
 		L2TokenAddress:    depositErc20Event.L2Token,
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       depositErc20Event.Amount,
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
+		TokenAmounts:      utils.ConvertBigIntArrayToString(amounts),
 		AssetType:         int64(common2.ERC20),
 	}, nil
 
@@ -80,9 +83,11 @@ func L1DepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 	if unpackErr != nil {
 		return nil, unpackErr
 	}
+
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -92,11 +97,11 @@ func L1DepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    depositErc721Event.L1Token,
 		L2TokenAddress:    depositErc721Event.L2Token,
 		ETHAmount:         depositErc721Event.Amount,
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ERC721),
 		TokenIds:          depositErc721Event.TokenID.String(),
+		TokenAmounts:      depositErc721Event.Amount.String(),
 	}, nil
 
 }
@@ -111,6 +116,7 @@ func L1DepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -120,11 +126,11 @@ func L1DepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    depositErc1155Event.L1Token,
 		L2TokenAddress:    depositErc1155Event.L2Token,
 		ETHAmount:         depositErc1155Event.Amount,
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ERC1155),
 		TokenIds:          depositErc1155Event.TokenID.String(),
+		TokenAmounts:      depositErc1155Event.Amount.String(),
 	}, nil
 }
 
@@ -139,6 +145,7 @@ func L1BatchDepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -148,10 +155,10 @@ func L1BatchDepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    batchDepositErc721Event.L1Token,
 		L2TokenAddress:    batchDepositErc721Event.L2Token,
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ERC721),
+		TokenAmounts:      "1",
 		TokenIds:          utils.ConvertBigIntArrayToString(batchDepositErc721Event.TokenIDs),
 	}, nil
 
@@ -168,6 +175,7 @@ func L1BatchDepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 	return &worker.L1ToL2{
 		GUID:              uuid.New(),
 		QueueIndex:        nil,
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Hash{},
@@ -177,7 +185,6 @@ func L1BatchDepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L1TokenAddress:    batchDepositERC1155Event.L1Token,
 		L2TokenAddress:    batchDepositERC1155Event.L2Token,
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ERC1155),
@@ -216,6 +223,7 @@ func L1RelayedMessageEvent(chainId string, event event.ContractEvent, db *databa
 	if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
 		chainId,
 		worker.L2ToL1{
+			L1BlockNumber:    big.NewInt(int64(rlpLog.BlockNumber)),
 			MessageHash:      l1RelayedMessageEvent.MessageHash,
 			L1FinalizeTxHash: rlpLog.TxHash}); err != nil {
 		return nil, err

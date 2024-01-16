@@ -3,6 +3,7 @@ package scroll
 import (
 	"context"
 	"fmt"
+
 	"log"
 	"math/big"
 	"strconv"
@@ -13,34 +14,38 @@ import (
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
-	"github.com/cornerstone-labs/acorus/event/processor"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/bridge"
+	"github.com/cornerstone-labs/acorus/event/scroll/abi"
+	"github.com/cornerstone-labs/acorus/event/scroll/bridge"
 )
 
-type ScrollProcessor struct {
-	processor.IProcessor
+type ScrollEventProcessor struct {
+	db             *database.DB
+	cfgRpc         *config.RPC
+	resourceCtx    context.Context
+	resourceCancel context.CancelFunc
+	tasks          tasks.Group
 }
 
 func NewBridgeProcessor(db *database.DB,
-	cfg *config.RPC, shutdown context.CancelCauseFunc) (*processor.IProcessor, error) {
+	cfg *config.RPC, shutdown context.CancelCauseFunc) (*ScrollEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
-	return &processor.IProcessor{
-		Db:             db,
-		CfgRpc:         cfg,
-		ResourceCtx:    resCtx,
-		ResourceCancel: resCancel,
-		Tasks: tasks.Group{HandleCrit: func(err error) {
+	return &ScrollEventProcessor{
+		db:             db,
+		cfgRpc:         cfg,
+		resourceCtx:    resCtx,
+		resourceCancel: resCancel,
+		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
 	}, nil
 }
 
-func (sp *ScrollProcessor) Start() error {
-	log.Println("starting bridge processor...")
-	sp.Tasks.Go(func() error {
+func (sp *ScrollEventProcessor) StartUnpack() error {
+	log.Println("starting scroll bridge processor...")
+	sp.tasks.Go(func() error {
 		err := sp.onL1Data()
 		if err != nil {
 			log.Println("no more l1 etl updates. shutting down l1 task")
@@ -49,7 +54,7 @@ func (sp *ScrollProcessor) Start() error {
 		return nil
 	})
 	// start L2 worker
-	sp.Tasks.Go(func() error {
+	sp.tasks.Go(func() error {
 		err := sp.onL2Data()
 		if err != nil {
 			log.Println("no more l2 etl updates. shutting down l2 task")
@@ -60,22 +65,27 @@ func (sp *ScrollProcessor) Start() error {
 	return nil
 }
 
-func (sp *ScrollProcessor) Close() error {
-	sp.ResourceCancel()
-	return sp.Tasks.Wait()
+func (sp *ScrollEventProcessor) ClosetUnpack() error {
+	sp.resourceCancel()
+	return sp.tasks.Wait()
 }
 
-func (sp *ScrollProcessor) onL1Data() error {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) onL1Data() error {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	lastBlockHeard, err := sp.Db.L1ToL2.LatestBlockHeader(chainIdStr)
+	lastBlockHeard, err := sp.db.L1ToL2.LatestBlockHeader(chainIdStr)
 	if err != nil {
 		log.Println("l1 failed to get last block heard", "err", err)
 		return err
 	}
+	if lastBlockHeard == nil {
+		lastBlockHeard = &common2.BlockHeader{
+			Number: big.NewInt(0),
+		}
+	}
 	fromL1Height := new(big.Int).Add(lastBlockHeard.Number, bigint.One)
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(10000))
-	if err := sp.Db.Transaction(func(tx *database.DB) error {
+	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l1EventsFetchErr := sp.l1EventsFetch(fromL1Height, toL1Height)
 		if l1EventsFetchErr != nil {
 			return l1EventsFetchErr
@@ -87,18 +97,22 @@ func (sp *ScrollProcessor) onL1Data() error {
 	return nil
 }
 
-func (sp *ScrollProcessor) onL2Data() error {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) onL2Data() error {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	lastBlockHeard, err := sp.Db.L2ToL1.LatestBlockHeader(chainIdStr)
-
+	lastBlockHeard, err := sp.db.L2ToL1.LatestBlockHeader(chainIdStr)
 	if err != nil {
 		log.Println("l2 failed to get last block heard", "err", err)
 		return err
 	}
+	if lastBlockHeard == nil {
+		lastBlockHeard = &common2.BlockHeader{
+			Number: big.NewInt(0),
+		}
+	}
 	fromL2Height := new(big.Int).Add(lastBlockHeard.Number, bigint.One)
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(10000))
-	if err := sp.Db.Transaction(func(tx *database.DB) error {
+	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := sp.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {
 			return l2EventsFetchErr
@@ -110,18 +124,18 @@ func (sp *ScrollProcessor) onL2Data() error {
 	return nil
 }
 
-func (sp *ScrollProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	l1Contracts := sp.CfgRpc.Contracts
+	l1Contracts := sp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
-		events, err := sp.Db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		events, err := sp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l1ToL2s := make([]worker.L1ToL2, len(events))
+		l1ToL2s := make([]worker.L1ToL2, 0)
 		for _, contractEvent := range events {
 			unpackEvent, unpackErr := sp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
@@ -133,7 +147,7 @@ func (sp *ScrollProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) erro
 			}
 		}
 		if len(l1ToL2s) > 0 {
-			saveErr := sp.Db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
+			saveErr := sp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
 			if saveErr != nil {
 				log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
 				return saveErr
@@ -143,18 +157,18 @@ func (sp *ScrollProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) erro
 	return nil
 }
 
-func (sp *ScrollProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-	l2Contracts := sp.CfgRpc.EventContracts
+	l2Contracts := sp.cfgRpc.EventContracts
 	for _, l2contract := range l2Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
-		events, err := sp.Db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		events, err := sp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l2ToL1s := make([]worker.L2ToL1, len(events))
+		l2ToL1s := make([]worker.L2ToL1, 0)
 		for _, contractEvent := range events {
 			unpackEvent, unpackErr := sp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
@@ -166,7 +180,7 @@ func (sp *ScrollProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) erro
 			}
 		}
 		if len(l2ToL1s) > 0 {
-			saveErr := sp.Db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
+			saveErr := sp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
 			if saveErr != nil {
 				log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
 				return saveErr
@@ -176,8 +190,8 @@ func (sp *ScrollProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) erro
 	return nil
 }
 
-func (sp *ScrollProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L1DepositETHSig.String():
@@ -217,13 +231,13 @@ func (sp *ScrollProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1T
 		}
 		return L1BatchDepositERC1155, nil
 	case abi.L1SentMessageEventSignature.String():
-		_, err := bridge.L1SentMessageEvent(chainIdStr, event, sp.Db)
+		_, err := bridge.L1SentMessageEvent(chainIdStr, event, sp.db)
 		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	case abi.L1RelayedMessageEventSignature.String():
-		_, err := bridge.L1RelayedMessageEvent(chainIdStr, event, sp.Db)
+		_, err := bridge.L1RelayedMessageEvent(chainIdStr, event, sp.db)
 		if err != nil {
 			return nil, err
 		}
@@ -231,8 +245,8 @@ func (sp *ScrollProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1T
 	return nil, nil
 }
 
-func (sp *ScrollProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
-	chainId := sp.CfgRpc.ChainId
+func (sp *ScrollEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
+	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L2WithdrawETHSig.String():
@@ -272,13 +286,13 @@ func (sp *ScrollProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2T
 		}
 		return L2BatchWithdrawERC1155, nil
 	case abi.L2SentMessageEventSignature.String():
-		_, err := bridge.L2SentMessageEvent(chainIdStr, event, sp.Db)
+		_, err := bridge.L2SentMessageEvent(chainIdStr, event, sp.db)
 		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	case abi.L2RelayedMessageEventSignature.String():
-		_, err := bridge.L2RelayedMessageEvent(chainIdStr, event, sp.Db)
+		_, err := bridge.L2RelayedMessageEvent(chainIdStr, event, sp.db)
 		if err != nil {
 			return nil, err
 		}

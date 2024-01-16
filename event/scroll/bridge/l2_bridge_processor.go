@@ -1,6 +1,8 @@
 package bridge
 
 import (
+	"github.com/cornerstone-labs/acorus/event/scroll/abi"
+	"github.com/cornerstone-labs/acorus/event/scroll/utils"
 	"log"
 	"math/big"
 
@@ -11,8 +13,6 @@ import (
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/abi"
-	"github.com/cornerstone-labs/acorus/event/processor/scroll/utils"
 )
 
 func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
@@ -24,6 +24,7 @@ func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
 	}
 	return &worker.L2ToL1{
 		GUID:              uuid.New(),
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L1ProveTxHash:     common.Hash{},
@@ -34,7 +35,6 @@ func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         depositEvent.Amount,
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
@@ -52,9 +52,12 @@ func L2WithdrawERC20(event event.ContractEvent) (*worker.L2ToL1, error) {
 	if unpackErr != nil {
 		return nil, unpackErr
 	}
+	amounts := make([]*big.Int, 0)
+	amounts = append(amounts, withdrawErc20Event.Amount)
 	return &worker.L2ToL1{
 		GUID:              uuid.New(),
 		L1FinalizeTxHash:  common.Hash{},
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L2TransactionHash: rlpLog.TxHash,
 		L1ProveTxHash:     common.Hash{},
 		Status:            0,
@@ -63,13 +66,12 @@ func L2WithdrawERC20(event event.ContractEvent) (*worker.L2ToL1, error) {
 		ToAddress:         withdrawErc20Event.To,
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
-		ETHAmount:         withdrawErc20Event.Amount,
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ERC20),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
+		TokenAmounts:      utils.ConvertBigIntArrayToString(amounts),
 	}, nil
 }
 
@@ -84,6 +86,7 @@ func L2WithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		GUID:              uuid.New(),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1ProveTxHash:     common.Hash{},
 		Status:            0,
 		TimeLeft:          big.NewInt(0),
@@ -92,7 +95,6 @@ func L2WithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		TokenAmounts:      withdrawERC721Event.Amount.String(),
 		TokenIds:          withdrawERC721Event.TokenID.String(),
@@ -115,6 +117,7 @@ func L2WithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		GUID:              uuid.New(),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1ProveTxHash:     common.Hash{},
 		Status:            0,
 		TimeLeft:          big.NewInt(0),
@@ -123,7 +126,6 @@ func L2WithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		TokenAmounts:      withdrawERC1155Event.Amount.String(),
 		TokenIds:          withdrawERC1155Event.TokenID.String(),
@@ -145,6 +147,7 @@ func L2BatchWithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		GUID:              uuid.New(),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1ProveTxHash:     common.Hash{},
 		Status:            0,
 		TimeLeft:          big.NewInt(0),
@@ -153,7 +156,6 @@ func L2BatchWithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		TokenAmounts:      "1",
 		TokenIds:          utils.ConvertBigIntArrayToString(batchWithdrawERC721Event.TokenIDs),
@@ -176,6 +178,7 @@ func L2BatchWithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L1ProveTxHash:     common.Hash{},
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		Status:            0,
 		TimeLeft:          big.NewInt(0),
 		FromAddress:       batchWithdrawERC1155Event.From,
@@ -183,12 +186,11 @@ func L2BatchWithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
-		ERC20Amount:       big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		TokenAmounts:      utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenAmounts),
 		TokenIds:          utils.ConvertBigIntArrayToString(batchWithdrawERC1155Event.TokenIDs),
 		Timestamp:         int64(event.Timestamp),
-		AssetType:         int64(common2.ERC721),
+		AssetType:         int64(common2.ERC1155),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
 	}, nil
@@ -224,6 +226,7 @@ func L2RelayedMessageEvent(chainId string, event event.ContractEvent, db *databa
 	if err := db.L1ToL2.UpdateL1ToL2L2TxHashByMsgHash(
 		chainId,
 		worker.L1ToL2{
+			L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 			MessageHash:       l2RelayedMessageEvent.MessageHash,
 			L2TransactionHash: rlpLog.TxHash}); err != nil {
 		return nil, err

@@ -32,7 +32,6 @@ type L1ToL2 struct {
 	L1TokenAddress        common.Address `gorm:"column:l1_token_address;serializer:bytes" db:"l1_token_address" json:"l1TokenAddress" form:"l1_token_address"`
 	L2TokenAddress        common.Address `gorm:"column:l2_token_address;serializer:bytes" db:"l2_token_address" json:"l2TokenAddress" form:"l2_token_address"`
 	ETHAmount             *big.Int       `gorm:"serializer:u256;column:eth_amount" json:"ETHAmount"`
-	ERC20Amount           *big.Int       `gorm:"serializer:u256;column:erc20_amount" json:"ERC20Amount"`
 	GasLimit              *big.Int       `gorm:"serializer:u256;column:gas_limit" json:"gasLimit"`
 	Timestamp             int64          `gorm:"column:timestamp" db:"timestamp" json:"timestamp" form:"timestamp"`
 	TokenIds              string         `gorm:"column:token_ids" db:"token_ids" json:"tokenIds" form:"token_ids"`
@@ -126,7 +125,7 @@ func (l1l2 l1ToL2DB) UpdateTokenPairAndAddress(chainId string, l1L2List []L1ToL2
 		l1ToL2.L2TokenAddress = l1L2List[i].L2TokenAddress
 		l1ToL2.FromAddress = l1L2List[i].FromAddress
 		l1ToL2.ToAddress = l1L2List[i].ToAddress
-		l1ToL2.ERC20Amount = l1L2List[i].ERC20Amount
+		l1ToL2.TokenAmounts = l1L2List[i].TokenAmounts
 		err := l1l2.gorm.Save(l1ToL2).Error
 		if err != nil {
 			return err
@@ -210,7 +209,8 @@ func (l1l2 l1ToL2DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, er
 	tableName := fmt.Sprintf("l1_to_l2_%s", chainId)
 	l1Query := l1l2.gorm.Where("timestamp = (?)", l1l2.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l1Header common2.BlockHeader
-	result := l1Query.Take(&l1Header)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	result := l1Query.Table(blockHeaderSTableName).Take(&l1Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -223,8 +223,9 @@ func (l1l2 l1ToL2DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, er
 func (l1l2 l1ToL2DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l1_to_l2_%s", chainId)
 	l1Query := l1l2.gorm.Where("number = (?)", l1l2.gorm.Table(tableName).Where("status != (?)", common3.L1ToL2Claimed).Select("MAX(l2_block_number)"))
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
 	var l2Header common2.BlockHeader
-	result := l1Query.Take(&l2Header)
+	result := l1Query.Table(blockHeaderSTableName).Take(&l2Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
