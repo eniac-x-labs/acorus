@@ -178,7 +178,7 @@ func (as *Acorus) initProcessor(cfg *config.Config) error {
 				return err
 			}
 		} else if rpcItem.ChainId == global_const.PolygonChainId {
-			processor, err = polygon.NewBridgeProcessor(as.DB, l1RPC, rpcItem, as.shutdown)
+			processor, err = polygon.NewBridgeProcessor(as.DB, l1RPC, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}
