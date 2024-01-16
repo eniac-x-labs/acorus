@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -155,13 +156,15 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 }
 
 func (as *Acorus) initProcessor(cfg *config.Config) error {
+	var loopInterval time.Duration = 5
+	var epoch uint64 = 10_000
+
 	var l1RPC *config.RPC
 	for i := range cfg.RPCs {
 		if cfg.RPCs[i].ChainId == global_const.EthereumChainId {
 			l1RPC = cfg.RPCs[i]
 		}
 	}
-
 	for i := range cfg.RPCs {
 		if as.Processor == nil {
 			as.Processor = make(map[uint64]event2.IEventProcessor)
@@ -170,7 +173,7 @@ func (as *Acorus) initProcessor(cfg *config.Config) error {
 		var processor event2.IEventProcessor
 		var err error
 		if rpcItem.ChainId == global_const.ScrollChainId {
-			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown)
+			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}
