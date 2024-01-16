@@ -13,3 +13,7 @@ const ZeroAddress = "0x0000000000000000000000000000000000000000"
 const LogTimeFormat = "2006-01-02"
 
 const ScrollChainId uint64 = 534352
+
+const PolygonChainId uint64 = 1101
+
+const EthereumChainId uint64 = 1

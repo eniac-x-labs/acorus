@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/polygon"
 
 	"log"
 	"math/big"
@@ -154,16 +155,28 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 	return nil
 }
 
-func (as *Acorus) initProcessor(config *config.Config) error {
-	for i := range config.RPCs {
+func (as *Acorus) initProcessor(cfg *config.Config) error {
+	var l1RPC *config.RPC
+	for i := range cfg.RPCs {
+		if cfg.RPCs[i].ChainId == global_const.EthereumChainId {
+			l1RPC = cfg.RPCs[i]
+		}
+	}
+
+	for i := range cfg.RPCs {
 		if as.Processor == nil {
 			as.Processor = make(map[uint64]event2.IEventProcessor)
 		}
-		rpcItem := config.RPCs[i]
+		rpcItem := cfg.RPCs[i]
 		var processor event2.IEventProcessor
 		var err error
 		if rpcItem.ChainId == global_const.ScrollChainId {
 			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown)
+			if err != nil {
+				return err
+			}
+		} else if rpcItem.ChainId == global_const.PolygonChainId {
+			processor, err = polygon.NewBridgeProcessor(as.DB, l1RPC, rpcItem, as.shutdown)
 			if err != nil {
 				return err
 			}
