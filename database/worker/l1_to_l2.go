@@ -25,7 +25,7 @@ type L1ToL2 struct {
 	L2TransactionHash     common.Hash    `gorm:"column:l2_transaction_hash;serializer:bytes" db:"l2_transaction_hash" json:"l2TransactionHash" form:"l2_transaction_hash"`
 	TransactionSourceHash common.Hash    `gorm:"column:transaction_source_hash;serializer:bytes" db:"transaction_source_hash" json:"transactionSourceHash" form:"transaction_source_hash"`
 	MessageHash           common.Hash    `gorm:"serializer:bytes"`
-	L1TxOrigin            common.Hash    `gorm:"column:l1_tx_origin;serializer:bytes" db:"l1_tx_origin" json:"l1TxOrigin" form:"l1_tx_origin"`
+	L1TxOrigin            common.Address `gorm:"column:l1_tx_origin;serializer:bytes" db:"l1_tx_origin" json:"l1TxOrigin" form:"l1_tx_origin"`
 	Status                int64          `gorm:"column:status" db:"status" json:"status" form:"status"`
 	FromAddress           common.Address `gorm:"column:from_address;serializer:bytes" db:"from_address" json:"fromAddress" form:"from_address"`
 	ToAddress             common.Address `gorm:"column:to_address;serializer:bytes" db:"to_address" json:"toAddress" form:"to_address"`

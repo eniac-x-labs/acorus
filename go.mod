@@ -3,6 +3,7 @@ module github.com/cornerstone-labs/acorus
 go 1.21
 
 require (
+	github.com/ethereum-optimism/optimism v1.2.0
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/google/uuid v1.4.0
