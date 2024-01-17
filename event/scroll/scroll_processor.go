@@ -153,7 +153,7 @@ func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int)
 	l1Contracts := sp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
-		events, err := sp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		events, err := sp.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
