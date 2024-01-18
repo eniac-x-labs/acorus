@@ -98,8 +98,13 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 			}
 		}
 		sp.l1StartHeight = lastBlockHeard.Number
+		if sp.l1StartHeight.Cmp(big.NewInt(int64(sp.cfgRpc.L1EventUnpackBlock))) == -1 {
+			sp.l1StartHeight = big.NewInt(int64(sp.cfgRpc.L1EventUnpackBlock))
+		}
+	} else {
+		sp.l1StartHeight = new(big.Int).Add(sp.l1StartHeight, bigint.One)
 	}
-	sp.l1StartHeight = new(big.Int).Add(sp.l1StartHeight, bigint.One)
+
 	fromL1Height := sp.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(sp.epoch)))
 	if err := sp.db.Transaction(func(tx *database.DB) error {
@@ -130,8 +135,9 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 			}
 		}
 		sp.l2StartHeight = lastBlockHeard.Number
+	} else {
+		sp.l2StartHeight = new(big.Int).Add(sp.l2StartHeight, bigint.One)
 	}
-	sp.l2StartHeight = new(big.Int).Add(sp.l2StartHeight, bigint.One)
 	fromL2Height := sp.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(sp.epoch)))
 	if err := sp.db.Transaction(func(tx *database.DB) error {

@@ -19,11 +19,12 @@ type Database struct {
 }
 
 type RPC struct {
-	RpcUrl         string   `yaml:"rpc_url"`
-	ChainId        uint64   `yaml:"chain_id"`
-	StartBlock     uint64   `yaml:"start_block"`
-	Contracts      []string `yaml:"contracts"`
-	EventContracts []string `yaml:"event_contracts"`
+	RpcUrl             string   `yaml:"rpc_url"`
+	ChainId            uint64   `yaml:"chain_id"`
+	StartBlock         uint64   `yaml:"start_block"`
+	L1EventUnpackBlock uint64   `yaml:"l1_event_unpack_block"`
+	Contracts          []string `yaml:"contracts"`
+	EventContracts     []string `yaml:"event_contracts"`
 }
 
 type Config struct {

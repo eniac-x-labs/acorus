@@ -18,6 +18,7 @@ rpcs:
   - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
     chain_id: 534352
     start_block: 0
+    l1_event_unpack_block: 18310747
     contracts:
       - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
       - "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367"
@@ -44,13 +45,13 @@ rpcs:
       - "0xC5034eB8F682b73F93C9246aa95A8eBbF82793aA"
       - "0x987e300fDfb06093859358522a79098848C33852"
 
-  - rpc_url: 'https://rpc.ankr.com/polygon_zkevm/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-    chain_id: 1101
-    start_block: 0
-    contracts:
-      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-    event_contracts:
-      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+#  - rpc_url: 'https://rpc.ankr.com/polygon_zkevm/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+#    chain_id: 1101
+#    start_block: 0
+#    contracts:
+#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+#    event_contracts:
+#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
 
 
 
