@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"gorm.io/gorm"
 	"math/big"
 	"strings"
@@ -35,6 +36,7 @@ type StateRootDB interface {
 }
 
 type StateRootView interface {
+	StateRootL1BlockHeader() (*common2.BlockHeader, error)
 	StateRootList(string, int, int, string) ([]StateRoot, int64)
 	GetLatestStateRootL2BlockNumber(chainId string) (uint64, error)
 	UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) error
@@ -111,4 +113,17 @@ func (s stateRootDB) UpdateFinalizedStatus(chainId string, finalizedBlockNumber 
 
 func NewStateRootDB(db *gorm.DB) StateRootDB {
 	return &stateRootDB{gorm: db}
+}
+
+func (s stateRootDB) StateRootL1BlockHeader() (*common2.BlockHeader, error) {
+	l1Query := s.gorm.Where("number = (?)", s.gorm.Table("state_root").Select("MAX(l1_block_number)"))
+	var l1Header common2.BlockHeader
+	result := l1Query.Take(&l1Header)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l1Header, nil
 }

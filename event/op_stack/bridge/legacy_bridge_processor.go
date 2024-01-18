@@ -16,7 +16,7 @@ import (
 	contracts2 "github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
-func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) CanonicalTransactionChain
 	ctcTxDepositEvents, err := contracts2.LegacyCTCDepositEvents(common3.LegacyCanonicalTransactionChain, db, fromHeight, toHeight)
 	if err != nil {
@@ -122,7 +122,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 	return nil
 }
 
-func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {
@@ -210,7 +210,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromH
 	return nil
 }
 
-func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l1", common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
@@ -235,7 +235,7 @@ func LegacyL1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromH
 	return nil
 }
 
-func LegacyL2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l2", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {

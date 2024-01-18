@@ -16,7 +16,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
-func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2ToL1MessagePasser
 	l2ToL1MPMessagesPassed, err := contracts.L2ToL1MessagePasserMessagePassedEvents(common3.L2ToL1MessagePasser, db, fromHeight, toHeight)
 	if err != nil {
@@ -154,7 +154,7 @@ func L2ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 	return nil
 }
 
-func L2ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
 	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("l2", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {

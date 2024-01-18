@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"fmt"
-	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,12 +13,13 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
+	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
-func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) OptimismPortal
 	optimismPortalTxDeposits, err := contracts.OptimismPortalTransactionDepositEvents(common3.OptimismPortalProxy, db, fromHeight, toHeight)
 	if err != nil {
@@ -166,7 +166,7 @@ func L1ProcessInitiatedBridgeEvents(log log.Logger, db *database.DB, fromHeight,
 }
 
 // L1ProcessProvenBridgeEvents Optimism portal proven withdrawals
-func L1ProcessProvenBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	provenWithdrawals, err := contracts.OptimismPortalWithdrawalProvenEvents(common3.OptimismPortalProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
@@ -206,7 +206,7 @@ func L1ProcessProvenBridgeEvents(log log.Logger, db *database.DB, fromHeight, to
 }
 
 // L1ProcessFinalizedBridgeEvents OptimismPortal (finalized withdrawals) and L1CrossDomainMessenger
-func L1ProcessFinalizedBridgeEvents(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	finalizedWithdrawals, err := contracts.OptimismPortalWithdrawalFinalizedEvents(common3.OptimismPortalProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
