@@ -156,7 +156,7 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 }
 
 func (as *Acorus) initProcessor(cfg *config.Config) error {
-	var loopInterval time.Duration = 5
+	var loopInterval time.Duration = 10
 	var epoch uint64 = 10_000
 
 	var l1RPC *config.RPC
