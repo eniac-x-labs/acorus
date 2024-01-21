@@ -116,7 +116,7 @@ func NewStateRootDB(db *gorm.DB) StateRootDB {
 }
 
 func (s stateRootDB) StateRootL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
-	l1Query := s.gorm.Where("number = (?)", s.gorm.Table("state_root_"+chainId).Select("MAX(l1_block_number)"))
+	l1Query := s.gorm.Table("block_headers_1").Where("number = (?)", s.gorm.Table("state_root_"+chainId).Select("MAX(l1_block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

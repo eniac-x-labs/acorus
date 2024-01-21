@@ -14,6 +14,8 @@ func CreateTableFromTemplate(chainId string, db *database.DB) {
 	createL2ToL1(chainId, db)
 	createBatches(chainId, db)
 	createStateRoot(chainId, db)
+	createWithdrawProven(chainId, db)
+	createWithdrawFinalized(chainId, db)
 }
 
 func createBlockHeaders(chainId string, db *database.DB) {
