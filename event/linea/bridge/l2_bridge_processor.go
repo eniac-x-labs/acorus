@@ -1,10 +1,11 @@
 package bridge
 
 import (
-	"github.com/cornerstone-labs/acorus/database"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/cornerstone-labs/acorus/database"
 )
 
 func L2SentMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {

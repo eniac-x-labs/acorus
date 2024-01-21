@@ -26,7 +26,7 @@ func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent)
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
-		L1TxOrigin:        common.Hash{},
+		L1TxOrigin:        common.Address{},
 		Status:            0,
 		FromAddress:       d.DestinationAddress,
 		ToAddress:         d.DestinationAddress,
