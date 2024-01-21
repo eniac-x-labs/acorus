@@ -12,8 +12,8 @@ import (
 	"github.com/cornerstone-labs/acorus/database/utils"
 
 	common2 "github.com/cornerstone-labs/acorus/event/op_stack/common"
+	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 )
 
 type OptimismPortalTransactionDepositEvent struct {
@@ -50,7 +50,7 @@ func OptimismPortalTransactionDepositEvents(contractAddress common.Address, db *
 		return nil, err
 	}
 	transactionDepositedEventAbi := optimismPortalAbi.Events["TransactionDeposited"]
-	if transactionDepositedEventAbi.ID != derive.DepositEventABIHash {
+	if transactionDepositedEventAbi.ID != common3.DepositEventABIHash {
 		return nil, errors.New("op-node DepositEventABIHash & optimism portal TransactionDeposited ID mismatch")
 	}
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: transactionDepositedEventAbi.ID}

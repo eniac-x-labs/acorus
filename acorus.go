@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"log"
 	"math/big"
 	"net"
@@ -179,6 +180,11 @@ func (as *Acorus) initProcessor(cfg *config.Config) error {
 			}
 		} else if rpcItem.ChainId == global_const.PolygonChainId {
 			processor, err = polygon.NewBridgeProcessor(as.DB, l1RPC, rpcItem, as.shutdown, loopInterval, epoch)
+			if err != nil {
+				return err
+			}
+		} else if rpcItem.ChainId == global_const.OpChinId {
+			processor, err = op_stack.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}

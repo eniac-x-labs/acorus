@@ -36,9 +36,11 @@ type OpEventProcessor struct {
 	LatestL2L1InitL2Header      *common2.BlockHeader
 	LatestProvenL1Header        *common2.BlockHeader
 	LatestFinalizedL1Header     *common2.BlockHeader
+	loopInterval                time.Duration
+	epoch                       uint64
 }
 
-func NewOpProcessor(db *database.DB, cfg *config.RPC, shutdown context.CancelCauseFunc) (*OpEventProcessor, error) {
+func NewBridgeProcessor(db *database.DB, cfg *config.RPC, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*OpEventProcessor, error) {
 	latestL1L2InitL1Header, err := db.L1ToL2.L1LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
@@ -85,13 +87,15 @@ func NewOpProcessor(db *database.DB, cfg *config.RPC, shutdown context.CancelCau
 		LatestL2L1InitL2Header:      latestL2L1InitL2Header,
 		LatestProvenL1Header:        latestProvenL1Header,
 		LatestFinalizedL1Header:     latestFinalizedL1Header,
+		loopInterval:                loopInterval,
+		epoch:                       epoch,
 	}, nil
 }
 
-func (ep *OpEventProcessor) Start() error {
-	tickerL1Worker := time.NewTicker(time.Second * 5)
+func (ep *OpEventProcessor) StartUnpack() error {
+	tickerSyncer := time.NewTicker(ep.loopInterval)
 	ep.tasks.Go(func() error {
-		for range tickerL1Worker.C {
+		for range tickerSyncer.C {
 			err := ep.onL1Data()
 			if err != nil {
 				return err
@@ -100,9 +104,8 @@ func (ep *OpEventProcessor) Start() error {
 		return nil
 	})
 
-	tickerL2Worker := time.NewTicker(time.Second * 5)
 	ep.tasks.Go(func() error {
-		for range tickerL2Worker.C {
+		for range tickerSyncer.C {
 			err := ep.onL2Data()
 			if err != nil {
 				return err
@@ -113,7 +116,7 @@ func (ep *OpEventProcessor) Start() error {
 	return nil
 }
 
-func (ep *OpEventProcessor) Close() error {
+func (ep *OpEventProcessor) ClosetUnpack() error {
 	ep.resourceCancel()
 	return ep.tasks.Wait()
 }
@@ -158,7 +161,7 @@ func (ep *OpEventProcessor) processInitiatedL1Events() error {
 	latestL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Table("block_headers_1").Where("number > ?", lastL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL1HeaderScope, strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
@@ -198,7 +201,7 @@ func (ep *OpEventProcessor) processInitiatedL2Events() error {
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastL2BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
@@ -237,7 +240,7 @@ func (ep *OpEventProcessor) processProvenL1Events() error {
 	latestProvenL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastProvenL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	if latestProvenL1HeaderScope == nil {
 		return nil
@@ -269,7 +272,7 @@ func (ep *OpEventProcessor) processFinalizedL1Events() error {
 	latestFinalizedL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastFinalizedL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	if latestFinalizedL1HeaderScope == nil {
 		return nil
@@ -321,7 +324,7 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ? AND number <= ?", lastFinalizedL2BlockNumber, latestL1L2BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, "10")
 	if err != nil {
@@ -361,7 +364,7 @@ func (ep *OpEventProcessor) processRollupStateRoot() error {
 	latestRollupL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastStateRootL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope, "10")
 	if err != nil {
