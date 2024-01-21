@@ -7,6 +7,8 @@ import (
 )
 
 var (
+	LegacyStateCommitmentChain      = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
+	L2OutputOracleProxy             = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
 	OptimismPortalProxy             = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
 	L1CrossDomainMessengerProxy     = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
 	L1StandardBridgeProxy           = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")

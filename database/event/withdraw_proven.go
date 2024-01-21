@@ -1,12 +1,13 @@
 package event
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
 	"math/big"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/ethereum/go-ethereum/common"
@@ -32,14 +33,14 @@ func (WithdrawProven) TableName() string {
 
 type WithdrawProvenDB interface {
 	WithdrawProvenView
-	StoreWithdrawProven([]WithdrawProven) error
-	MarkedWithdrawProvenRelated(withdrawProvenList []WithdrawProven) error
-	UpdateWithdrawProvenInfo(withdrawProvenList []WithdrawProven) error
+	StoreWithdrawProven(string, []WithdrawProven) error
+	MarkedWithdrawProvenRelated(chainId string, withdrawProvenList []WithdrawProven) error
+	UpdateWithdrawProvenInfo(chainId string, withdrawProvenList []WithdrawProven) error
 }
 
 type WithdrawProvenView interface {
-	WithdrawProvenL1BlockHeader() (*common2.BlockHeader, error)
-	WithdrawProvenUnRelatedList() ([]WithdrawProven, error)
+	WithdrawProvenL1BlockHeader(string) (*common2.BlockHeader, error)
+	WithdrawProvenUnRelatedList(string) ([]WithdrawProven, error)
 }
 
 type withdrawProvenDB struct {
@@ -50,8 +51,8 @@ func NewWithdrawProvenDB(db *gorm.DB) WithdrawProvenDB {
 	return &withdrawProvenDB{gorm: db}
 }
 
-func (w withdrawProvenDB) WithdrawProvenL1BlockHeader() (*common2.BlockHeader, error) {
-	l1Query := w.gorm.Where("number = (?)", w.gorm.Table("withdraw_proven").Select("MAX(block_number)"))
+func (w withdrawProvenDB) WithdrawProvenL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
+	l1Query := w.gorm.Where("number = (?)", w.gorm.Table("withdraw_proven_"+chainId).Select("MAX(block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {
@@ -63,15 +64,15 @@ func (w withdrawProvenDB) WithdrawProvenL1BlockHeader() (*common2.BlockHeader, e
 	return &l1Header, nil
 }
 
-func (w withdrawProvenDB) StoreWithdrawProven(withdrawProvenList []WithdrawProven) error {
-	result := w.gorm.CreateInBatches(&withdrawProvenList, len(withdrawProvenList))
+func (w withdrawProvenDB) StoreWithdrawProven(chainId string, withdrawProvenList []WithdrawProven) error {
+	result := w.gorm.Table("withdraw_proven_"+chainId).CreateInBatches(&withdrawProvenList, len(withdrawProvenList))
 	return result.Error
 }
 
-func (w withdrawProvenDB) MarkedWithdrawProvenRelated(withdrawProvenList []WithdrawProven) error {
+func (w withdrawProvenDB) MarkedWithdrawProvenRelated(chainId string, withdrawProvenList []WithdrawProven) error {
 	for i := 0; i < len(withdrawProvenList); i++ {
 		var withdrawProvens = WithdrawProven{}
-		result := w.gorm.Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
+		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -87,10 +88,10 @@ func (w withdrawProvenDB) MarkedWithdrawProvenRelated(withdrawProvenList []Withd
 	return nil
 }
 
-func (w withdrawProvenDB) UpdateWithdrawProvenInfo(withdrawProvenList []WithdrawProven) error {
+func (w withdrawProvenDB) UpdateWithdrawProvenInfo(chainId string, withdrawProvenList []WithdrawProven) error {
 	for i := 0; i < len(withdrawProvenList); i++ {
 		var withdrawProvens = WithdrawProven{}
-		result := w.gorm.Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
+		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -110,9 +111,9 @@ func (w withdrawProvenDB) UpdateWithdrawProvenInfo(withdrawProvenList []Withdraw
 	return nil
 }
 
-func (w withdrawProvenDB) WithdrawProvenUnRelatedList() ([]WithdrawProven, error) {
+func (w withdrawProvenDB) WithdrawProvenUnRelatedList(chainId string) ([]WithdrawProven, error) {
 	var unRelatedProvenList []WithdrawProven
-	err := w.gorm.Table("withdraw_proven").Where("related = ?", false).Find(&unRelatedProvenList).Error
+	err := w.gorm.Table("withdraw_proven_"+chainId).Where("related = ?", false).Find(&unRelatedProvenList).Error
 	if err != nil {
 		log.Error("get unrelated withdraw proven fail", "err", err)
 	}

@@ -42,6 +42,15 @@ func ContractEventFromLog(log *types.Log, timestamp uint64) ContractEvent {
 	}
 }
 
+func (c *ContractEvent) AfterFind(tx *gorm.DB) error {
+	// Fill in some of the derived fields that are not
+	// populated when decoding the RLPLog from RLP
+	c.RLPLog.BlockHash = c.BlockHash
+	c.RLPLog.TxHash = c.TransactionHash
+	c.RLPLog.Index = uint(c.LogIndex)
+	return nil
+}
+
 type ChainContractEvent struct {
 	ContractEvent `gorm:"embedded"`
 }

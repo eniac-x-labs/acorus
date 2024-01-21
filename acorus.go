@@ -156,7 +156,7 @@ func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
 }
 
 func (as *Acorus) initProcessor(cfg *config.Config) error {
-	var loopInterval time.Duration = 5
+	var loopInterval time.Duration = 10
 	var epoch uint64 = 10_000
 
 	var l1RPC *config.RPC
@@ -197,7 +197,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  500,
+			HeaderBufferSize:  50,
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),

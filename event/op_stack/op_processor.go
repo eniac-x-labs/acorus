@@ -4,26 +4,31 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/common/bigint"
+
 	"gorm.io/gorm"
 	"math/big"
+	"strconv"
 	"time"
 
+	"github.com/cornerstone-labs/acorus/common/bigint"
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/common/tasks"
+	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/event/op_stack/bridge"
-	"github.com/ethereum-optimism/optimism/indexer/config"
+	"github.com/cornerstone-labs/acorus/event/op_stack/stateroot"
 )
-
-var blocksLimit = 10_000
 
 type OpEventProcessor struct {
 	db                          *database.DB
 	resourceCtx                 context.Context
 	resourceCancel              context.CancelFunc
 	tasks                       tasks.Group
-	chainConfig                 config.ChainConfig
+	L1StartHeight               *big.Int
+	L2StartHeight               *big.Int
+	L1BedrockStartHeight        *big.Int
+	L2BedrockStartHeight        *big.Int
 	LatestL1L2InitL1Header      *common2.BlockHeader
 	LatestL1L2L2Header          *common2.BlockHeader
 	LatestL1L2FinalizedL2Header *common2.BlockHeader
@@ -33,33 +38,33 @@ type OpEventProcessor struct {
 	LatestFinalizedL1Header     *common2.BlockHeader
 }
 
-func NewOpProcessor(db *database.DB, chainConfig config.ChainConfig, shutdown context.CancelCauseFunc) (*OpEventProcessor, error) {
-	latestL1L2InitL1Header, err := db.L1ToL2.LatestBlockHeader("1")
+func NewOpProcessor(db *database.DB, cfg *config.RPC, shutdown context.CancelCauseFunc) (*OpEventProcessor, error) {
+	latestL1L2InitL1Header, err := db.L1ToL2.L1LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
-	latestL1L2L2Header, err := db.L1ToL2.LatestBlockHeader("10")
+	latestL1L2L2Header, err := db.L1ToL2.L2LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
-	latestL1L2FinalizedL2Header, err := db.L1ToL2.L2LatestFinalizedBlockHeader("10")
+	latestL1L2FinalizedL2Header, err := db.L1ToL2.L2LatestFinalizedBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
-	latestStateRootL1Header, err := db.StateRoots.StateRootL1BlockHeader()
+	latestStateRootL1Header, err := db.StateRoots.StateRootL1BlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
 
-	latestL2L1InitL2Header, err := db.L2ToL1.LatestBlockHeader("10")
+	latestL2L1InitL2Header, err := db.L2ToL1.L2LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
-	latestProvenL1Header, err := db.WithdrawProven.WithdrawProvenL1BlockHeader()
+	latestProvenL1Header, err := db.WithdrawProven.WithdrawProvenL1BlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
-	latestFinalizedL1Header, err := db.WithdrawFinalized.WithdrawFinalizedL1BlockHeader()
+	latestFinalizedL1Header, err := db.WithdrawFinalized.WithdrawFinalizedL1BlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +73,8 @@ func NewOpProcessor(db *database.DB, chainConfig config.ChainConfig, shutdown co
 		db:             db,
 		resourceCtx:    resCtx,
 		resourceCancel: resCancel,
-		chainConfig:    chainConfig,
+		L1StartHeight:  bigint.Zero,
+		L2StartHeight:  bigint.Zero,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
@@ -145,16 +151,16 @@ func (ep *OpEventProcessor) onL2Data() error {
 }
 
 func (ep *OpEventProcessor) processInitiatedL1Events() error {
-	lastL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight))
+	lastL1BlockNumber := ep.L1StartHeight
 	if ep.LatestL1L2InitL1Header != nil {
 		lastL1BlockNumber = ep.LatestL1L2InitL1Header.Number
 	}
 	latestL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		headers := newQuery.Table("block_headers_1").Where("number > ?", lastL1BlockNumber)
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
-	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithFilter("1", latestL1HeaderScope)
+	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL1HeaderScope, strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
 		return fmt.Errorf("failed to query new L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -162,7 +168,7 @@ func (ep *OpEventProcessor) processInitiatedL1Events() error {
 	}
 	fromL1Height, toL1Height := new(big.Int).Add(lastL1BlockNumber, bigint.One), latestL1Header.Number
 	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l1BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L1BedrockStartingHeight))
+		l1BedrockStartingHeight := ep.L1BedrockStartHeight
 		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
 			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
 			if l1BedrockStartingHeight.Cmp(toL1Height) <= 0 {
@@ -185,16 +191,16 @@ func (ep *OpEventProcessor) processInitiatedL1Events() error {
 }
 
 func (ep *OpEventProcessor) processInitiatedL2Events() error {
-	lastL2BlockNumber := big.NewInt(int64(ep.chainConfig.L2StartingHeight))
+	lastL2BlockNumber := ep.L1StartHeight
 	if ep.LatestL2L1InitL2Header != nil {
 		lastL2BlockNumber = ep.LatestL2L1InitL2Header.Number
 	}
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastL2BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		headers := newQuery.Model("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastL2BlockNumber)
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
-	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope)
+	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return fmt.Errorf("failed to query new L2 state: %w", err)
 	} else if latestL2Header == nil {
@@ -202,7 +208,7 @@ func (ep *OpEventProcessor) processInitiatedL2Events() error {
 	}
 	fromL2Height, toL2Height := new(big.Int).Add(lastL2BlockNumber, bigint.One), latestL2Header.Number
 	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l2BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L2BedrockStartingHeight))
+		l2BedrockStartingHeight := ep.L2BedrockStartHeight
 		if l2BedrockStartingHeight.Cmp(fromL2Height) > 0 { // OP Mainnet & OP Goerli Only
 			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
 			if l2BedrockStartingHeight.Cmp(toL2Height) <= 0 {
@@ -224,19 +230,19 @@ func (ep *OpEventProcessor) processInitiatedL2Events() error {
 }
 
 func (ep *OpEventProcessor) processProvenL1Events() error {
-	lastProvenL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight))
+	lastProvenL1BlockNumber := ep.L1StartHeight
 	if ep.LatestProvenL1Header != nil {
 		lastProvenL1BlockNumber = ep.LatestProvenL1Header.Number
 	}
 	latestProvenL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastProvenL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
 	if latestProvenL1HeaderScope == nil {
 		return nil
 	}
-	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestProvenL1HeaderScope)
+	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestProvenL1HeaderScope, "10")
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -256,19 +262,20 @@ func (ep *OpEventProcessor) processProvenL1Events() error {
 }
 
 func (ep *OpEventProcessor) processFinalizedL1Events() error {
-	lastFinalizedL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight))
+	lastFinalizedL1BlockNumber := ep.L1StartHeight
 	if ep.LatestFinalizedL1Header != nil {
 		lastFinalizedL1BlockNumber = ep.LatestFinalizedL1Header.Number
 	}
 	latestFinalizedL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastFinalizedL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
 	if latestFinalizedL1HeaderScope == nil {
 		return nil
 	}
-	latestL1Header, err := ep.db.Blocks.L1BlockHeaderWithScope(latestFinalizedL1HeaderScope)
+	// latestL1Header, err := ep.db.Blocks.BlockHeaderWithScope(latestFinalizedL1HeaderScope)
+	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestFinalizedL1HeaderScope, strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -276,7 +283,7 @@ func (ep *OpEventProcessor) processFinalizedL1Events() error {
 	}
 	fromL1Height, toL1Height := new(big.Int).Add(lastFinalizedL1BlockNumber, bigint.One), latestL1Header.Number
 	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l1BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L1BedrockStartingHeight))
+		l1BedrockStartingHeight := ep.L1BedrockStartHeight
 		if l1BedrockStartingHeight.Cmp(fromL1Height) > 0 {
 			legacyFromL1Height, legacyToL1Height := fromL1Height, toL1Height
 			if l1BedrockStartingHeight.Cmp(toL1Height) <= 0 {
@@ -298,12 +305,12 @@ func (ep *OpEventProcessor) processFinalizedL1Events() error {
 }
 
 func (ep *OpEventProcessor) processFinalizedL2Events() error {
-	lastFinalizedL2BlockNumber := big.NewInt(int64(ep.chainConfig.L2StartingHeight))
-	latestL1L2BlockNumber := big.NewInt(int64(ep.chainConfig.L2StartingHeight))
+	lastFinalizedL2BlockNumber := ep.L2StartHeight
+	latestL1L2BlockNumber := ep.L2StartHeight
 	if ep.LatestL1L2FinalizedL2Header != nil {
 		lastFinalizedL2BlockNumber = ep.LatestL1L2FinalizedL2Header.Number
 	}
-	l2BlockHeader, err := ep.db.L1ToL2.L1L2LatestL2BlockHeader()
+	l2BlockHeader, err := ep.db.L1ToL2.L2LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return err
 	}
@@ -313,10 +320,10 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 	}
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.L2BlockHeader{}).Where("number > ? AND number <= ?", lastFinalizedL2BlockNumber, latestL1L2BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ? AND number <= ?", lastFinalizedL2BlockNumber, latestL1L2BlockNumber)
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
-	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope)
+	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, "10")
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L2 state: %w", err)
 	} else if latestL2Header == nil {
@@ -325,7 +332,7 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 	}
 	fromL2Height, toL2Height := new(big.Int).Add(lastFinalizedL2BlockNumber, bigint.One), latestL2Header.Number
 	if err := ep.db.Transaction(func(tx *database.DB) error {
-		l2BedrockStartingHeight := big.NewInt(int64(ep.chainConfig.L2BedrockStartingHeight))
+		l2BedrockStartingHeight := ep.L2BedrockStartHeight
 		if l2BedrockStartingHeight.Cmp(fromL2Height) > 0 {
 			legacyFromL2Height, legacyToL2Height := fromL2Height, toL2Height
 			if l2BedrockStartingHeight.Cmp(toL2Height) <= 0 {
@@ -347,16 +354,16 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 }
 
 func (ep *OpEventProcessor) processRollupStateRoot() error {
-	lastStateRootL1BlockNumber := big.NewInt(int64(ep.chainConfig.L1StartingHeight))
+	lastStateRootL1BlockNumber := ep.L1StartHeight
 	if ep.LatestStateRootL1Header != nil {
 		lastStateRootL1BlockNumber = ep.LatestStateRootL1Header.Number
 	}
 	latestRollupL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
 		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastStateRootL1BlockNumber)
-		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(blocksLimit)).Select("MAX(number)"))
+		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(global_const.BlocksLimit)).Select("MAX(number)"))
 	}
-	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope)
+	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope, "10")
 	if err != nil {
 		return fmt.Errorf("failed to query new L1 state: %w", err)
 	} else if latestL1StateRootHeader == nil {

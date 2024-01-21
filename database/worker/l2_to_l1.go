@@ -58,10 +58,12 @@ type L2ToL1DB interface {
 
 type L2ToL1View interface {
 	L2ToL1List(string, string, int, int, string) ([]L2ToL1, int64)
-	LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2ToL1TransactionWithdrawal(string, common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
 	L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
 }
 
 type l2ToL1DB struct {
@@ -263,11 +265,19 @@ func (l2l1 l2ToL1DB) L2ToL1TransactionWithdrawal(chainId string, withdrawalHash 
 	return &l2ToL1Withdrawal, nil
 }
 
-func (l2l1 l2ToL1DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
+func (l2l1 l2ToL1DB) L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestBlockHeaderWithChainId(chainId, "1")
+}
+
+func (l2l1 l2ToL1DB) L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestBlockHeaderWithChainId(chainId, chainId)
+}
+
+func (l2l1 l2ToL1DB) latestBlockHeaderWithChainId(chainId, destChainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
 	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table(tableName).Select("MAX(timestamp)"))
 	var l2Header common2.BlockHeader
-	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", destChainId)
 	result := l2Query.Table(blockHeaderSTableName).Take(&l2Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -279,10 +289,18 @@ func (l2l1 l2ToL1DB) LatestBlockHeader(chainId string) (*common2.BlockHeader, er
 }
 
 func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestFinalizedBlockHeaderWithChainId(chainId, "1")
+}
+
+func (l2l1 l2ToL1DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestFinalizedBlockHeaderWithChainId(chainId, chainId)
+}
+
+func (l2l1 l2ToL1DB) latestFinalizedBlockHeaderWithChainId(chainId, destChainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
 	l1Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table(tableName).Where("status != (?)", 4).Select("MAX(l1_block_number)"))
 	var l1Header common2.BlockHeader
-	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", chainId)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", destChainId)
 	result := l1Query.Table(blockHeaderSTableName).Take(&l1Header)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

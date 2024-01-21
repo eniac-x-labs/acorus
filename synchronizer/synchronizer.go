@@ -2,7 +2,6 @@ package synchronizer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -122,7 +121,6 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		header := headers[i]
 		headerMap[header.Hash()] = &header
 	}
-	headersWithLog := make(map[common.Hash]bool, len(headers))
 	filterQuery := ethereum.FilterQuery{FromBlock: firstHeader.Number, ToBlock: lastHeader.Number}
 	logs, err := syncer.ethClient.FilterLogs(filterQuery)
 	if err != nil {
@@ -140,22 +138,21 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		log.Println("detected logs", "size", len(logs.Logs))
 	}
 
-	for i := range logs.Logs {
-		logEvent := logs.Logs[i]
-		headersWithLog[logEvent.BlockHash] = true
-		if _, ok := headerMap[logEvent.BlockHash]; !ok {
-			log.Println("log found with block hash not in the batch", "block_hash", logs.Logs[i].BlockHash, "log_index", logs.Logs[i].Index)
-			return errors.New("parsed log with a block hash not in the batch")
-		}
-	}
 	chainBlockHeaders := make([]common2.ChainBlockHeader, 0, len(headers))
 	for i := range headers {
+		if headers[i].Number == nil {
+			continue
+		}
 		chainBlockHeaders = append(chainBlockHeaders, common2.ChainBlockHeader{BlockHeader: common2.BlockHeaderFromHeader(&headers[i])})
 	}
 
 	chainContractEvent := make([]event.ChainContractEvent, len(logs.Logs))
 	for i := range logs.Logs {
-		timestamp := headerMap[logs.Logs[i].BlockHash].Time
+		logEvent := logs.Logs[i]
+		if _, ok := headerMap[logEvent.BlockHash]; !ok {
+			continue
+		}
+		timestamp := headerMap[logEvent.BlockHash].Time
 		chainContractEvent[i] = event.ChainContractEvent{ContractEvent: event.ContractEventFromLog(&logs.Logs[i], timestamp)}
 	}
 
