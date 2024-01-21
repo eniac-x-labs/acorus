@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 
 	"gorm.io/gorm"
 	"math/big"
@@ -13,7 +14,6 @@ import (
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/common/tasks"
-	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/event/op_stack/bridge"
@@ -40,7 +40,7 @@ type OpEventProcessor struct {
 	epoch                       uint64
 }
 
-func NewBridgeProcessor(db *database.DB, cfg *config.RPC, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*OpEventProcessor, error) {
+func NewBridgeProcessor(db *database.DB, l1StartHeight *big.Int, l2StartHeight *big.Int, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*OpEventProcessor, error) {
 	latestL1L2InitL1Header, err := db.L1ToL2.L1LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
@@ -72,11 +72,13 @@ func NewBridgeProcessor(db *database.DB, cfg *config.RPC, shutdown context.Cance
 	}
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &OpEventProcessor{
-		db:             db,
-		resourceCtx:    resCtx,
-		resourceCancel: resCancel,
-		L1StartHeight:  bigint.Zero,
-		L2StartHeight:  bigint.Zero,
+		db:                   db,
+		resourceCtx:          resCtx,
+		resourceCancel:       resCancel,
+		L1StartHeight:        l1StartHeight,
+		L2StartHeight:        l2StartHeight,
+		L1BedrockStartHeight: common3.L1BedrockStartHeight,
+		L2BedrockStartHeight: common3.L2BedrockStartHeight,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},

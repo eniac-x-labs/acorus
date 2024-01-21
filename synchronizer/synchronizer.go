@@ -52,9 +52,10 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 		log.Println("detected last indexed block", "number", latestHeader.Number, "hash", latestHeader.Hash)
 		fromHeader = latestHeader.RLPHeader.Header()
 	} else if cfg.StartHeight.BitLen() > 0 {
-		log.Println("no indexed state starting from supplied L1 height", "height", cfg.StartHeight.String())
+		log.Println("no indexed state starting from supplied L1 height;", "height =", cfg.StartHeight.String())
 		header, err := client.BlockHeaderByNumber(cfg.StartHeight)
 		if err != nil {
+			log.Fatalf("Fetch block header by number fail", "chainId = ", cfg.ChainId, "err =", err)
 			return nil, fmt.Errorf("could not fetch starting block header: %w", err)
 		}
 		fromHeader = header
@@ -62,6 +63,7 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 		log.Println("no indexed state, starting from genesis")
 	}
 	chainIdInt, _ := strconv.Atoi(strconv.Itoa(int(cfg.ChainId)))
+	log.Println("Support chain", "chainId=", chainIdInt)
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &Synchronizer{
 		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Millisecond,
