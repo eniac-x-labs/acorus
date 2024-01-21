@@ -48,6 +48,7 @@ func (c *ContractEvent) AfterFind(tx *gorm.DB) error {
 	c.RLPLog.BlockHash = c.BlockHash
 	c.RLPLog.TxHash = c.TransactionHash
 	c.RLPLog.Index = uint(c.LogIndex)
+
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package util
+package utils
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processors/linea/abi"
+	"github.com/cornerstone-labs/acorus/event/linea/abi"
 	"github.com/ethereum/go-ethereum"
 	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
