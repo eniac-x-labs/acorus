@@ -6,15 +6,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/processors/linea/abi"
-	"github.com/ethereum/go-ethereum"
-	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum"
+	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+
+	"github.com/cornerstone-labs/acorus/event/linea/abi"
 )
 
 func TestGetAbi_LogUnpack(t *testing.T) {

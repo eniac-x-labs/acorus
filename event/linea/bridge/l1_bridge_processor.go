@@ -2,21 +2,24 @@ package bridge
 
 import (
 	"fmt"
+	"math/big"
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/event/linea/abi"
 	"github.com/cornerstone-labs/acorus/event/linea/util"
 	"github.com/cornerstone-labs/acorus/event/scroll/utils"
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
 	l1SentMessageSignature := abi.L1SentMessageSignature
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1SentMessageSignature}
-	sentMessageEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	sentMessageEvents, err := db.ContractEvents.ChainContractEventsWithFilter(strconv.FormatUint(global_const.LineaChainId, 10), contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -39,7 +42,7 @@ func L1SentMessageEvent(contractAddress common.Address, db *database.DB, fromHei
 func L1ClaimedMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
 	l1ClaimedMessageSignature := abi.L1ClaimedMessageSignature
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: l1ClaimedMessageSignature}
-	claimedMessageEvents, err := db.ContractEvents.L1ContractEventsWithFilter(contractEventFilter, fromHeight, toHeight)
+	claimedMessageEvents, err := db.ContractEvents.ChainContractEventsWithFilter(strconv.FormatUint(global_const.LineaChainId, 10), contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}

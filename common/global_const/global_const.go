@@ -1,19 +1,17 @@
 package global_const
 
-const ChainIdRedisKey = "chainId:%s"
-const ChainId = "chainId"
-const ChainName = "chainName"
-
-const Polygon = "Polygon"
-
-const GormInfoFmt = "%s\n[%.3fms] [rows:%v] %s"
-
-const ZeroAddress = "0x0000000000000000000000000000000000000000"
-
-const LogTimeFormat = "2006-01-02"
-
-const ScrollChainId uint64 = 534352
-
-const PolygonChainId uint64 = 1101
-
-const EthereumChainId uint64 = 1
+const (
+	ChainIdRedisKey        = "chainId:%s"
+	ChainId                = "chainId"
+	ChainName              = "chainName"
+	Polygon                = "Polygon"
+	GormInfoFmt            = "%s\n[%.3fms] [rows:%v] %s"
+	ZeroAddress            = "0x0000000000000000000000000000000000000000"
+	LogTimeFormat          = "2006-01-02"
+	ScrollChainId   uint64 = 534352
+	PolygonChainId  uint64 = 1101
+	EthereumChainId uint64 = 1
+	OpChinId        uint64 = 10
+	LineaChainId    uint64 = 100
+	BlocksLimit            = 10000
+)

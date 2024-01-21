@@ -87,7 +87,7 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	if sp.l1StartHeight == nil {
-		lastBlockHeard, err := sp.db.L1ToL2.LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := sp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err
@@ -124,7 +124,7 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	if sp.l2StartHeight == nil {
-		lastBlockHeard, err := sp.db.L2ToL1.LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := sp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
 		if err != nil {
 			log.Println("l2 failed to get last block heard", "err", err)
 			return err

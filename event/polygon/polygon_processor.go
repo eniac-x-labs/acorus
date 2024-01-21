@@ -102,7 +102,7 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 	chainId := pp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	if pp.l1StartHeight == nil {
-		lastBlockHeard, err := pp.db.L1ToL2.LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := pp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err
@@ -134,7 +134,7 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 	chainId := pp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	if pp.l2StartHeight == nil {
-		lastBlockHeard, err := pp.db.L2ToL1.LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := pp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
 		if err != nil {
 			log.Println("l2 failed to get last block heard", "err", err)
 			return err

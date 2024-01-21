@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/common/logs"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -12,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cornerstone-labs/acorus/common/logs"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
@@ -21,13 +21,15 @@ import (
 )
 
 type DB struct {
-	gorm           *gorm.DB
-	CreateTable    worker.CreateTableDB
-	Blocks         common.BlocksDB
-	ContractEvents event.ContractEventsDB
-	StateRoots     worker.StateRootDB
-	L2ToL1         worker.L2ToL1DB
-	L1ToL2         worker.L1ToL2DB
+	gorm              *gorm.DB
+	CreateTable       worker.CreateTableDB
+	Blocks            common.BlocksDB
+	ContractEvents    event.ContractEventsDB
+	WithdrawProven    event.WithdrawProvenDB
+	WithdrawFinalized event.WithdrawFinalizedDB
+	StateRoots        worker.StateRootDB
+	L2ToL1            worker.L2ToL1DB
+	L1ToL2            worker.L1ToL2DB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -67,13 +69,15 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		return nil, err
 	}
 	db := &DB{
-		gorm:           gorm,
-		CreateTable:    worker.NewCreateTableDB(gorm),
-		Blocks:         common.NewBlocksDB(gorm),
-		ContractEvents: event.NewContractEventsDB(gorm),
-		StateRoots:     worker.NewStateRootDB(gorm),
-		L1ToL2:         worker.NewL1ToL2DB(gorm),
-		L2ToL1:         worker.NewL21ToL1DB(gorm),
+		gorm:              gorm,
+		CreateTable:       worker.NewCreateTableDB(gorm),
+		Blocks:            common.NewBlocksDB(gorm),
+		WithdrawProven:    event.NewWithdrawProvenDB(gorm),
+		WithdrawFinalized: event.NewWithdrawFinalizedDB(gorm),
+		ContractEvents:    event.NewContractEventsDB(gorm),
+		StateRoots:        worker.NewStateRootDB(gorm),
+		L1ToL2:            worker.NewL1ToL2DB(gorm),
+		L2ToL1:            worker.NewL21ToL1DB(gorm),
 	}
 	return db, nil
 }
@@ -81,12 +85,14 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 func (db *DB) Transaction(fn func(db *DB) error) error {
 	return db.gorm.Transaction(func(tx *gorm.DB) error {
 		txDB := &DB{
-			gorm:           tx,
-			Blocks:         common.NewBlocksDB(tx),
-			ContractEvents: event.NewContractEventsDB(tx),
-			L1ToL2:         worker.NewL1ToL2DB(tx),
-			L2ToL1:         worker.NewL21ToL1DB(tx),
-			StateRoots:     worker.NewStateRootDB(tx),
+			gorm:              tx,
+			Blocks:            common.NewBlocksDB(tx),
+			WithdrawProven:    event.NewWithdrawProvenDB(tx),
+			WithdrawFinalized: event.NewWithdrawFinalizedDB(tx),
+			ContractEvents:    event.NewContractEventsDB(tx),
+			L1ToL2:            worker.NewL1ToL2DB(tx),
+			L2ToL1:            worker.NewL21ToL1DB(tx),
+			StateRoots:        worker.NewStateRootDB(tx),
 		}
 		return fn(txDB)
 	})
