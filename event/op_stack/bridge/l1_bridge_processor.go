@@ -3,6 +3,7 @@ package bridge
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -10,6 +11,7 @@ import (
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -198,7 +200,7 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int)
 		}
 	}
 	if len(withdrawProvenList) > 0 {
-		if err := db.WithdrawProven.StoreWithdrawProven(withdrawProvenList); err != nil {
+		if err := db.WithdrawProven.StoreWithdrawProven(strconv.FormatUint(global_const.OpChinId, 10), withdrawProvenList); err != nil {
 			return err
 		}
 	}
@@ -238,7 +240,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 	}
 	if len(withdrawFinalizedList) > 0 {
-		if err := db.WithdrawFinalized.StoreWithdrawFinalized(withdrawFinalizedList); err != nil {
+		if err := db.WithdrawFinalized.StoreWithdrawFinalized(strconv.FormatUint(global_const.OpChinId, 10), withdrawFinalizedList); err != nil {
 			return err
 		}
 	}
@@ -278,7 +280,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		finalizedTokens[finalizedBridge.LocalTokenAddress]++
 	}
 	if len(finalizedBridges) > 0 {
-		if err := db.WithdrawFinalized.UpdateWithdrawFinalizedInfo(withdrawFinalizedBridgeList); err != nil {
+		if err := db.WithdrawFinalized.UpdateWithdrawFinalizedInfo(strconv.FormatUint(global_const.OpChinId, 10), withdrawFinalizedBridgeList); err != nil {
 			return err
 		}
 	}
