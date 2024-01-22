@@ -3,7 +3,6 @@ package bridge
 import (
 	"fmt"
 	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
-	"github.com/google/uuid"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -37,7 +36,7 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 
 		l2ToL1s[i] = worker.L2ToL1{
-			GUID:                    uuid.New(),
+
 			L1BlockNumber:           bigint.Zero,
 			L2BlockNumber:           blockNumber,
 			MsgNonce:                messagePassed.Nonce,

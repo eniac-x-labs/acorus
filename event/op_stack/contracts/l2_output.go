@@ -4,8 +4,6 @@ import (
 	"encoding/hex"
 	"math/big"
 
-	"github.com/google/uuid"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cornerstone-labs/acorus/database"
@@ -38,7 +36,6 @@ func L2OutputProposedEvent(contractAddress common.Address, db *database.DB, from
 			return nil, err
 		}
 		stateRoots[i] = worker.StateRoot{
-			GUID:            uuid.New(),
 			TransactionHash: outputProposedEvents[i].TransactionHash,
 			BlockHash:       outputProposedEvents[i].BlockHash,
 			OutputRoot:      hex.EncodeToString(outputProposed.OutputRoot[:]),

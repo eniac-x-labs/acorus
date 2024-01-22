@@ -60,7 +60,7 @@ func NewBlocksDB(db *gorm.DB) BlocksDB {
 }
 
 func (db *blocksDB) StoreBlockHeaders(chainId string, headers []ChainBlockHeader) error {
-	result := db.gorm.Table("block_headers_"+chainId).CreateInBatches(&headers, common2.BatchInsertSize)
+	result := db.gorm.Table("block_headers_" + chainId).Create(&headers)
 	return result.Error
 }
 

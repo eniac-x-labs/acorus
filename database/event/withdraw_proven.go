@@ -14,7 +14,7 @@ import (
 )
 
 type WithdrawProven struct {
-	GUID                  uuid.UUID      `gorm:"primaryKey"`
+	GUID                  uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''"`
 	BlockNumber           *big.Int       `gorm:"serializer:u256;column:block_number" db:"block_number"`
 	WithdrawHash          common.Hash    `gorm:"serializer:bytes"`
 	MessageHash           common.Hash    `gorm:"serializer:bytes"`
@@ -65,7 +65,7 @@ func (w withdrawProvenDB) WithdrawProvenL1BlockHeader(chainId string) (*common2.
 }
 
 func (w withdrawProvenDB) StoreWithdrawProven(chainId string, withdrawProvenList []WithdrawProven) error {
-	result := w.gorm.Table("withdraw_proven_"+chainId).CreateInBatches(&withdrawProvenList, len(withdrawProvenList))
+	result := w.gorm.Omit("guid").Table("withdraw_proven_" + chainId).Create(&withdrawProvenList)
 	return result.Error
 }
 

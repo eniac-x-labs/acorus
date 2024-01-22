@@ -155,7 +155,8 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 			continue
 		}
 		timestamp := headerMap[logEvent.BlockHash].Time
-		chainContractEvent[i] = event.ChainContractEvent{ContractEvent: event.ContractEventFromLog(&logs.Logs[i], timestamp)}
+		blockNumber := headerMap[logEvent.BlockHash].Number
+		chainContractEvent[i] = event.ChainContractEvent{ContractEvent: event.ContractEventFromLog(&logs.Logs[i], timestamp, blockNumber)}
 	}
 
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}

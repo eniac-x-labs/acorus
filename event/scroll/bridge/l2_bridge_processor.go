@@ -6,13 +6,11 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
-
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
@@ -23,7 +21,7 @@ func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
@@ -55,7 +53,7 @@ func L2WithdrawERC20(event event.ContractEvent) (*worker.L2ToL1, error) {
 	amounts := make([]*big.Int, 0)
 	amounts = append(amounts, withdrawErc20Event.Amount)
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L1FinalizeTxHash:  common.Hash{},
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L2TransactionHash: rlpLog.TxHash,
@@ -83,7 +81,7 @@ func L2WithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
@@ -114,7 +112,7 @@ func L2WithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
@@ -144,7 +142,7 @@ func L2BatchWithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
@@ -174,7 +172,7 @@ func L2BatchWithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		return nil, unpackErr
 	}
 	return &worker.L2ToL1{
-		GUID:              uuid.New(),
+
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L1ProveTxHash:     common.Hash{},

@@ -10,6 +10,9 @@ BEGIN
     END IF;
 END $$;
 
+DROP EXTENSION IF EXISTS "uuid-ossp" cascade;
+CREATE EXTENSION "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS template_block_headers (
     hash        VARCHAR PRIMARY KEY,
     parent_hash VARCHAR NOT NULL UNIQUE,
@@ -22,22 +25,24 @@ CREATE INDEX IF NOT EXISTS template_block_headers_number ON template_block_heade
 
 
 CREATE TABLE IF NOT EXISTS template_contract_events (
-    guid             VARCHAR PRIMARY KEY,
+    guid             text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
     block_hash       VARCHAR NOT NULL REFERENCES template_block_headers(hash) ON DELETE CASCADE,
     contract_address VARCHAR NOT NULL,
     transaction_hash VARCHAR NOT NULL,
     log_index        INTEGER NOT NULL,
+    block_number      UINT256 NOT NULL ,
     event_signature  VARCHAR NOT NULL,
     timestamp        INTEGER NOT NULL ,
     rlp_bytes        VARCHAR NOT NULL
 );
+CREATE INDEX IF NOT EXISTS template_contract_events_number ON template_contract_events(block_number);
 CREATE INDEX IF NOT EXISTS template_contract_events_timestamp ON template_contract_events(timestamp);
 CREATE INDEX IF NOT EXISTS template_contract_events_block_hash ON template_contract_events(block_hash);
 CREATE INDEX IF NOT EXISTS template_contract_events_event_signature ON template_contract_events(event_signature);
 CREATE INDEX IF NOT EXISTS template_contract_events_contract_address ON template_contract_events(contract_address);
 
 CREATE TABLE IF NOT EXISTS template_transactions (
-     guid                      VARCHAR PRIMARY KEY,
+     guid                      text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
      block_hash                VARCHAR NOT NULL,
      block_number              UINT256 DEFAULT 0,
      from_address              VARCHAR NOT NULL,
@@ -72,7 +77,7 @@ CREATE INDEX IF NOT EXISTS template_transactions_timestamp ON template_transacti
 
 
 CREATE TABLE IF NOT EXISTS template_l1_to_l2 (
-    guid                    VARCHAR PRIMARY KEY,
+    guid                    text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
     l1_block_number         UINT256 NOT NULL,
     l2_block_number         UINT256,
     queue_index             UINT256,
@@ -103,7 +108,7 @@ CREATE INDEX IF NOT EXISTS template_l1_to_l2_message_hash ON template_l1_to_l2(m
 CREATE INDEX IF NOT EXISTS template_l1_to_l2_transaction_source_hash ON template_l1_to_l2(transaction_source_hash);
 
 CREATE TABLE IF NOT EXISTS template_withdraw_proven (
-   guid                          VARCHAR PRIMARY KEY,
+   guid                          text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
    block_number                  UINT256 NOT NULL,
    withdraw_hash                 VARCHAR NOT NULL,
    message_hash                  VARCHAR,
@@ -119,7 +124,7 @@ CREATE INDEX IF NOT EXISTS template_withdraw_proven_withdrawal_hash ON template_
 CREATE INDEX IF NOT EXISTS template_withdraw_proven_timestamp ON template_withdraw_proven(timestamp);
 
 CREATE TABLE IF NOT EXISTS template_withdraw_finalized (
-  guid                          VARCHAR PRIMARY KEY,
+  guid                          text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
   block_number                  UINT256 NOT NULL,
   withdraw_hash                 VARCHAR NOT NULL,
   message_hash                  VARCHAR,
@@ -136,7 +141,7 @@ CREATE INDEX IF NOT EXISTS template_withdraw_finalized_timestamp ON template_wit
 
 
 CREATE TABLE IF NOT EXISTS template_l2_to_l1 (
-    guid                         VARCHAR PRIMARY KEY,
+    guid                         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
     l1_block_number              UINT256,
     l2_block_number              UINT256 NOT NULL,
     msg_nonce                    UINT256 NOT NULL,
@@ -170,7 +175,7 @@ CREATE INDEX IF NOT EXISTS template_l2_to_l1_withdraw_transaction_hash ON templa
 
 
 CREATE TABLE IF NOT EXISTS template_batches (
-   guid                      VARCHAR PRIMARY KEY,
+   guid                      text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
    batch_index               UINT256 NOT NULL,
    block_hash                VARCHAR NOT NULL,
    transaction_hash          VARCHAR NOT NULL,
@@ -185,7 +190,7 @@ CREATE INDEX IF NOT EXISTS template_batches_transaction_hash ON template_batches
 
 
 CREATE TABLE IF NOT EXISTS template_state_root (
-      guid                      VARCHAR PRIMARY KEY,
+      guid                      text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text,'-',''),
       block_hash                VARCHAR NOT NULL,
       transaction_hash          VARCHAR NOT NULL,
       l1_block_number           UINT256 DEFAULT 0,

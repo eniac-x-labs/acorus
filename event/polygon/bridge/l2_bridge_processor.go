@@ -3,8 +3,6 @@ package bridge
 import (
 	"math/big"
 
-	"github.com/google/uuid"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/cornerstone-labs/acorus/database/common"
@@ -21,7 +19,6 @@ func L2Withdraw(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent
 		return nil, unpackErr
 	}
 	l2ToL1 := worker.L2ToL1{
-		GUID:              uuid.New(),
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
 		L1ProveTxHash:     common.Hash{},

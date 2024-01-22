@@ -14,7 +14,7 @@ import (
 )
 
 type WithdrawFinalized struct {
-	GUID                     uuid.UUID      `gorm:"primaryKey"`
+	GUID                     uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''"`
 	BlockNumber              *big.Int       `gorm:"serializer:u256;column:block_number"`
 	WithdrawHash             common.Hash    `gorm:"serializer:bytes"`
 	MessageHash              common.Hash    `gorm:"serializer:bytes"`
@@ -65,7 +65,7 @@ func (w withdrawFinalizedDB) WithdrawFinalizedL1BlockHeader(chainId string) (*co
 }
 
 func (w withdrawFinalizedDB) StoreWithdrawFinalized(chainId string, withdrawFinalizedList []WithdrawFinalized) error {
-	result := w.gorm.CreateInBatches(&withdrawFinalizedList, len(withdrawFinalizedList))
+	result := w.gorm.Omit("guid").Table("withdraw_finalized_" + chainId).Create(&withdrawFinalizedList)
 	return result.Error
 }
 

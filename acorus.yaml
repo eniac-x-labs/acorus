@@ -15,17 +15,47 @@ rpcs:
     contracts:
     event_contracts:
 
-  - rpc_url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-    chain_id: 10
-    start_block: 114216017
+#  - rpc_url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+#    chain_id: 10
+#    start_block: 114216017
+#    contracts:
+#    event_contracts:
+
+  - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 534352
+    start_block: 0
+    l1_event_unpack_block: 18310747
     contracts:
+      - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
+      - "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367"
+      - "0x7F2b8C31F88B6006c382775eea88297Ec1e3E905"
+      - "0x7AC440cAe8EB6328de4fA621163a792c1EA9D4fE"
+      - "0xD8A791fE2bE73eb6E6cF1eb0cb3F36adC9B3F8f9"
+      - "0xb2b10a289A229415a124EFDeF310C10cb004B6ff"
+      - "0x6260aF48e8948617b8FA17F4e5CEa2d21D21554B"
+      - "0xb94f7F6ABcb811c5Ac709dE14E37590fcCd975B6"
+      - "0x37ba659D6CC380D12Fb96567CC52FC8e1DF4E334"
+      - "0x892dDB2899325aBBA1fD00FDA8249B40Cbbc33F9"
+      - "0xD8dD7787f89c7E6243AD32E0d0cCf460243C8130"
     event_contracts:
+      - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
+      - "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC"
+      - "0x6EA73e05AdC79974B931123675ea8F78FfdacDF0"
+      - "0x7003E7B7186f0E6601203b99F7B8DECBfA391cf9"
+      - "0xE2b4795039517653c5Ae8C2A9BFdd783b48f447A"
+      - "0x64CCBE37c9A82D85A1F2E74649b7A42923067988"
+      - "0x7bC08E1c04fb41d75F1410363F0c5746Eae80582"
+      - "0x62597Cc19703aF10B58feF87B0d5D29eFE263bcc"
+      - "0x987e300fDfb06093859358522a79098848C33852"
+      - "0xE9c5C9f67ec7B773fC76440845751F657bb953FF"
+      - "0xC5034eB8F682b73F93C9246aa95A8eBbF82793aA"
+      - "0x987e300fDfb06093859358522a79098848C33852"
 
 master_db:
-  db_host: "127.0.0.1"
+  db_host: "120.77.251.247"
   db_port: 5432
-  db_user: "graphnode"
-  db_password: ""
+  db_user: "postgres"
+  db_password: "galamini"
   db_name: "acorus"
 
 slave_db:

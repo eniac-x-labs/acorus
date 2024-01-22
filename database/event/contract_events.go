@@ -10,32 +10,31 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/cornerstone-labs/acorus/database/utils"
 )
 
 type ContractEvent struct {
-	GUID            uuid.UUID      `gorm:"primaryKey"`
+	GUID            uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
 	BlockHash       common.Hash    `gorm:"serializer:bytes"`
 	ContractAddress common.Address `gorm:"serializer:bytes"`
 	TransactionHash common.Hash    `gorm:"serializer:bytes"`
 	LogIndex        uint64
+	BlockNumber     *big.Int    `gorm:"serializer:u256"`
 	EventSignature  common.Hash `gorm:"serializer:bytes"`
 	Timestamp       uint64
 	RLPLog          *types.Log `gorm:"serializer:rlp;column:rlp_bytes"`
 }
 
-func ContractEventFromLog(log *types.Log, timestamp uint64) ContractEvent {
+func ContractEventFromLog(log *types.Log, timestamp uint64, blockNumber *big.Int) ContractEvent {
 	eventSig := common.Hash{}
 	if len(log.Topics) > 0 {
 		eventSig = log.Topics[0]
 	}
 	return ContractEvent{
-		GUID:            uuid.New(),
 		BlockHash:       log.BlockHash,
 		TransactionHash: log.TxHash,
 		ContractAddress: log.Address,
 		EventSignature:  eventSig,
+		BlockNumber:     blockNumber,
 		LogIndex:        uint64(log.Index),
 		Timestamp:       timestamp,
 		RLPLog:          log,
@@ -48,7 +47,7 @@ func (c *ContractEvent) AfterFind(tx *gorm.DB) error {
 	c.RLPLog.BlockHash = c.BlockHash
 	c.RLPLog.TxHash = c.TransactionHash
 	c.RLPLog.Index = uint(c.LogIndex)
-
+	c.RLPLog.BlockNumber = c.BlockNumber.Uint64()
 	return nil
 }
 
@@ -80,7 +79,7 @@ func NewContractEventsDB(db *gorm.DB) ContractEventsDB {
 }
 
 func (db *contractEventsDB) StoreChainContractEvents(chainId string, events []ChainContractEvent) error {
-	result := db.gorm.Table("contract_events_"+chainId).CreateInBatches(&events, utils.BatchInsertSize)
+	result := db.gorm.Omit("guid").Table("contract_events_" + chainId).Create(&events)
 	return result.Error
 }
 

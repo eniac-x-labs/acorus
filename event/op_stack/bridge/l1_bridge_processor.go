@@ -5,10 +5,6 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/google/uuid"
-
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/global_const"
@@ -17,6 +13,8 @@ import (
 	"github.com/cornerstone-labs/acorus/database/worker"
 	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
@@ -42,7 +40,6 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			return err
 		}
 		l1ToL2s[i] = worker.L1ToL2{
-			GUID:                  uuid.New(),
 			L1BlockNumber:         blockNumber,
 			L2BlockNumber:         bigint.Zero,
 			QueueIndex:            nil,
@@ -186,7 +183,6 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int)
 			blockNumber = proveL1BlockNumber
 		}
 		withdrawProvenList[i] = event.WithdrawProven{
-			GUID:                  uuid.New(),
 			WithdrawHash:          proven.WithdrawalHash,
 			ProvenTransactionHash: proven.Event.TransactionHash,
 			Related:               false,
@@ -226,7 +222,6 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			blockNumber = finalizedBlockNumber
 		}
 		withdrawFinalizedList[i] = event.WithdrawFinalized{
-			GUID:                     uuid.New(),
 			WithdrawHash:             finalized.WithdrawalHash,
 			FinalizedTransactionHash: finalized.Event.TransactionHash,
 			Related:                  false,

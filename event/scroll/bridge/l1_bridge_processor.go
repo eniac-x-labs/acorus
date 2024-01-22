@@ -6,13 +6,11 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
-
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func L1DepositETH(event event.ContractEvent) (*worker.L1ToL2, error) {
@@ -23,7 +21,7 @@ func L1DepositETH(event event.ContractEvent) (*worker.L1ToL2, error) {
 		return nil, unpackErr
 	}
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
+
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
@@ -54,7 +52,7 @@ func L1DepositERC20(event event.ContractEvent) (*worker.L1ToL2, error) {
 	amounts := make([]*big.Int, 0)
 	amounts = append(amounts, depositErc20Event.Amount)
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
+
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
@@ -85,7 +83,7 @@ func L1DepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 	}
 
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
+
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
@@ -114,7 +112,7 @@ func L1DepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 		return nil, unpackErr
 	}
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
+
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
@@ -143,7 +141,7 @@ func L1BatchDepositERC721(event event.ContractEvent) (*worker.L1ToL2, error) {
 		return nil, unpackErr
 	}
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
+
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
@@ -173,7 +171,6 @@ func L1BatchDepositERC1155(event event.ContractEvent) (*worker.L1ToL2, error) {
 		return nil, unpackErr
 	}
 	return &worker.L1ToL2{
-		GUID:              uuid.New(),
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,

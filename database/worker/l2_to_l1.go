@@ -18,7 +18,7 @@ import (
 )
 
 type L2ToL1 struct {
-	GUID                    uuid.UUID      `gorm:"primaryKey" json:"guid"`
+	GUID                    uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''" json:"guid"`
 	L1BlockNumber           *big.Int       `gorm:"serializer:u256;column:l1_block_number" db:"l1_block_number" json:"l1BlockNumber" form:"l1_block_number"`
 	L2BlockNumber           *big.Int       `gorm:"serializer:u256;column:l2_block_number;primaryKey" db:"l2_block_number" json:"l2BlockNumber" form:"l2_block_number"`
 	MsgNonce                *big.Int       `gorm:"column:msg_nonce;serializer:u256" db:"msg_nonce" json:"msgNonce" form:"msg_nonce"`
@@ -87,7 +87,7 @@ func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(chainId string, l2L1Stu L2ToL
 }
 
 func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(chainId string, l1L2List []L2ToL1) error {
-	result := l2l1.gorm.Table("l2_to_l1_"+chainId).CreateInBatches(&l1L2List, len(l1L2List))
+	result := l2l1.gorm.Omit("guid").Table("l2_to_l1_" + chainId).Create(&l1L2List)
 	return result.Error
 }
 

@@ -3,8 +3,6 @@ package bridge
 import (
 	"math/big"
 
-	"github.com/google/uuid"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cornerstone-labs/acorus/database"
@@ -22,7 +20,6 @@ func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent)
 		return nil, unpackErr
 	}
 	l1ToL2 := worker.L1ToL2{
-		GUID:              uuid.New(),
 		QueueIndex:        nil,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
