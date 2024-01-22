@@ -29,15 +29,15 @@ func L1SentMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Address{},
 		Status:            0,
-		FromAddress:       decodeLog.From,
-		ToAddress:         decodeLog.To,
+		FromAddress:       decodeLog["_from"].(common.Address),
+		ToAddress:         decodeLog["_to"].(common.Address),
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
-		ETHAmount:         decodeLog.Amount,
+		ETHAmount:         decodeLog["_value"].(*big.Int),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
-		MessageHash:       common.Hash{},
+		MessageHash:       decodeLog["_messageHash"].(common.Hash),
 	}, nil
 }
 
