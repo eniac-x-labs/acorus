@@ -1,17 +1,14 @@
 package bridge
 
 import (
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/worker"
 )
 
-func L2SentMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
-	return nil
+func L2SentMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
+	return nil, nil
 }
 
-func L2ClaimedMessageEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) error {
-	return nil
+func L2ClaimedMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
+	return nil, nil
 }

@@ -21,7 +21,7 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 	// unpack topic's data
 	chainTopics := rlpLog.Topics
 	if !contactAbi.Events[eventName].Anonymous {
-		chainTopics = rlpLog.Topics
+		chainTopics = rlpLog.Topics[1:]
 	}
 	var topicInputs eth_abi.Arguments
 	inputs := contactAbi.Events[eventName].Inputs
@@ -31,21 +31,22 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 		}
 	}
 	if len(topicInputs) > 0 {
-		eth_abi.ParseTopicsIntoMap(eventInfo, topicInputs, chainTopics)
+		unpackErr := eth_abi.ParseTopicsIntoMap(eventInfo, topicInputs, chainTopics)
+		fmt.Println(unpackErr)
 	}
 	fmt.Println(eventInfo)
 
-	calldataBytes := eventInfo["_calldata"].([]byte)
+	//calldataBytes := eventInfo["_calldata"].([]byte)
 
-	if len(calldataBytes) > 0 {
-		calldataBytes = calldataBytes[4:]
-		calldata, calldataUnpackErr := DecodeMessageCallData(calldataBytes)
-		if calldataUnpackErr != nil {
-			log.Warn("Failed to unpack DecodeMessageCallData function", "err", calldataUnpackErr)
-			return nil, calldataUnpackErr
-		}
-		eventInfo["calldata"] = calldata
-	}
+	//if len(calldataBytes) > 0 {
+	//	calldataBytes = calldataBytes[4:]
+	//	calldata, calldataUnpackErr := DecodeMessageCallData(calldataBytes)
+	//	if calldataUnpackErr != nil {
+	//		log.Warn("Failed to unpack DecodeMessageCallData function", "err", calldataUnpackErr)
+	//		return nil, calldataUnpackErr
+	//	}
+	//	eventInfo["calldata"] = calldata
+	//}
 	return eventInfo, nil
 }
 

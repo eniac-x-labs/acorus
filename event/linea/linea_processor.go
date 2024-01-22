@@ -3,12 +3,22 @@ package linea
 import (
 	"context"
 	"fmt"
+
+	"log"
+	"math/big"
+	"strconv"
+	"time"
+
+	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
-	"log"
-	"math/big"
-	"time"
+	common2 "github.com/cornerstone-labs/acorus/database/common"
+	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/worker"
+	"github.com/cornerstone-labs/acorus/event/linea/abi"
+	"github.com/cornerstone-labs/acorus/event/linea/bridge"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type LineaEventProcessor struct {
@@ -73,9 +83,180 @@ func (lp *LineaEventProcessor) ClosetUnpack() error {
 }
 
 func (lp *LineaEventProcessor) onL1Data() error {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	if lp.l1StartHeight == nil {
+		lastBlockHeard, err := lp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
+		if err != nil {
+			log.Println("l1 failed to get last block heard", "err", err)
+			return err
+		}
+		if lastBlockHeard == nil {
+			lastBlockHeard = &common2.BlockHeader{
+				Number: big.NewInt(0),
+			}
+		}
+		lp.l1StartHeight = lastBlockHeard.Number
+		if lp.l1StartHeight.Cmp(big.NewInt(int64(lp.cfgRpc.L1EventUnpackBlock))) == -1 {
+			lp.l1StartHeight = big.NewInt(int64(lp.cfgRpc.L1EventUnpackBlock))
+		}
+	} else {
+		lp.l1StartHeight = new(big.Int).Add(lp.l1StartHeight, bigint.One)
+	}
+
+	fromL1Height := lp.l1StartHeight
+	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(lp.epoch)))
+	if err := lp.db.Transaction(func(tx *database.DB) error {
+		l1EventsFetchErr := lp.l1EventsFetch(fromL1Height, toL1Height)
+		if l1EventsFetchErr != nil {
+			return l1EventsFetchErr
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	lp.l1StartHeight = toL1Height
 	return nil
 }
 
 func (lp *LineaEventProcessor) onL2Data() error {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	if lp.l2StartHeight == nil {
+		lastBlockHeard, err := lp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
+		if err != nil {
+			log.Println("l2 failed to get last block heard", "err", err)
+			return err
+		}
+		if lastBlockHeard == nil {
+			lastBlockHeard = &common2.BlockHeader{
+				Number: big.NewInt(0),
+			}
+		}
+		lp.l2StartHeight = lastBlockHeard.Number
+	} else {
+		lp.l2StartHeight = new(big.Int).Add(lp.l2StartHeight, bigint.One)
+	}
+	fromL2Height := lp.l2StartHeight
+	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(lp.epoch)))
+	if err := lp.db.Transaction(func(tx *database.DB) error {
+		l2EventsFetchErr := lp.l2EventsFetch(fromL2Height, toL2Height)
+		if l2EventsFetchErr != nil {
+			return l2EventsFetchErr
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	lp.l2StartHeight = toL2Height
 	return nil
+}
+
+func (lp *LineaEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	l1Contracts := lp.cfgRpc.Contracts
+	for _, l1contract := range l1Contracts {
+		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
+		events, err := lp.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
+		if err != nil {
+			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
+			return err
+		}
+		l1ToL2s := make([]worker.L1ToL2, 0)
+		for _, contractEvent := range events {
+			unpackEvent, unpackErr := lp.l1EventUnpack(contractEvent)
+			if unpackErr != nil {
+				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
+				return unpackErr
+			}
+			if unpackEvent != nil {
+				l1ToL2s = append(l1ToL2s, *unpackEvent)
+			}
+		}
+		if len(l1ToL2s) > 0 {
+			saveErr := lp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
+			if saveErr != nil {
+				log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+				return saveErr
+			}
+		}
+	}
+	return nil
+}
+
+func (lp *LineaEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	l2Contracts := lp.cfgRpc.EventContracts
+	for _, l2contract := range l2Contracts {
+		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
+		events, err := lp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		if err != nil {
+			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
+			return err
+		}
+		l2ToL1s := make([]worker.L2ToL1, 0)
+		for _, contractEvent := range events {
+			unpackEvent, unpackErr := lp.l2EventUnpack(contractEvent)
+			if unpackErr != nil {
+				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
+				return unpackErr
+			}
+			if unpackEvent != nil {
+				l2ToL1s = append(l2ToL1s, *unpackEvent)
+			}
+		}
+		if len(l2ToL1s) > 0 {
+			saveErr := lp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
+			if saveErr != nil {
+				log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+				return saveErr
+			}
+		}
+	}
+	return nil
+}
+
+func (lp *LineaEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	switch event.EventSignature.String() {
+	case abi.L1SentMessageSignature.String():
+		l1SentMsg, err := bridge.L1SentMessageEvent(event)
+		if err != nil {
+			return nil, err
+		}
+		return l1SentMsg, nil
+	case abi.L1ClaimedMessageSignature.String():
+		L1DepositERC20, err := bridge.L1DepositERC20(event)
+		if err != nil {
+			return nil, err
+		}
+		return L1DepositERC20, nil
+
+	}
+	fmt.Println(chainIdStr)
+	return nil, nil
+}
+
+func (lp *LineaEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+	switch event.EventSignature.String() {
+	case abi.L2SentMessageSignature.String():
+		withdrawETH, err := bridge.L2WithdrawETH(event)
+		if err != nil {
+			return nil, err
+		}
+		return withdrawETH, nil
+	case abi.L2ClaimedMessageSignature.String():
+		L2WithdrawERC20, err := bridge.L2WithdrawERC20(event)
+		if err != nil {
+			return nil, err
+		}
+		return L2WithdrawERC20, nil
+	}
+	fmt.Println(chainIdStr)
+	return nil, nil
 }
