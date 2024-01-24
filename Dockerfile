@@ -10,7 +10,7 @@ WORKDIR /app
 RUN go mod download
 
 # build acorus with the shared go.mod & go.sum files
-COPY ./acorus /app/acorus
+COPY . /app/acorus
 
 WORKDIR /app/acorus
 
