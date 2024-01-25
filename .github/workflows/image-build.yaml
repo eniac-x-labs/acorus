@@ -30,13 +30,10 @@ jobs:
           #REF: ${{ github.event.inputs.ref }}
           COMMIT_SHA: ${{ steps.get-commit-sha.outputs.commit_sha }}
         run: |
-          cmd="docker version"
-          echo;  ">>> ${cmd}"; ${cmd}
           IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
           export NODE_OPTIONS="--max_old_space_size=9000"
-          cmd="docker build --pull -f ../../Dockerfile -t ${IMAGE_URL1} ." 
-          echo; ">>> ${cmd}"; ${cmd}
+          docker build --pull -f ../../Dockerfile -t ${IMAGE_URL1} .
           docker tag ${IMAGE_URL1}
-          cmd="docker push ${IMAGE_URL1}"
-          echo; ">>> ${cmd}"; ${cmd}
+          docker push ${IMAGE_URL1}
+        
           
