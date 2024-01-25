@@ -32,7 +32,7 @@ jobs:
         run: |
           IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
           export NODE_OPTIONS="--max_old_space_size=9000"
-          docker build --pull -f ../../Dockerfile -t ${IMAGE_URL1} .
+          docker build --pull  -t ${IMAGE_URL1} .
           docker tag ${IMAGE_URL1}
           docker push ${IMAGE_URL1}
         
