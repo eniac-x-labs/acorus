@@ -229,14 +229,12 @@ func (lp *LineaEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker
 		}
 		return l1SentMsg, nil
 	case abi.L1ClaimedMessageSignature.String():
-		L1DepositERC20, err := bridge.L1DepositERC20(event)
+		err := bridge.L1ClaimedMessageEvent(chainIdStr, event, lp.db)
 		if err != nil {
 			return nil, err
 		}
-		return L1DepositERC20, nil
-
+		return nil, nil
 	}
-	fmt.Println(chainIdStr)
 	return nil, nil
 }
 
@@ -245,17 +243,17 @@ func (lp *LineaEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L2SentMessageSignature.String():
-		withdrawETH, err := bridge.L2WithdrawETH(event)
+		withdrawETH, err := bridge.L2SentMessageEvent(event)
 		if err != nil {
 			return nil, err
 		}
 		return withdrawETH, nil
 	case abi.L2ClaimedMessageSignature.String():
-		L2WithdrawERC20, err := bridge.L2WithdrawERC20(event)
+		err := bridge.L2ClaimedMessageEvent(chainIdStr, event, lp.db)
 		if err != nil {
 			return nil, err
 		}
-		return L2WithdrawERC20, nil
+		return nil, nil
 	}
 	fmt.Println(chainIdStr)
 	return nil, nil

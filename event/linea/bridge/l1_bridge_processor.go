@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -15,17 +16,21 @@ import (
 func L1SentMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
 
 	rlpLog := *event.RLPLog
-	decodeLog, decodeErr := utils.DecodeLog(abi.L1MessageEventABI, "MessageSent", rlpLog)
+	eventABI := abi.L1MessageEventABI
+	callDataABI := abi.L1MessageCallDataABI
+	callDataFuncName := abi.L1MessageCallDataFuncName
+	decodeLog, decodeErr := utils.DecodeLog(eventABI, callDataABI, "MessageSent", callDataFuncName, rlpLog)
 	if decodeErr != nil {
 		log.Println("Failed to unpack SentMessage event", "err", decodeErr)
 		return nil, decodeErr
 	}
 	fmt.Println(decodeLog)
-
-	return &worker.L1ToL2{
+	ethAmount := decodeLog["_value"].(*big.Int)
+	l1ToL2 := worker.L1ToL2{
 		QueueIndex:        nil,
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TransactionHash: rlpLog.TxHash,
+
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Address{},
 		Status:            0,
@@ -33,24 +38,42 @@ func L1SentMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
 		ToAddress:         decodeLog["_to"].(common.Address),
 		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
-		ETHAmount:         decodeLog["_value"].(*big.Int),
-		GasLimit:          big.NewInt(0),
+		ETHAmount:         ethAmount,
+		GasLimit:          decodeLog["relayerFee"].(*big.Int),
 		Timestamp:         int64(event.Timestamp),
-		AssetType:         int64(common2.ETH),
 		MessageHash:       decodeLog["_messageHash"].(common.Hash),
-	}, nil
+	}
+	if ethAmount.Cmp(big.NewInt(0)) == 0 {
+		l1ToL2.AssetType = int64(common2.ETH)
+		l1ToL2.GasLimit = decodeLog["_fee"].(*big.Int)
+	} else {
+		l1ToL2.AssetType = int64(common2.ERC20)
+		l1ToL2.TokenAmounts = decodeLog["amount"].(*big.Int).String()
+		l1ToL2.L1TokenAddress = common.Address{}
+		l1ToL2.L2TokenAddress = l1ToL2.L1TokenAddress
+	}
+
+	return &l1ToL2, nil
 }
 
-func L1ClaimedMessageEvent(event event.ContractEvent) (*worker.L1ToL2, error) {
-
+func L1ClaimedMessageEvent(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
-	decodeLog, unpackErr := utils.DecodeLog(abi.L1MessageEventABI, "MessageClaimed", rlpLog)
+	decodeLog, unpackErr := utils.DecodeLog(abi.L1MessageEventABI, nil,
+		"MessageClaimed", "", rlpLog)
 	if unpackErr != nil {
 		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
-		return nil, unpackErr
+		return unpackErr
 	}
 	fmt.Println(decodeLog)
-
-	// update claimed message
-	return nil, nil
+	messageHash := decodeLog["_messageHash"].(common.Hash)
+	txHash := rlpLog.TxHash
+	if err := db.L2ToL1.UpdateL2ToL1L1TxHashByMsgHash(
+		chainId,
+		worker.L2ToL1{
+			L1BlockNumber:    big.NewInt(int64(rlpLog.BlockNumber)),
+			MessageHash:      messageHash,
+			L1FinalizeTxHash: txHash}); err != nil {
+		return err
+	}
+	return nil
 }

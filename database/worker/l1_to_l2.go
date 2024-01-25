@@ -81,6 +81,7 @@ func (l1l2 l1ToL2DB) UpdateL1ToL2MsgHashByL1TxHash(chainId string, l1L2Stu L1ToL
 func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(chainId string, l1L2Stu L1ToL2) error {
 	result := l1l2.gorm.Table("l1_to_l2_" + chainId).Where(&L1ToL2{MessageHash: l1L2Stu.MessageHash})
 	result = result.UpdateColumn("l2_transaction_hash", l1L2Stu.L2TransactionHash.String()).UpdateColumn("status", 1)
+	result = result.UpdateColumn("l2_block_number", l1L2Stu.L2BlockNumber.String())
 	return result.Error
 }
 
