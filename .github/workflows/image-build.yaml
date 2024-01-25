@@ -12,8 +12,8 @@ jobs:
       commit_sha: ${{ steps.get-commit-sha.outputs.commit_sha }}
       ecr_registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@main
+      - name: Checkout repo
+        uses: actions/checkout@v3
       - name: Get Commit Sha
         id: get-commit-sha
         run: |
