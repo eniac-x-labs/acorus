@@ -23,6 +23,14 @@ jobs:
       #   id: login-ecr
       #   with:
       #     registries: 346612984731
+      - name: 'Get Login to AWS ECR'
+        id: ecr-login
+        uses: thalesvon/ecr-login@master
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_DEFAULT_OUTPUT: json
+          AWS_REGION: ap-southeast-1
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - name: Build Docker Image
         env:
           ECR_REGISTRY: "public.ecr.aws/d4s3o9q3"
