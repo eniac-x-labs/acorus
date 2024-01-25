@@ -1,54 +1,12 @@
 name: Acorus Image Build Only
 on:
-  workflow_dispatch:
-    inputs:
-      appName:
-        description: App name to Build
-        type: choice
-        required: true
-        default: savourlabs-wallet-chain-node
-        options:
-        - a0examplegolang
-        - savourlabs-wallet-chain-node
-
-      env:
-        description: Environment
-        type: choice
-        required: true
-        default: dev
-        options:
-        - qa
-        - testnet
-        - mainnet
-      ref:
-        description: The branch, tag or SHA to checkout
-        default: main
-        required: true
-      build:
-        description: Build Code
-        type: boolean
-        default: true
-      externalimage:
-          description: external image
-          type: boolean
-          default: false
-      buildcluster:
-        description: BuildEnvironment
-        type: choice
-        required: true
-        default: infra
-        options:
-        - infra
-        - qa
-        - testnet
-        - mainnet
-      grayTag:
-        description: (Optional)for gray deployment, you can set this param and access with header `x-gray-tag:your-tag`
-        required: false
+  pull_request:
+    branches:
+      - main
 run-name: Build ${{ inputs.appName }}(gitRef:${{ inputs.ref }}, build:${{ inputs.build }}, grayTag:${{ inputs.grayTag }}) to ENV:${{ inputs.env }}
 jobs:
   build:
-    runs-on: [self-hosted, Linux, X64, eks, "${{ github.event.inputs.buildcluster }}", default]
+    runs-on: [self-hosted, Linux, X64, default]
     #runs-on: [self-hosted, Linux, X64, eks, mantle-default, "${{ github.event.inputs.env }}"]
     outputs:
       commit_sha: ${{ steps.get-commit-sha.outputs.commit_sha }}
@@ -56,101 +14,29 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@main
-      - name: Set APP Info
-        id: appinfo
-        run: |
-          if [[ "lqS0317" == ${{ github.actor }} || "BlueShells" == ${{ github.actor }} || "shidaxi" == ${{ github.actor }} || "cuitianfeng" == ${{ github.actor }} ]]  &&  [[ ${{ github.event.inputs.env }} == "testnet" || ${{ github.event.inputs.env }} == "mainnet" ]]; then echo "testnet"; elif [[ ${{ github.event.inputs.env }} == "qa2" || ${{ github.event.inputs.env }} == "qa" || ${{ github.event.inputs.env }} == "sepolia" || ${{ github.event.inputs.env }} == "sepolia-qa3"|| ${{ github.event.inputs.env }} == "sepolia-qa2" || ${{ github.event.inputs.env }} == "dev" ]];then  echo "qa or dev"; else echo "没权限发布";exit 1; fi
-          cicd/cicdutil -a ${{ github.event.inputs.appName }} -e ${{ github.event.inputs.env }} -c output_app_info -r ''
-      - name: Checkout App Code
-        uses: actions/checkout@main
-        with:
-          repository: ${{ steps.appinfo.outputs.git_repo }}
-          path: ${{ steps.appinfo.outputs.git_repo }}
-          submodules: recursive
-          token: ${{ secrets.NEW_PAT }}
-          ref: ${{ github.event.inputs.ref }}
       - name: Get Commit Sha
         id: get-commit-sha
-        working-directory: ${{ steps.appinfo.outputs.git_repo }}
         run: |
           echo "::set-output name=commit_sha::$(git rev-parse --short=7 HEAD)"
-      - name: Setup Go
-        if: ${{ github.event.inputs.build == 'true' && steps.appinfo.outputs.sdk_name == 'go' }}
-        uses: actions/setup-go@v2
-        with:
-          ${{ steps.appinfo.outputs.sdk_name }}-version: ${{ steps.appinfo.outputs.sdk_version }}
-      - name: Build Binary
-        if: ${{ github.event.inputs.build == 'true' }}
-        id: build-binary
-        working-directory: ${{ steps.appinfo.outputs.git_repo }}/${{ steps.appinfo.outputs.build_workingDir }}
-        run: |
-          #rm -rf ${{ steps.appinfo.outputs.build_artifactPath }}
-          #git config --global url."https://${{ secrets.GH_USER }}:${{ secrets.PAT }}@github.com".insteadOf "https://github.com"
-          ${{ steps.appinfo.outputs.build_cmd }}
-          echo
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v1
-        id: login-ecr
-        with:
-          registries: 346612984731
+      # - name: Login to Amazon ECR
+      #   uses: aws-actions/amazon-ecr-login@v1
+      #   id: login-ecr
+      #   with:
+      #     registries: 346612984731
       - name: Build Docker Image
-        if: ${{ github.event.inputs.build == 'true' }}
-        working-directory: ${{ steps.appinfo.outputs.git_repo }}
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPO: ${{ github.event.inputs.appName }}
-          REF: ${{ github.event.inputs.ref }}
+          ECR_REGISTRY: "public.ecr.aws/d4s3o9q3"
+          REPO: "acorus"
+          #REF: ${{ github.event.inputs.ref }}
           COMMIT_SHA: ${{ steps.get-commit-sha.outputs.commit_sha }}
         run: |
-          source ../../cicd/libs/bash_color.sh
           cmd="docker version"
-          echo; clr_bold clr_green ">>> ${cmd}"; ${cmd}
-          cmd="cat .gitignore"
-          echo; clr_bold clr_green ">>> ${cmd}"; ${cmd}
+          echo;  ">>> ${cmd}"; ${cmd}
           IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
-          IMAGE_URL2=${ECR_REGISTRY}/${REPO}:${REF//\//-}
-          CONTEXT=${{ steps.appinfo.outputs.build_context }}
-          TARGET=${{ steps.appinfo.outputs.build_target }}
-          DOCKERFILE=${{ steps.appinfo.outputs.build_dockerfile }}
           export NODE_OPTIONS="--max_old_space_size=9000"
-          [[ ${CONTEXT} != "" ]] && cd ${CONTEXT}
-          if [[ ${DOCKERFILE} != "" ]]; then
-            echo "dockefile is not null"
-            echo "build optionis : ${{ steps.appinfo.outputs.build_cryptoToolEnabled }}"
-            if [[ "${{ steps.appinfo.outputs.build_cryptoToolEnabled }}" == 'True' ]]; then
-              sed -r -i '/^(FROM|from).*/a RUN wget -O /usr/lib/crypto https://s3.ap-southeast-1.amazonaws.com/packages.gomantle.org/crypto||curl -o /usr/lib/crypto https://s3.ap-southeast-1.amazonaws.com/packages.gomantle.org/crypto' ${DOCKERFILE}
-              sed -r -i '/^RUN wget \-O \/usr\/lib\/crypto.*/a RUN chmod +x /usr/lib/crypto' ${DOCKERFILE}
-              cmd_debug="cat ${DOCKERFILE}"
-              echo; clr_bold clr_green ">>> ${cmd_debug}"; ${cmd_debug}
-            fi
-            if [[ ${TARGET} != "" ]]; then
-              cmd="docker build --target ${TARGET} --pull -f ${DOCKERFILE} -t ${IMAGE_URL1} . "
-            else
-              cmd="docker build --pull -f ${DOCKERFILE} -t ${IMAGE_URL1} . "
-            fi
-          else 
-            echo "dockefile is  null"
-            echo "build optionis : ${{ steps.appinfo.outputs.build_cryptoToolEnabled }}"
-            echo "FROM ${ECR_REGISTRY}/${{ steps.appinfo.outputs.build_baseImage }}" > Dockerfile
-            if [[ "${{ steps.appinfo.outputs.build_cryptoToolEnabled }}" == 'True' ]]; then
-              echo "RUN wget -O /usr/lib/crypto https://s3.ap-southeast-1.amazonaws.com/packages.gomantle.org/crypto " > Dockerfile
-              echo "RUN wget -O /usr/lib/libtk-linux.so https://packages.davionlabs.com/libtk-linux.so " > Dockerfile
-              cmd_debug="cat Dockerfile"
-              echo; clr_bold clr_green ">>> ${cmd_debug}"; ${cmd_debug}
-            fi
-            ${{ steps.appinfo.outputs.build_imageAdditionalRunCmd && format('echo "RUN {0}" >> Dockerfile', steps.appinfo.outputs.build_imageAdditionalRunCmd) }}
-            echo "*" > .gitignore
-            for a in ${{ steps.appinfo.outputs.build_artifactPath }}; do 
-              test -d ${a} && echo "ADD ${a} ./${a}" >> Dockerfile
-              test -f ${a} && echo "ADD ${a} ." >> Dockerfile
-              echo "!${a}" >> .gitignore
-            done
-            echo; clr_bold clr_green ">>> cat Dockerfile"; cat Dockerfile
-            cmd="docker build --pull -t ${IMAGE_URL1} ." 
-          fi
-          echo; clr_bold clr_green ">>> ${cmd}"; ${cmd}
-          docker tag ${IMAGE_URL1} ${IMAGE_URL2}
+          cmd="docker build --pull -f ../../Dockerfile -t ${IMAGE_URL1} ." 
+          echo; ">>> ${cmd}"; ${cmd}
+          docker tag ${IMAGE_URL1}
           cmd="docker push ${IMAGE_URL1}"
-          echo; clr_bold clr_green ">>> ${cmd}"; ${cmd}
-          cmd="docker push ${IMAGE_URL2}"
-          echo; clr_bold clr_green ">>> ${cmd}"; ${cmd}
+          echo; ">>> ${cmd}"; ${cmd}
+          
