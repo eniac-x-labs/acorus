@@ -27,7 +27,7 @@ jobs:
       #   with:
       #     registries: 346612984731
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@master
+        uses: aws-actions/configure-aws-credentials@v3
         with:
           role-to-assume: arn:aws:iam::942583694543:role/github-action-role
           aws-region: ap-southeast-1
