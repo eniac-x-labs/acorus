@@ -50,5 +50,8 @@ jobs:
           export NODE_OPTIONS="--max_old_space_size=9000"
           docker build --pull  -t ${IMAGE_URL1} .
           docker push ${IMAGE_URL1}
+      - name: deploy app
+        run: |
+          helm template -f values.yaml charts 
         
           
