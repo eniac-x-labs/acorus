@@ -79,7 +79,7 @@ func NewContractEventsDB(db *gorm.DB) ContractEventsDB {
 }
 
 func (db *contractEventsDB) StoreChainContractEvents(chainId string, events []ChainContractEvent) error {
-	result := db.gorm.Omit("guid").Table("contract_events_" + chainId).Create(&events)
+	result := db.gorm.Table("contract_events_" + chainId).Omit("guid").Create(&events)
 	return result.Error
 }
 

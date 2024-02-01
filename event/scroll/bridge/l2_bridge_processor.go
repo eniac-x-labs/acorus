@@ -1,26 +1,31 @@
 package bridge
 
 import (
-	"github.com/cornerstone-labs/acorus/event/scroll/abi"
-	"github.com/cornerstone-labs/acorus/event/scroll/utils"
+	"encoding/json"
+
 	"log"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/relation"
 	"github.com/cornerstone-labs/acorus/database/worker"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/cornerstone-labs/acorus/event/scroll/abi"
+	"github.com/cornerstone-labs/acorus/event/scroll/utils"
 )
 
-func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2WithdrawETH(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	depositEvent := abi.DepositETH{}
 	unpackErr := utils.UnpackLog(abi.L2ETHGatewayABI, &depositEvent, "WithdrawETH", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1FinalizeTxHash:  common.Hash{},
@@ -38,21 +43,33 @@ func L2WithdrawETH(event event.ContractEvent) (*worker.L2ToL1, error) {
 		AssetType:         int64(common2.ETH),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
-	}, nil
+	}
+
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 
 }
 
-func L2WithdrawERC20(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2WithdrawERC20(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	withdrawErc20Event := abi.ERC20MessageEvent{}
 
 	unpackErr := utils.UnpackLog(abi.L2StandardERC20GatewayABI, &withdrawErc20Event, "WithdrawERC20", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
 	amounts := make([]*big.Int, 0)
 	amounts = append(amounts, withdrawErc20Event.Amount)
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L1FinalizeTxHash:  common.Hash{},
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
@@ -70,17 +87,28 @@ func L2WithdrawERC20(event event.ContractEvent) (*worker.L2ToL1, error) {
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
 		TokenAmounts:      utils.ConvertBigIntArrayToString(amounts),
-	}, nil
+	}
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 }
 
-func L2WithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2WithdrawERC721(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	withdrawERC721Event := abi.ERC721MessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ERC721GatewayABI, &withdrawERC721Event, "WithdrawERC721", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
@@ -100,18 +128,30 @@ func L2WithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		AssetType:         int64(common2.ERC721),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
-	}, nil
+	}
+
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 
 }
 
-func L2WithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2WithdrawERC1155(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	withdrawERC1155Event := abi.ERC1155MessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ERC1155GatewayABI, &withdrawERC1155Event, "WithdrawERC1155", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
@@ -131,17 +171,28 @@ func L2WithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		AssetType:         int64(common2.ERC1155),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
-	}, nil
+	}
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 }
 
-func L2BatchWithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2BatchWithdrawERC721(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	batchWithdrawERC721Event := abi.BatchERC721MessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ERC721GatewayABI, &batchWithdrawERC721Event, "BatchWithdrawERC721", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
@@ -161,17 +212,28 @@ func L2BatchWithdrawERC721(event event.ContractEvent) (*worker.L2ToL1, error) {
 		AssetType:         int64(common2.ERC721),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
-	}, nil
+	}
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 }
 
-func L2BatchWithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2BatchWithdrawERC1155(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	batchWithdrawERC1155Event := abi.BatchERC1155MessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ERC1155GatewayABI, &batchWithdrawERC1155Event, "BatchWithdrawERC1155", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	return &worker.L2ToL1{
+	l1L2Data := &worker.L2ToL1{
 
 		L1FinalizeTxHash:  common.Hash{},
 		L2TransactionHash: rlpLog.TxHash,
@@ -191,43 +253,54 @@ func L2BatchWithdrawERC1155(event event.ContractEvent) (*worker.L2ToL1, error) {
 		AssetType:         int64(common2.ERC1155),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.Hash{},
-	}, nil
+	}
+	marshal, unpackErr := json.Marshal(l1L2Data)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:    rlpLog.TxHash,
+		LayerType: global_const.LayerTypeTwo,
+		Data:      string(marshal),
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 
 }
 
-func L2SentMessageEvent(chainId string, event event.ContractEvent, db *database.DB) (*worker.L2ToL1, error) {
+func L2SentMessageEvent(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	sentMessageEvent := abi.L2SentMessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ScrollMessengerABI, &sentMessageEvent, "SentMessage", rlpLog)
 	if unpackErr != nil {
 		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
-		return nil, unpackErr
+		return unpackErr
 	}
-	// compute msgHash
+
 	msgHash := utils.ComputeMessageHash(sentMessageEvent.Sender, sentMessageEvent.Target,
 		sentMessageEvent.Value, sentMessageEvent.MessageNonce, sentMessageEvent.Message)
-	// update l1tol2  set msgHash by txHash
-	if err := db.L2ToL1.UpdateL2ToL1MsgHashByL2TxHash(chainId, worker.L2ToL1{L2TransactionHash: rlpLog.TxHash, MessageHash: msgHash}); err != nil {
-		return nil, err
+
+	relayRelation := relation.MsgHashRelation{
+		TxHash:  rlpLog.TxHash,
+		MsgHash: msgHash,
 	}
-	return nil, nil
+
+	err := db.MsgHashRelation.MsgHashRelationStore(relayRelation, chainId)
+	return err
 }
 
-func L2RelayedMessageEvent(chainId string, event event.ContractEvent, db *database.DB) (*worker.L2ToL1, error) {
+func L2RelayedMessageEvent(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	l2RelayedMessageEvent := abi.L2RelayedMessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L2ScrollMessengerABI, &l2RelayedMessageEvent, "RelayedMessage", rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-	// update l2 to l1 Set l1_tx_hash by msg_hash
-	if err := db.L1ToL2.UpdateL1ToL2L2TxHashByMsgHash(
-		chainId,
-		worker.L1ToL2{
-			L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
-			MessageHash:       l2RelayedMessageEvent.MessageHash,
-			L2TransactionHash: rlpLog.TxHash}); err != nil {
-		return nil, err
+	relayRelation := relation.RelayRelation{
+		TxHash:      rlpLog.TxHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		MsgHash:     l2RelayedMessageEvent.MessageHash,
 	}
-	return nil, nil
+	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	return err
 }

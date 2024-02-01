@@ -16,6 +16,10 @@ func CreateTableFromTemplate(chainId string, db *database.DB) {
 	createStateRoot(chainId, db)
 	createWithdrawProven(chainId, db)
 	createWithdrawFinalized(chainId, db)
+	createMsgSent(chainId, db)
+	createRelay(chainId, db)
+	createMshHash(chainId, db)
+
 }
 
 func createBlockHeaders(chainId string, db *database.DB) {
@@ -69,5 +73,23 @@ func createBatches(chainId string, db *database.DB) {
 func createStateRoot(chainId string, db *database.DB) {
 	tableName := "template_state_root"
 	tableNameByChainId := fmt.Sprintf("state_root_%s", chainId)
+	db.CreateTable.CreateTable(tableNameByChainId, tableName)
+}
+
+func createMsgSent(chainId string, db *database.DB) {
+	tableName := "template_msg_sent"
+	tableNameByChainId := fmt.Sprintf("msg_sent_%s", chainId)
+	db.CreateTable.CreateTable(tableNameByChainId, tableName)
+}
+
+func createRelay(chainId string, db *database.DB) {
+	tableName := "template_relay"
+	tableNameByChainId := fmt.Sprintf("relay_%s", chainId)
+	db.CreateTable.CreateTable(tableNameByChainId, tableName)
+}
+
+func createMshHash(chainId string, db *database.DB) {
+	tableName := "template_msg_hash"
+	tableNameByChainId := fmt.Sprintf("msg_hash_%s", chainId)
 	db.CreateTable.CreateTable(tableNameByChainId, tableName)
 }

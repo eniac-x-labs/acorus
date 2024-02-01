@@ -2,7 +2,9 @@ package scroll
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"time"
 
 	"log"
@@ -75,6 +77,19 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 		}
 		return nil
 	})
+
+	// start relation worker
+	sp.tasks.Go(func() error {
+		for range tickerSyncer.C {
+			err := sp.relationL1L2()
+			if err != nil {
+				log.Println("shutting down relation task")
+				return err
+			}
+		}
+		return nil
+	})
+
 	return nil
 }
 
@@ -107,6 +122,21 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 
 	fromL1Height := sp.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(sp.epoch)))
+
+	chainLatestBlockHeader, err := sp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
+			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+		}
+	}
 	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l1EventsFetchErr := sp.l1EventsFetch(fromL1Height, toL1Height)
 		if l1EventsFetchErr != nil {
@@ -140,6 +170,20 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 	}
 	fromL2Height := sp.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(sp.epoch)))
+	chainLatestBlockHeader, err := sp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
+			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+		}
+	}
 	if err := sp.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := sp.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {
@@ -154,8 +198,6 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 }
 
 func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := sp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	l1Contracts := sp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
@@ -164,22 +206,11 @@ func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int)
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l1ToL2s := make([]worker.L1ToL2, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := sp.l1EventUnpack(contractEvent)
+			unpackErr := sp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l1ToL2s = append(l1ToL2s, *unpackEvent)
-			}
-		}
-		if len(l1ToL2s) > 0 {
-			saveErr := sp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
-			if saveErr != nil {
-				log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
@@ -197,135 +228,148 @@ func (sp *ScrollEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int)
 			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l2ToL1s := make([]worker.L2ToL1, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := sp.l2EventUnpack(contractEvent)
+			unpackErr := sp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l2ToL1s = append(l2ToL1s, *unpackEvent)
-			}
-		}
-		if len(l2ToL1s) > 0 {
-			saveErr := sp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
-			if saveErr != nil {
-				log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
 	return nil
 }
 
-func (sp *ScrollEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
+func (sp *ScrollEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L1DepositETHSig.String():
-		l1DepositETH, err := bridge.L1DepositETH(event)
-		if err != nil {
-			return nil, err
-		}
-		return l1DepositETH, nil
+		err := bridge.L1DepositETH(chainIdStr, event, sp.db)
+		return err
 	case abi.L1DepositERC20Sig.String():
-		L1DepositERC20, err := bridge.L1DepositERC20(event)
-		if err != nil {
-			return nil, err
-		}
-		return L1DepositERC20, nil
+		err := bridge.L1DepositERC20(chainIdStr, event, sp.db)
+		return err
 	case abi.L1DepositERC721Sig.String():
-		L1DepositERC721, err := bridge.L1DepositERC721(event)
-		if err != nil {
-			return nil, err
-		}
-		return L1DepositERC721, nil
+		err := bridge.L1DepositERC721(chainIdStr, event, sp.db)
+		return err
 	case abi.L1DepositERC1155Sig.String():
-		L1DepositERC1155, err := bridge.L1DepositERC1155(event)
-		if err != nil {
-			return nil, err
-		}
-		return L1DepositERC1155, nil
+		err := bridge.L1DepositERC1155(chainIdStr, event, sp.db)
+		return err
 	case abi.L1BatchDepositERC721Sig.String():
-		batchDepositERC721, err := bridge.L1BatchDepositERC721(event)
-		if err != nil {
-			return nil, err
-		}
-		return batchDepositERC721, nil
+		err := bridge.L1BatchDepositERC721(chainIdStr, event, sp.db)
+		return err
 	case abi.L1BatchDepositERC1155Sig.String():
-		L1BatchDepositERC1155, err := bridge.L1BatchDepositERC1155(event)
-		if err != nil {
-			return nil, err
-		}
-		return L1BatchDepositERC1155, nil
+		err := bridge.L1BatchDepositERC1155(chainIdStr, event, sp.db)
+		return err
 	case abi.L1SentMessageEventSignature.String():
-		_, err := bridge.L1SentMessageEvent(chainIdStr, event, sp.db)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		err := bridge.L1SentMessageEvent(chainIdStr, event, sp.db)
+		return err
 	case abi.L1RelayedMessageEventSignature.String():
-		_, err := bridge.L1RelayedMessageEvent(chainIdStr, event, sp.db)
-		if err != nil {
-			return nil, err
-		}
+		err := bridge.L1RelayedMessageEvent(chainIdStr, event, sp.db)
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
-func (sp *ScrollEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
+func (sp *ScrollEventProcessor) l2EventUnpack(event event.ContractEvent) error {
 	chainId := sp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L2WithdrawETHSig.String():
-		withdrawETH, err := bridge.L2WithdrawETH(event)
-		if err != nil {
-			return nil, err
-		}
-		return withdrawETH, nil
+		err := bridge.L2WithdrawETH(chainIdStr, event, sp.db)
+		return err
 	case abi.L2WithdrawERC20Sig.String():
-		L2WithdrawERC20, err := bridge.L2WithdrawERC20(event)
-		if err != nil {
-			return nil, err
-		}
-		return L2WithdrawERC20, nil
+		err := bridge.L2WithdrawERC20(chainIdStr, event, sp.db)
+		return err
 	case abi.L2WithdrawERC721Sig.String():
-		L2WithdrawERC721, err := bridge.L2WithdrawERC721(event)
-		if err != nil {
-			return nil, err
-		}
-		return L2WithdrawERC721, nil
+		err := bridge.L2WithdrawERC721(chainIdStr, event, sp.db)
+		return err
 	case abi.L2WithdrawERC1155Sig.String():
-		L2WithdrawERC1155, err := bridge.L2WithdrawERC1155(event)
-		if err != nil {
-			return nil, err
-		}
-		return L2WithdrawERC1155, nil
+		err := bridge.L2WithdrawERC1155(chainIdStr, event, sp.db)
+		return err
 	case abi.L2BatchWithdrawERC721Sig.String():
-		L2BatchWithdrawERC721, err := bridge.L2BatchWithdrawERC721(event)
-		if err != nil {
-			return nil, err
-		}
-		return L2BatchWithdrawERC721, nil
+		err := bridge.L2BatchWithdrawERC721(chainIdStr, event, sp.db)
+		return err
 	case abi.L2BatchWithdrawERC1155Sig.String():
-		L2BatchWithdrawERC1155, err := bridge.L2BatchWithdrawERC1155(event)
-		if err != nil {
-			return nil, err
-		}
-		return L2BatchWithdrawERC1155, nil
+		err := bridge.L2BatchWithdrawERC1155(chainIdStr, event, sp.db)
+		return err
 	case abi.L2SentMessageEventSignature.String():
-		_, err := bridge.L2SentMessageEvent(chainIdStr, event, sp.db)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		err := bridge.L2SentMessageEvent(chainIdStr, event, sp.db)
+		return err
 	case abi.L2RelayedMessageEventSignature.String():
-		_, err := bridge.L2RelayedMessageEvent(chainIdStr, event, sp.db)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		err := bridge.L2RelayedMessageEvent(chainIdStr, event, sp.db)
+		return err
 	}
-	return nil, nil
+	return nil
+}
+
+func (sp *ScrollEventProcessor) relationL1L2() error {
+	chainId := sp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+
+	if err := sp.db.Transaction(func(tx *database.DB) error {
+		// step 1
+		if err := sp.db.MsgSentRelation.MsgHashRelation(chainIdStr); err != nil {
+			return err
+		}
+		// step 2
+		if err := sp.db.MsgSentRelation.RelayRelation(chainIdStr); err != nil {
+			return err
+		}
+		// step 3
+		if canSaveDataList, err := sp.db.MsgSentRelation.GetCanSaveDataList(chainIdStr); err != nil {
+			return err
+		} else {
+			l1ToL2s := make([]worker.L1ToL2, 0)
+			l2ToL1s := make([]worker.L2ToL1, 0)
+			for _, data := range canSaveDataList {
+				l1l2Data := data.Data
+				if data.LayerType == global_const.LayerTypeOne {
+					var l1Tol2 worker.L1ToL2
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l1Tol2); unMarErr != nil {
+						return unMarErr
+					}
+					l1Tol2.MessageHash = data.MsgHash
+					l1Tol2.L2BlockNumber = data.LayerBlockNumber
+					l1Tol2.L2TransactionHash = data.LayerHash
+					l1Tol2.Status = 1
+					l1ToL2s = append(l1ToL2s, l1Tol2)
+				}
+				if data.LayerType == global_const.LayerTypeTwo {
+					var l2Tol1 worker.L2ToL1
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l2Tol1); unMarErr != nil {
+						return unMarErr
+					}
+					l2Tol1.MessageHash = data.MsgHash
+					l2Tol1.L1BlockNumber = data.LayerBlockNumber
+					l2Tol1.L1FinalizeTxHash = data.LayerHash
+					l2Tol1.Status = 1
+					l2ToL1s = append(l2ToL1s, l2Tol1)
+				}
+
+			}
+
+			if len(l1ToL2s) > 0 {
+				saveErr := sp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
+				if saveErr != nil {
+					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+			if len(l2ToL1s) > 0 {
+				saveErr := sp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
+				if saveErr != nil {
+					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }

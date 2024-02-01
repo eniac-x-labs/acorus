@@ -3,6 +3,7 @@ package linea
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/global_const"
 
 	"log"
 	"math/big"
@@ -103,9 +104,23 @@ func (lp *LineaEventProcessor) onL1Data() error {
 	} else {
 		lp.l1StartHeight = new(big.Int).Add(lp.l1StartHeight, bigint.One)
 	}
-
 	fromL1Height := lp.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(lp.epoch)))
+	chainLatestBlockHeader, err := lp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
+			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+		}
+	}
+
 	if err := lp.db.Transaction(func(tx *database.DB) error {
 		l1EventsFetchErr := lp.l1EventsFetch(fromL1Height, toL1Height)
 		if l1EventsFetchErr != nil {
@@ -139,6 +154,21 @@ func (lp *LineaEventProcessor) onL2Data() error {
 	}
 	fromL2Height := lp.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(lp.epoch)))
+	chainLatestBlockHeader, err := lp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
+			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+		}
+	}
+
 	if err := lp.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := lp.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {

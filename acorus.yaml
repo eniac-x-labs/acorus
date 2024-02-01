@@ -11,7 +11,7 @@ metrics:
 rpcs:
   - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
     chain_id: 1
-    start_block: 18905800
+    start_block: 19126200
     contracts:
     event_contracts:
 
@@ -21,17 +21,17 @@ rpcs:
 #    contracts:
 #    event_contracts:
 
-  - rpc_url: ""
-    chain_id: 137
-    start_block: 0
-    contracts:
-      - "0xd19d4B5d358258f05D7B411E21A1460D11B0876F"
-    event_contracts:
-      - "0x508ca82df566dcd1b0de8296e70a96332cd644ec"
+#  - rpc_url: ""
+#    chain_id: 137
+#    start_block: 0
+#    contracts:
+#      - "0xd19d4B5d358258f05D7B411E21A1460D11B0876F"
+#    event_contracts:
+#      - "0x508ca82df566dcd1b0de8296e70a96332cd644ec"
   - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
     chain_id: 534352
-    start_block: 0
-    l1_event_unpack_block: 18310747
+    start_block: 2950000
+    l1_event_unpack_block: 19126200
     contracts:
       - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
       - "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367"

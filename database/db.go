@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/database/relation"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -30,6 +31,9 @@ type DB struct {
 	StateRoots        worker.StateRootDB
 	L2ToL1            worker.L2ToL1DB
 	L1ToL2            worker.L1ToL2DB
+	MsgSentRelation   relation.MsgSentRelationDB
+	MsgHashRelation   relation.MsgHashRelationDB
+	RelayRelation     relation.RelayRelationDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -78,21 +82,27 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		StateRoots:        worker.NewStateRootDB(gorm),
 		L1ToL2:            worker.NewL1ToL2DB(gorm),
 		L2ToL1:            worker.NewL21ToL1DB(gorm),
+		MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
+		MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
+		RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
 	}
 	return db, nil
 }
 
 func (db *DB) Transaction(fn func(db *DB) error) error {
-	return db.gorm.Transaction(func(tx *gorm.DB) error {
+	return db.gorm.Transaction(func(gorm *gorm.DB) error {
 		txDB := &DB{
-			gorm:              tx,
-			Blocks:            common.NewBlocksDB(tx),
-			WithdrawProven:    event.NewWithdrawProvenDB(tx),
-			WithdrawFinalized: event.NewWithdrawFinalizedDB(tx),
-			ContractEvents:    event.NewContractEventsDB(tx),
-			L1ToL2:            worker.NewL1ToL2DB(tx),
-			L2ToL1:            worker.NewL21ToL1DB(tx),
-			StateRoots:        worker.NewStateRootDB(tx),
+			gorm:              gorm,
+			Blocks:            common.NewBlocksDB(gorm),
+			WithdrawProven:    event.NewWithdrawProvenDB(gorm),
+			WithdrawFinalized: event.NewWithdrawFinalizedDB(gorm),
+			ContractEvents:    event.NewContractEventsDB(gorm),
+			L1ToL2:            worker.NewL1ToL2DB(gorm),
+			L2ToL1:            worker.NewL21ToL1DB(gorm),
+			StateRoots:        worker.NewStateRootDB(gorm),
+			MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
+			MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
+			RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
 		}
 		return fn(txDB)
 	})
