@@ -14,6 +14,6 @@ const (
 	PolygonChainId  uint64 = 1101
 	EthereumChainId uint64 = 1
 	OpChinId        uint64 = 10
-	LineaChainId    uint64 = 100
+	LineaChainId    uint64 = 59144
 	BlocksLimit            = 10000
 )
