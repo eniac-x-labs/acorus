@@ -1,6 +1,9 @@
 package bridge
 
 import (
+	"encoding/json"
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database/relation"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,11 +16,12 @@ import (
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
 )
 
-func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent) (*worker.L1ToL2, error) {
+func L1Deposit(chainId string, polygonBridge *abi.Polygonzkevmbridge,
+	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
 	d, unpackErr := polygonBridge.ParseBridgeEvent(*rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
 	l1ToL2 := worker.L1ToL2{
 		QueueIndex:        nil,
@@ -34,8 +38,9 @@ func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent)
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
 		TokenAmounts:      "0",
-		MessageHash:       common.Hash{},
+		MessageHash:       common.BigToHash(big.NewInt(int64(d.DepositCount))),
 	}
+
 	if d.OriginAddress.String() == utils.L1_ETH {
 		l1ToL2.ETHAmount = d.Amount
 		l1ToL2.AssetType = int64(common2.ETH)
@@ -44,27 +49,33 @@ func L1Deposit(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent)
 		l1ToL2.AssetType = int64(common2.ERC20)
 	}
 
-	return &l1ToL2, nil
+	marshal, unpackErr := json.Marshal(l1ToL2)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:          rlpLog.TxHash,
+		LayerType:       global_const.LayerTypeOne,
+		Data:            string(marshal),
+		MsgHash:         l1ToL2.MessageHash,
+		MsgHashRelation: true,
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 }
 
-func L1WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent, db *database.DB) (*worker.L1ToL2, error) {
-
+func L1WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge,
+	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
 	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
-
-	l2ToL1 := worker.L2ToL1{
-		L1FinalizeTxHash: event.TransactionHash,
-		Status:           1,
-		ClaimedIndex:     c.GlobalIndex.Int64(),
+	relayRelation := relation.RelayRelation{
+		TxHash:      rlpLog.TxHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		MsgHash:     common.BigToHash(c.GlobalIndex),
 	}
-
-	err := db.L2ToL1.UpdateL2ToL1ClaimedStatus(chainId, l2ToL1)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	return err
 }

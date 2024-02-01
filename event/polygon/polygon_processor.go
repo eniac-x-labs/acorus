@@ -2,7 +2,10 @@ package polygon
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database/worker"
 	"log"
 	"math/big"
 	"strconv"
@@ -17,7 +20,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/polygon/abi"
 	"github.com/cornerstone-labs/acorus/event/polygon/bridge"
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
@@ -85,6 +87,17 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 			err := pp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
+				return err
+			}
+		}
+		return nil
+	})
+	// start relation worker
+	pp.tasks.Go(func() error {
+		for range tickerSyncer.C {
+			err := pp.relationL1L2()
+			if err != nil {
+				log.Println("shutting down relation task")
 				return err
 			}
 		}
@@ -163,8 +176,6 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 }
 
 func (pp *PolygonEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	l1Contracts := pp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
@@ -173,22 +184,11 @@ func (pp *PolygonEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l1ToL2s := make([]worker.L1ToL2, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := pp.l1EventUnpack(contractEvent)
+			unpackErr := pp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l1ToL2s = append(l1ToL2s, *unpackEvent)
-			}
-		}
-		if len(l1ToL2s) > 0 {
-			saveErr := pp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
-			if saveErr != nil {
-				log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
@@ -206,56 +206,113 @@ func (pp *PolygonEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int
 			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l2ToL1s := make([]worker.L2ToL1, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := pp.l2EventUnpack(contractEvent)
+			unpackErr := pp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l2ToL1s = append(l2ToL1s, *unpackEvent)
-			}
-		}
-		if len(l2ToL1s) > 0 {
-			saveErr := pp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
-			if saveErr != nil {
-				log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
 	return nil
 }
 
-func (pp *PolygonEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
+func (pp *PolygonEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	chainId := pp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case utils.DepositEventSignatureHash.String():
-		l1Deposit, err := bridge.L1Deposit(pp.L1PolygonBridge, event)
-		if err != nil {
-			return nil, err
-		}
-		return l1Deposit, nil
+		err := bridge.L1Deposit(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		return err
 	case utils.ClaimEventSignatureHash.String():
-		L1WithdrawClaimed, err := bridge.L1WithdrawClaimed(chainIdStr, pp.L1PolygonBridge, event, pp.db)
-		if err != nil {
-			return nil, err
-		}
-		return L1WithdrawClaimed, nil
+		err := bridge.L1WithdrawClaimed(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
-func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
+func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error {
+	chainId := pp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case utils.WithdrawEventSignatureHash.String():
-		withdraw, err := bridge.L2Withdraw(pp.L2PolygonBridge, event)
-		if err != nil {
-			return nil, err
-		}
-		return withdraw, nil
+		err := bridge.L2Withdraw(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		return err
+	case utils.ClaimEventSignatureHash.String():
+		err := bridge.L2WithdrawClaimed(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		return err
 	}
-	return nil, nil
+	return nil
+}
+
+func (pp *PolygonEventProcessor) relationL1L2() error {
+	chainId := pp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+
+	if err := pp.db.Transaction(func(tx *database.DB) error {
+		// step 1
+		if err := pp.db.MsgSentRelation.RelayRelation(chainIdStr); err != nil {
+			return err
+		}
+		// step 2
+		if canSaveDataList, err := pp.db.MsgSentRelation.GetCanSaveDataList(chainIdStr); err != nil {
+			return err
+		} else {
+			l1ToL2s := make([]worker.L1ToL2, 0)
+			l2ToL1s := make([]worker.L2ToL1, 0)
+			for _, data := range canSaveDataList {
+				l1l2Data := data.Data
+				if data.LayerType == global_const.LayerTypeOne {
+					var l1Tol2 worker.L1ToL2
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l1Tol2); unMarErr != nil {
+						return unMarErr
+					}
+					l1Tol2.MessageHash = data.MsgHash
+					l1Tol2.L2BlockNumber = data.LayerBlockNumber
+					l1Tol2.L2TransactionHash = data.LayerHash
+					l1Tol2.Status = 1
+					l1ToL2s = append(l1ToL2s, l1Tol2)
+				}
+				if data.LayerType == global_const.LayerTypeTwo {
+					var l2Tol1 worker.L2ToL1
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l2Tol1); unMarErr != nil {
+						return unMarErr
+					}
+					l2Tol1.MessageHash = data.MsgHash
+					l2Tol1.L1BlockNumber = data.LayerBlockNumber
+					l2Tol1.L1FinalizeTxHash = data.LayerHash
+					l2Tol1.Status = 1
+					l2ToL1s = append(l2ToL1s, l2Tol1)
+				}
+
+			}
+
+			if len(l1ToL2s) > 0 {
+				saveErr := pp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
+				if saveErr != nil {
+					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+			if len(l2ToL1s) > 0 {
+				saveErr := pp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
+				if saveErr != nil {
+					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+		}
+		if err := pp.db.MsgSentRelation.L1RelationClear(chainIdStr); err != nil {
+			return err
+		}
+		if err := pp.db.MsgSentRelation.L2RelationClear(chainIdStr); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }

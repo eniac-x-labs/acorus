@@ -1,6 +1,10 @@
 package bridge
 
 import (
+	"encoding/json"
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/relation"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,11 +16,12 @@ import (
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
 )
 
-func L2Withdraw(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2Withdraw(chainId string, polygonBridge *abi.Polygonzkevmbridge,
+	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
 	w, unpackErr := polygonBridge.ParseBridgeEvent(*rlpLog)
 	if unpackErr != nil {
-		return nil, unpackErr
+		return unpackErr
 	}
 	l2ToL1 := worker.L2ToL1{
 		L1FinalizeTxHash:  common.Hash{},
@@ -33,7 +38,7 @@ func L2Withdraw(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent
 		Timestamp:         int64(event.Timestamp),
 		AssetType:         int64(common2.ETH),
 		MsgNonce:          big.NewInt(0),
-		MessageHash:       common.Hash{},
+		MessageHash:       common.BigToHash(big.NewInt(int64(w.DepositCount))),
 		ClaimedIndex:      int64(w.DepositCount),
 		TokenAmounts:      "0",
 	}
@@ -45,5 +50,34 @@ func L2Withdraw(polygonBridge *abi.Polygonzkevmbridge, event event.ContractEvent
 		l2ToL1.TokenAmounts = w.Amount.String()
 		l2ToL1.AssetType = int64(common2.ERC20)
 	}
-	return &l2ToL1, nil
+
+	marshal, unpackErr := json.Marshal(l2ToL1)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:          rlpLog.TxHash,
+		LayerType:       global_const.LayerTypeTwo,
+		Data:            string(marshal),
+		MsgHash:         l2ToL1.MessageHash,
+		MsgHashRelation: true,
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
+}
+
+func L2WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge,
+	event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	relayRelation := relation.RelayRelation{
+		TxHash:      rlpLog.TxHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		MsgHash:     common.BigToHash(c.GlobalIndex),
+	}
+	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	return err
 }

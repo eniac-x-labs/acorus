@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/linea"
 	"log"
 	"math/big"
 	"net"
@@ -199,6 +200,11 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 				loopInterval,
 				epoch,
 			)
+			if err != nil {
+				return err
+			}
+		} else if rpcItem.ChainId == global_const.LineaChainId {
+			processor, err = linea.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}
