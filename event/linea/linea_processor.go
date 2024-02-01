@@ -2,8 +2,10 @@ package linea
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database/worker"
 
 	"log"
 	"math/big"
@@ -16,7 +18,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/linea/abi"
 	"github.com/cornerstone-labs/acorus/event/linea/bridge"
 	"github.com/ethereum/go-ethereum/common"
@@ -70,6 +71,17 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 			err := lp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
+				return err
+			}
+		}
+		return nil
+	})
+	// start relation worker
+	lp.tasks.Go(func() error {
+		for range tickerSyncer.C {
+			err := lp.relationL1L2()
+			if err != nil {
+				log.Println("shutting down relation task")
 				return err
 			}
 		}
@@ -183,8 +195,6 @@ func (lp *LineaEventProcessor) onL2Data() error {
 }
 
 func (lp *LineaEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := lp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	l1Contracts := lp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
@@ -193,22 +203,11 @@ func (lp *LineaEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) 
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l1ToL2s := make([]worker.L1ToL2, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := lp.l1EventUnpack(contractEvent)
+			unpackErr := lp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l1ToL2s = append(l1ToL2s, *unpackEvent)
-			}
-		}
-		if len(l1ToL2s) > 0 {
-			saveErr := lp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
-			if saveErr != nil {
-				log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
@@ -226,65 +225,115 @@ func (lp *LineaEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) 
 			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
-		l2ToL1s := make([]worker.L2ToL1, 0)
 		for _, contractEvent := range events {
-			unpackEvent, unpackErr := lp.l2EventUnpack(contractEvent)
+			unpackErr := lp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
 				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
-			}
-			if unpackEvent != nil {
-				l2ToL1s = append(l2ToL1s, *unpackEvent)
-			}
-		}
-		if len(l2ToL1s) > 0 {
-			saveErr := lp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
-			if saveErr != nil {
-				log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
-				return saveErr
 			}
 		}
 	}
 	return nil
 }
 
-func (lp *LineaEventProcessor) l1EventUnpack(event event.ContractEvent) (*worker.L1ToL2, error) {
+func (lp *LineaEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	chainId := lp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L1SentMessageSignature.String():
-		l1SentMsg, err := bridge.L1SentMessageEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		return l1SentMsg, nil
+		err := bridge.L1SentMessageEvent(chainIdStr, event, lp.db)
+		return err
+
 	case abi.L1ClaimedMessageSignature.String():
 		err := bridge.L1ClaimedMessageEvent(chainIdStr, event, lp.db)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		return err
 	}
-	return nil, nil
+	return nil
 }
 
-func (lp *LineaEventProcessor) l2EventUnpack(event event.ContractEvent) (*worker.L2ToL1, error) {
+func (lp *LineaEventProcessor) l2EventUnpack(event event.ContractEvent) error {
 	chainId := lp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case abi.L2SentMessageSignature.String():
-		withdrawETH, err := bridge.L2SentMessageEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		return withdrawETH, nil
+		err := bridge.L2SentMessageEvent(chainIdStr, event, lp.db)
+		return err
 	case abi.L2ClaimedMessageSignature.String():
 		err := bridge.L2ClaimedMessageEvent(chainIdStr, event, lp.db)
-		if err != nil {
-			return nil, err
-		}
-		return nil, nil
+		return err
 	}
 	fmt.Println(chainIdStr)
-	return nil, nil
+	return nil
+}
+
+func (lp *LineaEventProcessor) relationL1L2() error {
+	chainId := lp.cfgRpc.ChainId
+	chainIdStr := strconv.Itoa(int(chainId))
+
+	if err := lp.db.Transaction(func(tx *database.DB) error {
+		// step 2
+		if err := lp.db.MsgSentRelation.RelayRelation(chainIdStr); err != nil {
+			return err
+		}
+		// step 3
+		if canSaveDataList, err := lp.db.MsgSentRelation.GetCanSaveDataList(chainIdStr); err != nil {
+			return err
+		} else {
+			l1ToL2s := make([]worker.L1ToL2, 0)
+			l2ToL1s := make([]worker.L2ToL1, 0)
+			for _, data := range canSaveDataList {
+				l1l2Data := data.Data
+				if data.LayerType == global_const.LayerTypeOne {
+					var l1Tol2 worker.L1ToL2
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l1Tol2); unMarErr != nil {
+						return unMarErr
+					}
+					l1Tol2.MessageHash = data.MsgHash
+					l1Tol2.L2BlockNumber = data.LayerBlockNumber
+					l1Tol2.L2TransactionHash = data.LayerHash
+					l1Tol2.Status = 1
+					l1ToL2s = append(l1ToL2s, l1Tol2)
+				}
+				if data.LayerType == global_const.LayerTypeTwo {
+					var l2Tol1 worker.L2ToL1
+					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l2Tol1); unMarErr != nil {
+						return unMarErr
+					}
+					l2Tol1.MessageHash = data.MsgHash
+					l2Tol1.L1BlockNumber = data.LayerBlockNumber
+					l2Tol1.L1FinalizeTxHash = data.LayerHash
+					l2Tol1.Status = 1
+					l2ToL1s = append(l2ToL1s, l2Tol1)
+				}
+
+			}
+
+			if len(l1ToL2s) > 0 {
+				saveErr := lp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
+				if saveErr != nil {
+					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+			if len(l2ToL1s) > 0 {
+				saveErr := lp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
+				if saveErr != nil {
+					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					return saveErr
+				}
+			}
+
+		}
+		if err := lp.db.MsgSentRelation.L1RelationClear(chainIdStr); err != nil {
+			return err
+		}
+		if err := lp.db.MsgSentRelation.L2RelationClear(chainIdStr); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }

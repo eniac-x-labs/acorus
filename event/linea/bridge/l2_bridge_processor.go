@@ -1,7 +1,10 @@
 package bridge
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database/relation"
 
 	"log"
 	"math/big"
@@ -16,7 +19,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/linea/utils"
 )
 
-func L2SentMessageEvent(event event.ContractEvent) (*worker.L2ToL1, error) {
+func L2SentMessageEvent(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := *event.RLPLog
 	eventABI := abi.L2MessageEventABI
 	callDataABI := abi.L2MessageCallDataABI
@@ -24,9 +27,8 @@ func L2SentMessageEvent(event event.ContractEvent) (*worker.L2ToL1, error) {
 	decodeLog, decodeErr := utils.DecodeLog(eventABI, callDataABI, "MessageSent", callDataFuncName, rlpLog)
 	if decodeErr != nil {
 		log.Println("Failed to unpack SentMessage event", "err", decodeErr)
-		return nil, decodeErr
+		return decodeErr
 	}
-	fmt.Println(decodeLog)
 	ethAmount := decodeLog["_value"].(*big.Int)
 	l2ToL1 := worker.L2ToL1{
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
@@ -51,7 +53,19 @@ func L2SentMessageEvent(event event.ContractEvent) (*worker.L2ToL1, error) {
 		l2ToL1.L2TokenAddress = l2ToL1.L1TokenAddress
 	}
 
-	return &l2ToL1, nil
+	marshal, unpackErr := json.Marshal(l2ToL1)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	msgSent := relation.MsgSentRelation{
+		TxHash:          rlpLog.TxHash,
+		LayerType:       global_const.LayerTypeTwo,
+		MsgHash:         l2ToL1.MessageHash,
+		Data:            string(marshal),
+		MsgHashRelation: true,
+	}
+	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	return saveErr
 }
 
 func L2ClaimedMessageEvent(chainId string, event event.ContractEvent, db *database.DB) error {
@@ -65,13 +79,11 @@ func L2ClaimedMessageEvent(chainId string, event event.ContractEvent, db *databa
 	fmt.Println(decodeLog)
 	messageHash := decodeLog["_messageHash"].(common.Hash)
 	txHash := rlpLog.TxHash
-	if err := db.L1ToL2.UpdateL1ToL2L2TxHashByMsgHash(
-		chainId,
-		worker.L1ToL2{
-			L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
-			MessageHash:       messageHash,
-			L2TransactionHash: txHash}); err != nil {
-		return err
+	relayRelation := relation.RelayRelation{
+		TxHash:      txHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		MsgHash:     messageHash,
 	}
-	return nil
+	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	return err
 }

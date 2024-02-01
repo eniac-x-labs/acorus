@@ -366,7 +366,12 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 			}
 
 		}
-
+		if err := sp.db.MsgSentRelation.L1RelationClear(chainIdStr); err != nil {
+			return err
+		}
+		if err := sp.db.MsgSentRelation.L2RelationClear(chainIdStr); err != nil {
+			return err
+		}
 		return nil
 	}); err != nil {
 		return err

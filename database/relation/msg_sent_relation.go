@@ -35,6 +35,8 @@ type MsgSentRelationDB interface {
 	MsgHashRelation(chainId string) error
 	RelayRelation(chainId string) error
 	MsgSentRelationStore(msgSentRelation MsgSentRelation, chainId string) error
+	L1RelationClear(chainId string) error
+	L2RelationClear(chainId string) error
 }
 
 type MsgSentRelationView interface {
@@ -86,7 +88,7 @@ func (m msgSentRelationViewDB) GetCanSaveDataList(chainId string) ([]MsgSentRela
 	tableNameByChainId := new(MsgSentRelation).TableNameByChainId(chainId)
 	var msgSentRels []MsgSentRelation
 	result := m.gorm.Table(tableNameByChainId).Where(&MsgSentRelation{MsgHashRelation: true,
-		L1L2Relation: true, ToL1L2Table: false}).Limit(1000).Find(&msgSentRels)
+		L1L2Relation: true}).Where("to_l1_l2_table", false).Limit(1000).Group("tx_hash").Find(&msgSentRels)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -96,5 +98,36 @@ func (m msgSentRelationViewDB) GetCanSaveDataList(chainId string) ([]MsgSentRela
 func (m msgSentRelationViewDB) MsgSentRelationStore(msgSentRelation MsgSentRelation, chainId string) error {
 	tableNameByChainId := msgSentRelation.TableNameByChainId(chainId)
 	err := m.gorm.Omit("guid").Table(tableNameByChainId).Create(msgSentRelation).Error
+	return err
+}
+
+func (m msgSentRelationViewDB) L1RelationClear(chainId string) error {
+	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
+	l1toL2Table := fmt.Sprintf("l1_to_l2_%s", chainId)
+
+	updateSql := `
+				update %s a  set to_l1_l2_table=true
+				from %s  b 
+				where  a.msg_hash=b.msg_hash  and a.to_l1_l2_table=false
+				`
+	updateSql = fmt.Sprintf(updateSql, msgSentTable, l1toL2Table)
+
+	err := m.gorm.Exec(updateSql).Error
+	return err
+}
+
+func (m msgSentRelationViewDB) L2RelationClear(chainId string) error {
+	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
+	l2toL1Table := fmt.Sprintf("l2_to_l1_%s", chainId)
+
+	updateSql := `
+				update %s a  set to_l1_l2_table=true
+				from %s  b 
+				where  a.msg_hash=b.msg_hash  and a.to_l1_l2_table=false
+				`
+	updateSql = fmt.Sprintf(updateSql, msgSentTable, l2toL1Table)
+
+	err := m.gorm.Exec(updateSql).Error
+	return err
 	return err
 }
