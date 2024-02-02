@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS template_l2_to_l1
     token_amounts             VARCHAR,
     gas_limit                 UINT256  NOT NULL,
     time_left                 UINT256  NOT NULL,
+    version                   INTEGER DEFAULT 0,
     timestamp                 INTEGER  NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_l2_to_l1_timestamp ON template_l2_to_l1 (timestamp);
@@ -252,3 +253,19 @@ create table if not exists template_msg_hash
 );
 CREATE INDEX IF NOT EXISTS template_msg_hash_tx_hash ON template_msg_hash (tx_hash);
 CREATE INDEX IF NOT EXISTS template_msg_hash_msg_hash ON template_msg_hash (msg_hash);
+
+
+CREATE TABLE IF NOT EXISTS template_relay_message (
+     guid                          VARCHAR PRIMARY KEY,
+     block_number                  UINT256 NOT NULL,
+     relay_transaction_hash        VARCHAR NOT NULL,
+     message_hash                  VARCHAR,
+     l1_token_address              VARCHAR,
+     l2_token_address              VARCHAR,
+     eth_amount                    UINT256,
+     erc20_amount                  UINT256,
+     related                       BOOLEAN DEFAULT FALSE,
+     timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS template_relay_message_message_hash ON template_relay_message(message_hash);
+CREATE INDEX IF NOT EXISTS template_relay_message_timestamp ON template_relay_message(timestamp);
