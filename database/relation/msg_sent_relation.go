@@ -87,8 +87,12 @@ func (m msgSentRelationViewDB) RelayRelation(chainId string) error {
 func (m msgSentRelationViewDB) GetCanSaveDataList(chainId string) ([]MsgSentRelation, error) {
 	tableNameByChainId := new(MsgSentRelation).TableNameByChainId(chainId)
 	var msgSentRels []MsgSentRelation
-	result := m.gorm.Table(tableNameByChainId).Where(&MsgSentRelation{MsgHashRelation: true,
-		L1L2Relation: true}).Where("to_l1_l2_table", false).Limit(1000).Group("tx_hash").Find(&msgSentRels)
+	selectSql := `
+		SELECT DISTINCT ON ("a"."tx_hash") * FROM %s "a" WHERE "a"."msg_hash_relation" = true
+			AND "a"."l1_l2_relation" = true AND "a"."to_l1_l2_table" = false LIMIT 1000
+	`
+	selectSql = fmt.Sprintf(selectSql, tableNameByChainId)
+	result := m.gorm.Raw(selectSql).Find(&msgSentRels)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -108,7 +112,7 @@ func (m msgSentRelationViewDB) L1RelationClear(chainId string) error {
 	updateSql := `
 				update %s a  set to_l1_l2_table=true
 				from %s  b 
-				where  a.msg_hash=b.msg_hash  and a.to_l1_l2_table=false
+				where  a.tx_hash=b.l1_transaction_hash  and a.to_l1_l2_table=false and a.layer_type=1
 				`
 	updateSql = fmt.Sprintf(updateSql, msgSentTable, l1toL2Table)
 
@@ -123,11 +127,10 @@ func (m msgSentRelationViewDB) L2RelationClear(chainId string) error {
 	updateSql := `
 				update %s a  set to_l1_l2_table=true
 				from %s  b 
-				where  a.msg_hash=b.msg_hash  and a.to_l1_l2_table=false
+				where  a.tx_hash=b.l2_transaction_hash  and a.to_l1_l2_table=false an layer_type=2
 				`
 	updateSql = fmt.Sprintf(updateSql, msgSentTable, l2toL1Table)
 
 	err := m.gorm.Exec(updateSql).Error
-	return err
 	return err
 }
