@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS template_block_headers
     hash        VARCHAR PRIMARY KEY,
     parent_hash VARCHAR NOT NULL UNIQUE,
     number      UINT256 NOT NULL UNIQUE,
-    timestamp   INTEGER NOT NULL UNIQUE,
+    timestamp   INTEGER NOT NULL,
     rlp_bytes   VARCHAR NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_block_headers_timestamp ON template_block_headers (timestamp);

@@ -126,10 +126,30 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 			}
 		}
 		pp.l1StartHeight = lastBlockHeard.Number
+		if pp.l1StartHeight.Cmp(big.NewInt(int64(pp.cfgRpc.L1EventUnpackBlock))) == -1 {
+			pp.l1StartHeight = big.NewInt(int64(pp.cfgRpc.L1EventUnpackBlock))
+		}
+	} else {
+		pp.l1StartHeight = new(big.Int).Add(pp.l1StartHeight, bigint.One)
 	}
-	pp.l1StartHeight = new(big.Int).Add(pp.l1StartHeight, bigint.One)
 	fromL1Height := pp.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(pp.epoch)))
+
+	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
+			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+		}
+	}
+
 	if err := pp.db.Transaction(func(tx *database.DB) error {
 		l1EventsFetchErr := pp.l1EventsFetch(fromL1Height, toL1Height)
 		if l1EventsFetchErr != nil {
@@ -158,10 +178,25 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 			}
 		}
 		pp.l2StartHeight = lastBlockHeard.Number
+	} else {
+		pp.l2StartHeight = new(big.Int).Add(pp.l2StartHeight, bigint.One)
 	}
-	pp.l2StartHeight = new(big.Int).Add(pp.l2StartHeight, bigint.One)
 	fromL2Height := pp.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(pp.epoch)))
+	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
+	if err != nil {
+		return err
+	}
+	if chainLatestBlockHeader == nil {
+		return nil
+	}
+	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
+		return nil
+	} else {
+		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
+			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+		}
+	}
 	if err := pp.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := pp.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {
