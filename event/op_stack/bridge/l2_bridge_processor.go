@@ -2,16 +2,21 @@ package bridge
 
 import (
 	"fmt"
-	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"math/big"
+	"strconv"
+
+	"github.com/google/uuid"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
+	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
+	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
@@ -162,27 +167,20 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if len(crossDomainRelayedMessages) > 0 {
 		log.Info("detected relayed messages", "size", len(crossDomainRelayedMessages))
 	}
-
-	L1ToL2s2 := make([]worker.L1ToL2, len(crossDomainRelayedMessages))
 	relayedMessages := make(map[logKey]*contracts.CrossDomainMessengerRelayedMessageEvent, len(crossDomainRelayedMessages))
 	for i := range crossDomainRelayedMessages {
 		relayed := crossDomainRelayedMessages[i]
 		relayedMessages[logKey{BlockHash: relayed.Event.BlockHash, LogIndex: relayed.Event.LogIndex}] = &relayed
-		message, err := db.L1ToL2.L1ToL2Transaction("10", relayed.MessageHash)
+		message, err := db.L1ToL2.L1ToL2Transaction(strconv.FormatUint(global_const.OpChinId, 10), relayed.MessageHash)
 		if err != nil {
 			return err
 		} else if message == nil {
 			log.Warn("missing indexed L1CrossDomainMessenger message", "tx_hash", relayed.Event.TransactionHash.String())
 			continue
 		}
-		L1ToL2s2[i].MessageHash = relayed.MessageHash
-		L1ToL2s2[i].L2TransactionHash = relayed.Event.TransactionHash
 	}
 	if len(relayedMessages) > 0 {
-		err = db.L1ToL2.RelayedL1ToL2Transaction("10", L1ToL2s2)
-		if err != nil {
-			return err
-		}
+		log.Info("relayedMessages list length", "relayedMessages", len(relayedMessages))
 	}
 
 	// (2) L2StandardBridge
@@ -193,6 +191,7 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if len(finalizedBridges) > 0 {
 		log.Info("detected finalized bridge deposits", "size", len(finalizedBridges))
 	}
+	relayMessageList := make([]event.RelayMessage, len(finalizedBridges))
 
 	finalizedTokens := make(map[common.Address]int)
 	for i := range finalizedBridges {
@@ -202,20 +201,35 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			log.Error("expected RelayedMessage following BridgeFinalized event", "tx_hash", finalizedBridge.Event.TransactionHash.String())
 			return fmt.Errorf("expected RelayedMessage following BridgeFinalized event. tx_hash = %s", finalizedBridge.Event.TransactionHash.String())
 		}
-		L1ToL2s2[i].MessageHash = relayedMessage.MessageHash
-		L1ToL2s2[i].Status = common2.L1ToL2Claimed
-		L1ToL2s2[i].L2TransactionHash = relayedMessage.Event.TransactionHash
-		blockNumber, err := db.L2ToL1.GetBlockNumberFromHash("10", relayedMessage.Event.BlockHash)
+		blockNumber := bigint.One
+		relayL2BlockNumber, err := db.L2ToL1.GetBlockNumberFromHash(strconv.FormatUint(global_const.OpChinId, 10), relayedMessage.Event.BlockHash)
 		if err != nil {
 			return err
 		}
-		L1ToL2s2[i].L2BlockNumber = blockNumber
+		if relayL2BlockNumber != nil {
+			blockNumber = relayL2BlockNumber
+		}
+		relayMessageList[i] = event.RelayMessage{
+			GUID:                 uuid.New(),
+			BlockNumber:          blockNumber,
+			RelayTransactionHash: relayedMessage.Event.TransactionHash,
+			MessageHash:          relayedMessage.MessageHash,
+			L1TokenAddress:       finalizedBridge.RemoteTokenAddress,
+			L2TokenAddress:       finalizedBridge.LocalTokenAddress,
+			ETHAmount:            finalizedBridge.ETHAmount,
+			ERC20Amount:          finalizedBridge.ERC20Amount,
+			Related:              false,
+			Timestamp:            relayedMessage.Event.Timestamp,
+		}
 		finalizedTokens[finalizedBridge.LocalTokenAddress]++
 	}
-	if len(finalizedBridges) > 0 {
-		err = db.L1ToL2.FinalizedL1ToL2Transaction("10", L1ToL2s2)
+	if len(relayMessageList) > 0 {
+		err = db.RelayMessage.StoreRelayMessage(strconv.FormatUint(global_const.OpChinId, 10), relayMessageList)
 		if err != nil {
 			return err
+		}
+		for tokenAddr, size := range finalizedTokens {
+			log.Info("tokenAddr and size", "tokenAddr", tokenAddr, "size", size)
 		}
 	}
 	return nil
