@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/event/linea"
+	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
 	"log"
 	"math/big"
 	"net"
@@ -36,6 +37,7 @@ type Acorus struct {
 	metricsRegistry *prometheus.Registry
 	Synchronizer    map[uint64]*synchronizer.Synchronizer
 	Processor       map[uint64]event2.IEventProcessor
+	Worker          map[uint64]*op_stack2.WorkerProcessor
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
@@ -64,6 +66,12 @@ func (as *Acorus) Start(ctx context.Context) error {
 		if processor != nil {
 			if err := processor.StartUnpack(); err != nil {
 				return fmt.Errorf("failed to start event: %w", err)
+			}
+		}
+		worker := as.Worker[realChainId]
+		if worker != nil {
+			if err := worker.Start(context.Background()); err != nil {
+				return fmt.Errorf("failed to start worker: %w", err)
 			}
 		}
 	}
@@ -240,6 +248,18 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 }
 
 func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
+	for i := range cfg.RPCs {
+		log.Println("Init processor success", "chainId", cfg.RPCs[i].ChainId)
+		rpcItem := cfg.RPCs[i]
+		worker, err := op_stack2.NewWorkerProcessor(as.DB, strconv.FormatUint(cfg.RPCs[i].ChainId, 10), as.shutdown)
+		if err != nil {
+			return err
+		}
+		if as.Worker == nil {
+			as.Worker = make(map[uint64]*op_stack2.WorkerProcessor)
+		}
+		as.Worker[rpcItem.ChainId] = worker
+	}
 	return nil
 }
 

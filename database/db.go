@@ -34,6 +34,7 @@ type DB struct {
 	MsgSentRelation   relation.MsgSentRelationDB
 	MsgHashRelation   relation.MsgHashRelationDB
 	RelayRelation     relation.RelayRelationDB
+	RelayMessage      event.RelayMessageDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -85,6 +86,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
 		MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
 		RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
+		RelayMessage:      event.NewRelayMessageDB(gorm),
 	}
 	return db, nil
 }
@@ -103,6 +105,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
 			MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
 			RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
+			RelayMessage:      event.NewRelayMessageDB(gorm),
 		}
 		return fn(txDB)
 	})
