@@ -22,7 +22,8 @@ func (a AssetType) String() string {
 
 const (
 	// ETH = 0
-	ETH = 0
+	ETH  = 0
+	WETH = 1
 	// ERC20 = 1
 	ERC20 = 20
 	// ERC721 = 2

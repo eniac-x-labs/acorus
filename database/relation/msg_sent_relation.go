@@ -43,15 +43,15 @@ type MsgSentRelationView interface {
 	GetCanSaveDataList(chainId string) ([]MsgSentRelation, error)
 }
 
-type msgSentRelationViewDB struct {
+type msgSentRelationDB struct {
 	gorm *gorm.DB
 }
 
-func NewMsgSentRelationViewDB(db *gorm.DB) MsgSentRelationDB {
-	return &msgSentRelationViewDB{gorm: db}
+func NewMsgSentRelationDB(db *gorm.DB) MsgSentRelationDB {
+	return &msgSentRelationDB{gorm: db}
 }
 
-func (m msgSentRelationViewDB) MsgHashRelation(chainId string) error {
+func (m msgSentRelationDB) MsgHashRelation(chainId string) error {
 
 	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
 	msgHashTable := fmt.Sprintf("msg_hash_%s", chainId)
@@ -67,7 +67,7 @@ func (m msgSentRelationViewDB) MsgHashRelation(chainId string) error {
 	return err
 }
 
-func (m msgSentRelationViewDB) RelayRelation(chainId string) error {
+func (m msgSentRelationDB) RelayRelation(chainId string) error {
 	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
 	relayTable := fmt.Sprintf("relay_%s", chainId)
 
@@ -84,7 +84,7 @@ func (m msgSentRelationViewDB) RelayRelation(chainId string) error {
 	return err
 }
 
-func (m msgSentRelationViewDB) GetCanSaveDataList(chainId string) ([]MsgSentRelation, error) {
+func (m msgSentRelationDB) GetCanSaveDataList(chainId string) ([]MsgSentRelation, error) {
 	tableNameByChainId := new(MsgSentRelation).TableNameByChainId(chainId)
 	var msgSentRels []MsgSentRelation
 	selectSql := `
@@ -99,13 +99,13 @@ func (m msgSentRelationViewDB) GetCanSaveDataList(chainId string) ([]MsgSentRela
 	return msgSentRels, nil
 }
 
-func (m msgSentRelationViewDB) MsgSentRelationStore(msgSentRelation MsgSentRelation, chainId string) error {
+func (m msgSentRelationDB) MsgSentRelationStore(msgSentRelation MsgSentRelation, chainId string) error {
 	tableNameByChainId := msgSentRelation.TableNameByChainId(chainId)
 	err := m.gorm.Omit("guid").Table(tableNameByChainId).Create(msgSentRelation).Error
 	return err
 }
 
-func (m msgSentRelationViewDB) L1RelationClear(chainId string) error {
+func (m msgSentRelationDB) L1RelationClear(chainId string) error {
 	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
 	l1toL2Table := fmt.Sprintf("l1_to_l2_%s", chainId)
 
@@ -120,7 +120,7 @@ func (m msgSentRelationViewDB) L1RelationClear(chainId string) error {
 	return err
 }
 
-func (m msgSentRelationViewDB) L2RelationClear(chainId string) error {
+func (m msgSentRelationDB) L2RelationClear(chainId string) error {
 	msgSentTable := fmt.Sprintf("msg_sent_%s", chainId)
 	l2toL1Table := fmt.Sprintf("l2_to_l1_%s", chainId)
 

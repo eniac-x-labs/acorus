@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/database/relation"
+	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -35,6 +36,7 @@ type DB struct {
 	MsgHashRelation   relation.MsgHashRelationDB
 	RelayRelation     relation.RelayRelationDB
 	RelayMessage      event.RelayMessageDB
+	StakeRecord       relayer.StakingRecordDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -83,10 +85,11 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		StateRoots:        worker.NewStateRootDB(gorm),
 		L1ToL2:            worker.NewL1ToL2DB(gorm),
 		L2ToL1:            worker.NewL21ToL1DB(gorm),
-		MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
-		MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
-		RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
+		MsgSentRelation:   relation.NewMsgSentRelationDB(gorm),
+		MsgHashRelation:   relation.NewMsgHashRelationDB(gorm),
+		RelayRelation:     relation.NewEvmRelayRelationDB(gorm),
 		RelayMessage:      event.NewRelayMessageDB(gorm),
+		StakeRecord:       relayer.NewStakingRecordDB(gorm),
 	}
 	return db, nil
 }
@@ -102,10 +105,11 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			L1ToL2:            worker.NewL1ToL2DB(gorm),
 			L2ToL1:            worker.NewL21ToL1DB(gorm),
 			StateRoots:        worker.NewStateRootDB(gorm),
-			MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
-			MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
-			RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
+			MsgSentRelation:   relation.NewMsgSentRelationDB(gorm),
+			MsgHashRelation:   relation.NewMsgHashRelationDB(gorm),
+			RelayRelation:     relation.NewEvmRelayRelationDB(gorm),
 			RelayMessage:      event.NewRelayMessageDB(gorm),
+			StakeRecord:       relayer.NewStakingRecordDB(gorm),
 		}
 		return fn(txDB)
 	})

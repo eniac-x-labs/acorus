@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS template_l2_to_l1
     token_amounts             VARCHAR,
     gas_limit                 UINT256  NOT NULL,
     time_left                 UINT256  NOT NULL,
-    version                   INTEGER DEFAULT 0,
+    version                   INTEGER          DEFAULT 0,
     timestamp                 INTEGER  NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_l2_to_l1_timestamp ON template_l2_to_l1 (timestamp);
@@ -256,17 +256,84 @@ CREATE INDEX IF NOT EXISTS template_msg_hash_tx_hash ON template_msg_hash (tx_ha
 CREATE INDEX IF NOT EXISTS template_msg_hash_msg_hash ON template_msg_hash (msg_hash);
 
 
-CREATE TABLE IF NOT EXISTS template_relay_message (
-     guid                          VARCHAR PRIMARY KEY,
-     block_number                  UINT256 NOT NULL,
-     relay_transaction_hash        VARCHAR NOT NULL,
-     message_hash                  VARCHAR,
-     l1_token_address              VARCHAR,
-     l2_token_address              VARCHAR,
-     eth_amount                    UINT256,
-     erc20_amount                  UINT256,
-     related                       BOOLEAN DEFAULT FALSE,
-     timestamp                     INTEGER NOT NULL CHECK (timestamp > 0)
+CREATE TABLE IF NOT EXISTS template_relay_message
+(
+    guid                   VARCHAR PRIMARY KEY,
+    block_number           UINT256 NOT NULL,
+    relay_transaction_hash VARCHAR NOT NULL,
+    message_hash           VARCHAR,
+    l1_token_address       VARCHAR,
+    l2_token_address       VARCHAR,
+    eth_amount             UINT256,
+    erc20_amount           UINT256,
+    related                BOOLEAN DEFAULT FALSE,
+    timestamp              INTEGER NOT NULL CHECK (timestamp > 0)
 );
-CREATE INDEX IF NOT EXISTS template_relay_message_message_hash ON template_relay_message(message_hash);
-CREATE INDEX IF NOT EXISTS template_relay_message_timestamp ON template_relay_message(timestamp);
+CREATE INDEX IF NOT EXISTS template_relay_message_message_hash ON template_relay_message (message_hash);
+CREATE INDEX IF NOT EXISTS template_relay_message_timestamp ON template_relay_message (timestamp);
+
+CREATE TABLE IF NOT EXISTS staking_record
+(
+    guid         VARCHAR PRIMARY KEY,
+    tx_hash      VARCHAR  NOT NULL,
+    block_number UINT256  NOT NULL,
+    user_address VARCHAR  not null,
+    token        VARCHAR,
+    amount       UINT256 NOT NULL,
+    chain_id     varchar,
+    status smallint not null,
+    asset_type   SMALLINT NOT NULL,
+    timestamp    INTEGER  NOT NULL CHECK (timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS staking_tx_hash ON staking_record (tx_hash);
+CREATE INDEX IF NOT EXISTS staking_block_number ON staking_record (block_number);
+CREATE INDEX IF NOT EXISTS staking_chain_id ON staking_record (chain_id);
+CREATE INDEX IF NOT EXISTS staking_user_address ON staking_record (user_address);
+CREATE INDEX IF NOT EXISTS staking_token ON staking_record (token);
+CREATE INDEX IF NOT EXISTS staking_status ON staking_record (status);
+CREATE INDEX IF NOT EXISTS staking_asset_type ON staking_record (asset_type);
+CREATE INDEX IF NOT EXISTS staking_timestamp ON staking_record (timestamp);
+
+
+CREATE TABLE IF NOT EXISTS bridge_recode
+(
+    guid               VARCHAR PRIMARY KEY,
+    source_chain_id    varchar,
+    target_chain_id    varchar,
+    l1_tx_hash         VARCHAR,
+    l2_tx_hash         VARCHAR,
+    l1_block_number    UINT256,
+    l2_block_number    UINT256,
+    l1_token_address   VARCHAR,
+    l2_token_address   VARCHAR,
+    msg_hash           varchar,
+    from               varchar,
+    to                 varchar,
+    status             smallint not null,
+    amount             UINT256,
+    nonce             UINT256,
+    fee                UINT256,
+    tx_type            smallint not null,
+    asset_type         SMALLINT NOT NULL,
+    msg_sent_timestamp INTEGER CHECK (msg_sent_timestamp > 0),
+    claim_timestamp    INTEGER CHECK (claim_timestamp > 0)
+);
+CREATE INDEX IF NOT EXISTS bridge_recode_source_chain_id ON bridge_recode (source_chain_id);
+CREATE INDEX IF NOT EXISTS bridge_recode_target_chain_id ON bridge_recode (target_chain_id);
+CREATE INDEX IF NOT EXISTS bridge_recode_l1_tx_hash ON bridge_recode (l1_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_recode_l2_tx_hash ON bridge_recode (l2_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_recode_msg_hash ON bridge_recode (msg_hash);
+CREATE INDEX IF NOT EXISTS bridge_recode_l1_block_number ON bridge_recode (l1_block_number);
+CREATE INDEX IF NOT EXISTS bridge_recode_l2_block_number ON bridge_recode (l2_block_number);
+CREATE INDEX IF NOT EXISTS bridge_recode_l1_token_address ON bridge_recode (l1_token_address);
+CREATE INDEX IF NOT EXISTS bridge_recode_l2_token_address ON bridge_recode (l2_token_address);
+CREATE INDEX IF NOT EXISTS bridge_recode_from ON bridge_recode (from);
+CREATE INDEX IF NOT EXISTS bridge_recode_to ON bridge_recode (to);
+CREATE INDEX IF NOT EXISTS bridge_recode_status ON bridge_recode (status);
+CREATE INDEX IF NOT EXISTS bridge_recode_tx_type ON bridge_recode (tx_type);
+CREATE INDEX IF NOT EXISTS bridge_recode_asset_type ON bridge_recode (asset_type);
+CREATE INDEX IF NOT EXISTS bridge_recode_msg_sent_timestamp ON bridge_recode (msg_sent_timestamp);
+CREATE INDEX IF NOT EXISTS bridge_recode_claim_timestamp ON bridge_recode (claim_timestamp);
+
+
+
