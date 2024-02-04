@@ -127,7 +127,7 @@ func (m msgSentRelationViewDB) L2RelationClear(chainId string) error {
 	updateSql := `
 				update %s a  set to_l1_l2_table=true
 				from %s  b 
-				where  a.tx_hash=b.l2_transaction_hash  and a.to_l1_l2_table=false an layer_type=2
+				where  a.tx_hash=b.l2_transaction_hash  and a.to_l1_l2_table=false and layer_type=2
 				`
 	updateSql = fmt.Sprintf(updateSql, msgSentTable, l2toL1Table)
 

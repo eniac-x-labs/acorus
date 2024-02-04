@@ -2,15 +2,16 @@ package bridge
 
 import (
 	"encoding/json"
-	"github.com/cornerstone-labs/acorus/common/global_const"
-	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/database/relation"
+
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/relation"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/event/polygon/abi"
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
@@ -31,6 +32,7 @@ func L2Withdraw(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 		TimeLeft:          big.NewInt(0),
 		FromAddress:       w.DestinationAddress,
 		ToAddress:         w.DestinationAddress,
+		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		L1TokenAddress:    w.OriginAddress,
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
@@ -69,14 +71,15 @@ func L2Withdraw(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 func L2WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
+	c, unpackErr := utils.DecodeLog(utils.ClaimEventAbi, "ClaimEvent", *rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
+	index := big.NewInt(int64(c["index"].(uint32)))
 	relayRelation := relation.RelayRelation{
 		TxHash:      rlpLog.TxHash,
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
-		MsgHash:     common.BigToHash(c.GlobalIndex),
+		MsgHash:     common.BigToHash(index),
 	}
 	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
 	return err

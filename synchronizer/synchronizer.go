@@ -91,6 +91,7 @@ func (syncer *Synchronizer) Start() error {
 				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
 				if err != nil {
 					log.Println("error querying for headers", "err", err)
+					return err
 				} else if len(newHeaders) == 0 {
 					log.Println("no new headers. syncer at head?")
 				} else {
@@ -148,7 +149,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		chainBlockHeaders = append(chainBlockHeaders, common2.ChainBlockHeader{BlockHeader: common2.BlockHeaderFromHeader(&headers[i])})
 	}
 
-	chainContractEvent := make([]event.ChainContractEvent, len(logs.Logs))
+	chainContractEvents := make([]event.ChainContractEvent, 0)
 	for i := range logs.Logs {
 		logEvent := logs.Logs[i]
 		if _, ok := headerMap[logEvent.BlockHash]; !ok {
@@ -156,7 +157,10 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		}
 		timestamp := headerMap[logEvent.BlockHash].Time
 		blockNumber := headerMap[logEvent.BlockHash].Number
-		chainContractEvent[i] = event.ChainContractEvent{ContractEvent: event.ContractEventFromLog(&logs.Logs[i], timestamp, blockNumber)}
+		if blockNumber != nil {
+			chainContractEvent := event.ChainContractEvent{ContractEvent: event.ContractEventFromLog(&logs.Logs[i], timestamp, blockNumber)}
+			chainContractEvents = append(chainContractEvents, chainContractEvent)
+		}
 	}
 
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
@@ -165,7 +169,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 			if err := tx.Blocks.StoreBlockHeaders(syncer.chainId, chainBlockHeaders); err != nil {
 				return err
 			}
-			if err := tx.ContractEvents.StoreChainContractEvents(syncer.chainId, chainContractEvent); err != nil {
+			if err := tx.ContractEvents.StoreChainContractEvents(syncer.chainId, chainContractEvents); err != nil {
 				return err
 			}
 			return nil

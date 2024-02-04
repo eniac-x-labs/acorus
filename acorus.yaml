@@ -9,9 +9,9 @@ metrics:
   port: 8081
 
 rpcs:
-  - rpc_url: 'https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+  - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/-EK96JwUb8C_l_EfZqaLumlZG6PV8SDq'
     chain_id: 1
-    start_block: 19126200
+    start_block: 19147000
     contracts:
     event_contracts:
 
@@ -21,13 +21,14 @@ rpcs:
 #    contracts:
 #    event_contracts:
 
-  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/VaWfG1vFbySH7BJVyrGiKRRtx9Jjutsz"
+  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/XJph3lRc3_xJN3kHX7Gy0PkvkPbJD_GD"
     chain_id: 1101
-    start_block: 9605000
+    start_block: 9634600
+    l1_event_unpack_block: 19147000
     contracts:
-      - "0xd19d4B5d358258f05D7B411E21A1460D11B0876F"
+      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
     event_contracts:
-      - "0x508ca82df566dcd1b0de8296e70a96332cd644ec"
+      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
 #  - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
 #    chain_id: 534352
 #    start_block: 2950000

@@ -69,10 +69,12 @@ func NewBridgeProcessor(db *database.DB,
 }
 
 func (pp *PolygonEventProcessor) StartUnpack() error {
-	tickerSyncer := time.NewTicker(pp.loopInterval)
+	tickerEventOn1 := time.NewTicker(pp.loopInterval)
+	tickerEventOn2 := time.NewTicker(pp.loopInterval)
+	tickerEventRel := time.NewTicker(pp.loopInterval)
 	log.Println("starting polygon bridge processor...")
 	pp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn1.C {
 			err := pp.onL1Data()
 			if err != nil {
 				log.Println("no more l1 etl updates. shutting down l1 task")
@@ -83,7 +85,7 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 	})
 	// start L2 worker
 	pp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn2.C {
 			err := pp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
@@ -94,7 +96,7 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 	})
 	// start relation worker
 	pp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventRel.C {
 			err := pp.relationL1L2()
 			if err != nil {
 				log.Println("shutting down relation task")
@@ -173,8 +175,14 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 			return err
 		}
 		if lastBlockHeard == nil {
-			lastBlockHeard = &common2.BlockHeader{
-				Number: big.NewInt(0),
+			if pp.cfgRpc.StartBlock > 0 {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(int64(pp.cfgRpc.StartBlock)),
+				}
+			} else {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(0),
+				}
 			}
 		}
 		pp.l2StartHeight = lastBlockHeard.Number
@@ -271,10 +279,10 @@ func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error 
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case utils.WithdrawEventSignatureHash.String():
-		err := bridge.L2Withdraw(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		err := bridge.L2Withdraw(chainIdStr, pp.L2PolygonBridge, event, pp.db)
 		return err
 	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L2WithdrawClaimed(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		err := bridge.L2WithdrawClaimed(chainIdStr, pp.L2PolygonBridge, event, pp.db)
 		return err
 	}
 	return nil

@@ -44,6 +44,7 @@ CREATE INDEX IF NOT EXISTS template_contract_events_timestamp ON template_contra
 CREATE INDEX IF NOT EXISTS template_contract_events_block_hash ON template_contract_events (block_hash);
 CREATE INDEX IF NOT EXISTS template_contract_events_event_signature ON template_contract_events (event_signature);
 CREATE INDEX IF NOT EXISTS template_contract_events_contract_address ON template_contract_events (contract_address);
+CREATE INDEX IF NOT EXISTS template_contract_events_transaction_hash ON template_contract_events (transaction_hash);
 
 CREATE TABLE IF NOT EXISTS template_transactions
 (

@@ -54,10 +54,12 @@ func NewBridgeProcessor(db *database.DB,
 }
 
 func (sp *ScrollEventProcessor) StartUnpack() error {
-	tickerSyncer := time.NewTicker(sp.loopInterval)
+	tickerEventOn1 := time.NewTicker(sp.loopInterval)
+	tickerEventOn2 := time.NewTicker(sp.loopInterval)
+	tickerEventRel := time.NewTicker(sp.loopInterval)
 	log.Println("starting scroll bridge processor...")
 	sp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn1.C {
 			err := sp.onL1Data()
 			if err != nil {
 				log.Println("no more l1 etl updates. shutting down l1 task")
@@ -68,7 +70,7 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 	})
 	// start L2 worker
 	sp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn2.C {
 			err := sp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
@@ -80,7 +82,7 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 
 	// start relation worker
 	sp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventRel.C {
 			err := sp.relationL1L2()
 			if err != nil {
 				log.Println("shutting down relation task")
@@ -160,8 +162,14 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 			return err
 		}
 		if lastBlockHeard == nil {
-			lastBlockHeard = &common2.BlockHeader{
-				Number: big.NewInt(0),
+			if sp.cfgRpc.StartBlock > 0 {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(int64(sp.cfgRpc.StartBlock)),
+				}
+			} else {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(0),
+				}
 			}
 		}
 		sp.l2StartHeight = lastBlockHeard.Number
