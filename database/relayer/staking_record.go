@@ -1,11 +1,14 @@
 package relayer
 
 import (
-	"gorm.io/gorm"
 	"math/big"
+	"strings"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/google/uuid"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type StakingRecord struct {
@@ -36,6 +39,7 @@ type StakingRecordDB interface {
 }
 
 type StakingRecordView interface {
+	GetStakingRecords(address string, page int, pageSize int, order string) (stakingRecords []StakingRecord, total int64)
 }
 
 func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
@@ -52,4 +56,33 @@ func (db stakingRecordDB) StoreStakingRecords(stakes []StakingRecord) error {
 	stakingRecord := new(StakingRecord)
 	result := db.gorm.Table(stakingRecord.TableName()).Omit("guid").Create(&stakes)
 	return result.Error
+}
+
+func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize int, order string) (sR []StakingRecord, total int64) {
+	var totalRecord int64
+	var stakingRecords []StakingRecord
+	querySR := db.gorm.Table("staking_record")
+	if address != "0x00" {
+		err := db.gorm.Table("staking_record").Select("guid").Where("user_address = ?", address).Count(&totalRecord).Error
+		if err != nil {
+			log.Error("get staking records by address count fail")
+		}
+		querySR.Where("user_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
+	} else {
+		err := db.gorm.Table("staking_record").Select("guid").Count(&totalRecord).Error
+		if err != nil {
+			log.Error("get staking records no address count fail ")
+		}
+		querySR.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if strings.ToLower(order) == "asc" {
+		querySR.Order("timestamp asc")
+	} else {
+		querySR.Order("timestamp desc")
+	}
+	qErr := querySR.Find(&stakingRecords).Error
+	if qErr != nil {
+		log.Error("get staking records fail", "err", qErr)
+	}
+	return stakingRecords, totalRecord
 }

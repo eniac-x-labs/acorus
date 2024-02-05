@@ -2,8 +2,9 @@ package routes
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"net/http"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // L1ToL2ListHandler ... Handles /api/v1/deposits GET requests
@@ -82,6 +83,90 @@ func (h Routes) L2ToL1ListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = jsonResponse(w, l2ToL1Txs, http.StatusOK)
+	if err != nil {
+		log.Error("Error writing response", "err", err.Error())
+	}
+}
+
+// StakingRecordsHandler ... Handles /api/v1/staking-records GET requests
+func (h Routes) StakingRecordsHandler(w http.ResponseWriter, r *http.Request) {
+	address := r.URL.Query().Get("address")
+	pageQuery := r.URL.Query().Get("page")
+	pageSizeQuery := r.URL.Query().Get("pageSize")
+	order := r.URL.Query().Get("order")
+
+	params, err := h.svc.QuerySRParams(address, pageQuery, pageSizeQuery, order)
+	if err != nil {
+		http.Error(w, "invalid query params", http.StatusBadRequest)
+		log.Error("error reading request params", "err", err.Error())
+		return
+	}
+
+	cacheKey := fmt.Sprintf("StakingRecords{address:%s,page:%s,pageSize:%s,order:%s}", address, pageQuery, pageSizeQuery, order)
+	if h.enableCache {
+		response, _ := h.cache.GetStakingRecords(cacheKey)
+		if response != nil {
+			err = jsonResponse(w, response, http.StatusOK)
+			if err != nil {
+				log.Error("Error writing response", "err", err.Error())
+			}
+			return
+		}
+	}
+
+	stakingRecords, err := h.svc.GetStakingRecords(params)
+	if err != nil {
+		http.Error(w, "Internal server error reading staking records", http.StatusInternalServerError)
+		log.Error("Unable to read staking records from DB", "err", err.Error())
+		return
+	}
+	if h.enableCache {
+		h.cache.AddStakingRecords(cacheKey, stakingRecords)
+	}
+
+	err = jsonResponse(w, stakingRecords, http.StatusOK)
+	if err != nil {
+		log.Error("Error writing response", "err", err.Error())
+	}
+}
+
+// BridgeRecordsHandler ... Handles /api/v1/bridge-records GET requests
+func (h Routes) BridgeRecordsHandler(w http.ResponseWriter, r *http.Request) {
+	address := r.URL.Query().Get("address")
+	pageQuery := r.URL.Query().Get("page")
+	pageSizeQuery := r.URL.Query().Get("pageSize")
+	order := r.URL.Query().Get("order")
+
+	params, err := h.svc.QueryBRParams(address, pageQuery, pageSizeQuery, order)
+	if err != nil {
+		http.Error(w, "invalid query params", http.StatusBadRequest)
+		log.Error("error reading request params", "err", err.Error())
+		return
+	}
+
+	cacheKey := fmt.Sprintf("BridgeRecords{address:%s,page:%s,pageSize:%s,order:%s}", address, pageQuery, pageSizeQuery, order)
+	if h.enableCache {
+		response, _ := h.cache.GetBridgeRecords(cacheKey)
+		if response != nil {
+			err = jsonResponse(w, response, http.StatusOK)
+			if err != nil {
+				log.Error("Error writing response", "err", err.Error())
+			}
+			return
+		}
+	}
+
+	bridgeRecords, err := h.svc.GetBridgeRecords(params)
+	if err != nil {
+		http.Error(w, "Internal server error reading bridge records", http.StatusInternalServerError)
+		log.Error("Unable to read bridge records from DB", "err", err.Error())
+		return
+	}
+	if h.enableCache {
+		h.cache.AddBridgeRecords(cacheKey, bridgeRecords)
+	}
+
+	err = jsonResponse(w, bridgeRecords, http.StatusOK)
 	if err != nil {
 		log.Error("Error writing response", "err", err.Error())
 	}
