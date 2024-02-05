@@ -295,7 +295,7 @@ CREATE INDEX IF NOT EXISTS staking_asset_type ON staking_record (asset_type);
 CREATE INDEX IF NOT EXISTS staking_timestamp ON staking_record (timestamp);
 
 
-CREATE TABLE IF NOT EXISTS bridge_recode
+CREATE TABLE IF NOT EXISTS bridge_record
 (
     guid               text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     source_chain_id    varchar,
@@ -318,22 +318,22 @@ CREATE TABLE IF NOT EXISTS bridge_recode
     msg_sent_timestamp INTEGER CHECK (msg_sent_timestamp > 0),
     claim_timestamp    INTEGER CHECK (claim_timestamp > 0)
 );
-CREATE INDEX IF NOT EXISTS bridge_recode_source_chain_id ON bridge_recode (source_chain_id);
-CREATE INDEX IF NOT EXISTS bridge_recode_target_chain_id ON bridge_recode (target_chain_id);
-CREATE INDEX IF NOT EXISTS bridge_recode_l1_tx_hash ON bridge_recode (l1_tx_hash);
-CREATE INDEX IF NOT EXISTS bridge_recode_l2_tx_hash ON bridge_recode (l2_tx_hash);
-CREATE INDEX IF NOT EXISTS bridge_recode_msg_hash ON bridge_recode (msg_hash);
-CREATE INDEX IF NOT EXISTS bridge_recode_l1_block_number ON bridge_recode (l1_block_number);
-CREATE INDEX IF NOT EXISTS bridge_recode_l2_block_number ON bridge_recode (l2_block_number);
-CREATE INDEX IF NOT EXISTS bridge_recode_l1_token_address ON bridge_recode (l1_token_address);
-CREATE INDEX IF NOT EXISTS bridge_recode_l2_token_address ON bridge_recode (l2_token_address);
-CREATE INDEX IF NOT EXISTS bridge_recode_from ON bridge_recode (from);
-CREATE INDEX IF NOT EXISTS bridge_recode_to ON bridge_recode (to);
-CREATE INDEX IF NOT EXISTS bridge_recode_status ON bridge_recode (status);
-CREATE INDEX IF NOT EXISTS bridge_recode_tx_type ON bridge_recode (tx_type);
-CREATE INDEX IF NOT EXISTS bridge_recode_asset_type ON bridge_recode (asset_type);
-CREATE INDEX IF NOT EXISTS bridge_recode_msg_sent_timestamp ON bridge_recode (msg_sent_timestamp);
-CREATE INDEX IF NOT EXISTS bridge_recode_claim_timestamp ON bridge_recode (claim_timestamp);
+CREATE INDEX IF NOT EXISTS bridge_record_source_chain_id ON bridge_record (source_chain_id);
+CREATE INDEX IF NOT EXISTS bridge_record_target_chain_id ON bridge_record (target_chain_id);
+CREATE INDEX IF NOT EXISTS bridge_record_l1_tx_hash ON bridge_record (l1_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_record_l2_tx_hash ON bridge_record (l2_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_record_msg_hash ON bridge_record (msg_hash);
+CREATE INDEX IF NOT EXISTS bridge_record_l1_block_number ON bridge_record (l1_block_number);
+CREATE INDEX IF NOT EXISTS bridge_record_l2_block_number ON bridge_record (l2_block_number);
+CREATE INDEX IF NOT EXISTS bridge_record_l1_token_address ON bridge_record (l1_token_address);
+CREATE INDEX IF NOT EXISTS bridge_record_l2_token_address ON bridge_record (l2_token_address);
+CREATE INDEX IF NOT EXISTS bridge_record_from ON bridge_record (from);
+CREATE INDEX IF NOT EXISTS bridge_record_to ON bridge_record (to);
+CREATE INDEX IF NOT EXISTS bridge_record_status ON bridge_record (status);
+CREATE INDEX IF NOT EXISTS bridge_record_tx_type ON bridge_record (tx_type);
+CREATE INDEX IF NOT EXISTS bridge_record_asset_type ON bridge_record (asset_type);
+CREATE INDEX IF NOT EXISTS bridge_record_msg_sent_timestamp ON bridge_record (msg_sent_timestamp);
+CREATE INDEX IF NOT EXISTS bridge_record_claim_timestamp ON bridge_record (claim_timestamp);
 
 
 create table if not exists bridge_msg_sent

@@ -1,10 +1,14 @@
 package relayer
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"math/big"
+	"strings"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type BridgeRecord struct {
@@ -31,7 +35,7 @@ type BridgeRecord struct {
 }
 
 func (BridgeRecord) TableName() string {
-	return "bridge_recode"
+	return "bridge_record"
 }
 
 type bridgeRecordDB struct {
@@ -43,8 +47,38 @@ type BridgeRecordDB interface {
 }
 
 type BridgeRecordDBView interface {
+	GetBridgeRecords(address string, page int, pageSize int, order string) (bridgeRecords []BridgeRecord, total int64)
 }
 
 func NewBridgeRecordDB(db *gorm.DB) BridgeRecordDB {
 	return &bridgeRecordDB{gorm: db}
+}
+
+func (db bridgeRecordDB) GetBridgeRecords(address string, page int, pageSize int, order string) (bR []BridgeRecord, total int64) {
+	var totalRecord int64
+	var bridgeRecords []BridgeRecord
+	queryBR := db.gorm.Table("bridge_record")
+	if address != "0x00" {
+		err := db.gorm.Table("bridge_record").Select("guid").Where("from = ?", address).Or("to = ?", address).Count(&totalRecord).Error
+		if err != nil {
+			log.Error("get bridge records by address count fail")
+		}
+		queryBR.Where("from = ?", address).Or(" to = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
+	} else {
+		err := db.gorm.Table("bridge_record").Select("guid").Count(&totalRecord).Error
+		if err != nil {
+			log.Error("get bridge records no address count fail ")
+		}
+		queryBR.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if strings.ToLower(order) == "asc" {
+		queryBR.Order("msg_sent_timestamp asc")
+	} else {
+		queryBR.Order("msg_sent_timestamp desc")
+	}
+	qErr := queryBR.Find(&bridgeRecords).Error
+	if qErr != nil {
+		log.Error("get bridge records fail", "err", qErr)
+	}
+	return bridgeRecords, totalRecord
 }
