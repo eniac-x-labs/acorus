@@ -76,7 +76,7 @@ func (h HandlerSvc) GetStakingRecords(params *models.QuerySRParams) (*models.Sta
 
 func (h HandlerSvc) GetBridgeRecords(params *models.QueryBRParams) (*models.BridgeResponse, error) {
 	addressToLower := strings.ToLower(params.Address)
-	l2L1List, total := h.bridgeRecordView.GetBridgeRecords(addressToLower, params.Page, params.PageSize, params.Order)
+	l2L1List, total := h.bridgeRecordView.GetBridgeRecordList(addressToLower, params.Page, params.PageSize, params.Order)
 	return &models.BridgeResponse{
 		Current: params.Page,
 		Size:    params.PageSize,

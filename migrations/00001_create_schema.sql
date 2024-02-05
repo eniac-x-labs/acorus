@@ -279,15 +279,13 @@ CREATE TABLE IF NOT EXISTS staking_record
     block_number UINT256  NOT NULL,
     user_address VARCHAR  not null,
     token        VARCHAR,
-    amount       UINT256 NOT NULL,
-    chain_id     varchar,
-    status smallint not null,
+    amount       UINT256  NOT NULL,
+    status       smallint not null,
     asset_type   SMALLINT NOT NULL,
     timestamp    INTEGER  NOT NULL CHECK (timestamp > 0)
 );
 CREATE INDEX IF NOT EXISTS staking_tx_hash ON staking_record (tx_hash);
 CREATE INDEX IF NOT EXISTS staking_block_number ON staking_record (block_number);
-CREATE INDEX IF NOT EXISTS staking_chain_id ON staking_record (chain_id);
 CREATE INDEX IF NOT EXISTS staking_user_address ON staking_record (user_address);
 CREATE INDEX IF NOT EXISTS staking_token ON staking_record (token);
 CREATE INDEX IF NOT EXISTS staking_status ON staking_record (status);
@@ -297,40 +295,38 @@ CREATE INDEX IF NOT EXISTS staking_timestamp ON staking_record (timestamp);
 
 CREATE TABLE IF NOT EXISTS bridge_record
 (
-    guid               text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    source_chain_id    varchar,
-    target_chain_id    varchar,
-    l1_tx_hash         VARCHAR,
-    l2_tx_hash         VARCHAR,
-    l1_block_number    UINT256,
-    l2_block_number    UINT256,
-    l1_token_address   VARCHAR,
-    l2_token_address   VARCHAR,
-    msg_hash           varchar,
-    from               varchar,
-    to                 varchar,
-    status             smallint not null,
-    amount             UINT256,
-    nonce             UINT256,
-    fee                UINT256,
-    tx_type            smallint not null,
-    asset_type         SMALLINT NOT NULL,
-    msg_sent_timestamp INTEGER CHECK (msg_sent_timestamp > 0),
-    claim_timestamp    INTEGER CHECK (claim_timestamp > 0)
+    guid                 text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    source_chain_id      varchar,
+    dest_chain_id        varchar,
+    source_tx_hash       VARCHAR,
+    dest_tx_hash         VARCHAR,
+    source_block_number  UINT256,
+    dest_block_number    UINT256,
+    source_token_address VARCHAR,
+    dest_token_address   VARCHAR,
+    msg_hash             varchar,
+    from                 varchar,
+    to                   varchar,
+    status               smallint not null,
+    amount               UINT256,
+    nonce                UINT256,
+    fee                  UINT256,
+    asset_type           SMALLINT NOT NULL,
+    msg_sent_timestamp   INTEGER CHECK (msg_sent_timestamp > 0),
+    claim_timestamp      INTEGER CHECK (claim_timestamp > 0)
 );
 CREATE INDEX IF NOT EXISTS bridge_record_source_chain_id ON bridge_record (source_chain_id);
-CREATE INDEX IF NOT EXISTS bridge_record_target_chain_id ON bridge_record (target_chain_id);
-CREATE INDEX IF NOT EXISTS bridge_record_l1_tx_hash ON bridge_record (l1_tx_hash);
-CREATE INDEX IF NOT EXISTS bridge_record_l2_tx_hash ON bridge_record (l2_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_record_dest_chain_id ON bridge_record (dest_chain_id);
+CREATE INDEX IF NOT EXISTS bridge_record_source_tx_hash ON bridge_record (source_tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_record_dest_tx_hash ON bridge_record (dest_tx_hash);
 CREATE INDEX IF NOT EXISTS bridge_record_msg_hash ON bridge_record (msg_hash);
-CREATE INDEX IF NOT EXISTS bridge_record_l1_block_number ON bridge_record (l1_block_number);
-CREATE INDEX IF NOT EXISTS bridge_record_l2_block_number ON bridge_record (l2_block_number);
-CREATE INDEX IF NOT EXISTS bridge_record_l1_token_address ON bridge_record (l1_token_address);
-CREATE INDEX IF NOT EXISTS bridge_record_l2_token_address ON bridge_record (l2_token_address);
+CREATE INDEX IF NOT EXISTS bridge_record_source_block_number ON bridge_record (source_block_number);
+CREATE INDEX IF NOT EXISTS bridge_record_dest_block_number ON bridge_record (dest_block_number);
+CREATE INDEX IF NOT EXISTS bridge_record_source_token_address ON bridge_record (source_token_address);
+CREATE INDEX IF NOT EXISTS bridge_record_dest_token_address ON bridge_record (dest_token_address);
 CREATE INDEX IF NOT EXISTS bridge_record_from ON bridge_record (from);
 CREATE INDEX IF NOT EXISTS bridge_record_to ON bridge_record (to);
 CREATE INDEX IF NOT EXISTS bridge_record_status ON bridge_record (status);
-CREATE INDEX IF NOT EXISTS bridge_record_tx_type ON bridge_record (tx_type);
 CREATE INDEX IF NOT EXISTS bridge_record_asset_type ON bridge_record (asset_type);
 CREATE INDEX IF NOT EXISTS bridge_record_msg_sent_timestamp ON bridge_record (msg_sent_timestamp);
 CREATE INDEX IF NOT EXISTS bridge_record_claim_timestamp ON bridge_record (claim_timestamp);
@@ -338,19 +334,19 @@ CREATE INDEX IF NOT EXISTS bridge_record_claim_timestamp ON bridge_record (claim
 
 create table if not exists bridge_msg_sent
 (
-    guid               text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash            varchar,
-    msg_hash           varchar,
-    layer_hash         varchar,
-    layer_block_number UINT256          default 0,
-    layer_timestamp    INTEGER CHECK (layer_timestamp > 0),
-    fee UINT256          default 0,
-    msg_nonce UINT256          default 0,
-    msg_hash_relation  boolean          default false,
-    bridge_relation     boolean          default false,
-    to_bridge_record     boolean          default false,
-    layer_type         smallint not null,
-    data               varchar
+    guid              text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash           varchar,
+    msg_hash          varchar,
+    dest_hash         varchar,
+    dest_block_number UINT256          default 0,
+    dest_timestamp    INTEGER CHECK (layer_timestamp > 0),
+    dest_token        varchar,
+    fee               UINT256          default 0,
+    msg_nonce         UINT256          default 0,
+    msg_hash_relation boolean          default false,
+    bridge_relation   boolean          default false,
+    to_bridge_record  boolean          default false,
+    data              varchar
 );
 
 CREATE INDEX IF NOT EXISTS bridge_msg_sent_tx_hash ON bridge_msg_sent (tx_hash);
@@ -358,11 +354,11 @@ CREATE INDEX IF NOT EXISTS bridge_msg_sent_msg_hash ON bridge_msg_sent (msg_hash
 
 create table if not exists bridge_msg_hash
 (
-    guid     text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash  varchar,
-    fee UINT256          default 0,
+    guid      text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash   varchar,
+    fee       UINT256          default 0,
     msg_nonce UINT256          default 0,
-    msg_hash varchar
+    msg_hash  varchar
 );
 CREATE INDEX IF NOT EXISTS bridge_msg_hash_tx_hash ON bridge_msg_hash (tx_hash);
 CREATE INDEX IF NOT EXISTS bridge_msg_hash_msg_hash ON bridge_msg_hash (msg_hash);
@@ -372,9 +368,20 @@ create table if not exists bridge_claim
     guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     tx_hash      varchar,
     msg_hash     varchar,
-    timestamp INTEGER CHECK (timestamp > 0),
+    dest_token   varchar,
+    token_relation boolean          default false,
+    timestamp    INTEGER CHECK (timestamp > 0),
     block_number UINT256          default 0
 );
 
-CREATE INDEX IF NOT EXISTS bridge_claim_hash_tx_hash ON bridge_claim (tx_hash);
-CREATE INDEX IF NOT EXISTS bridge_claim_hash_msg_hash ON bridge_claim (msg_hash);
+CREATE INDEX IF NOT EXISTS bridge_claim_tx_hash ON bridge_claim (tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_claim_msg_hash ON bridge_claim (msg_hash);
+
+create table if not exists bridge_finalize
+(
+    guid       text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash    varchar,
+    dest_token varchar
+);
+
+CREATE INDEX IF NOT EXISTS bridge_finalize_tx_hash ON bridge_claim (tx_hash);

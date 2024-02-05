@@ -66,8 +66,8 @@ type StakingResponse struct {
 }
 
 type BridgeResponse struct {
-	Current int                    `json:"Current"`
-	Size    int                    `json:"Size"`
-	Total   int64                  `json:"Total"`
-	Records []relayer.BridgeRecord `json:"Records"`
+	Current int                     `json:"Current"`
+	Size    int                     `json:"Size"`
+	Total   int64                   `json:"Total"`
+	Records []relayer.BridgeRecords `json:"Records"`
 }

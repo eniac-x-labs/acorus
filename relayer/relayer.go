@@ -61,6 +61,7 @@ func NewRelayerListener(chainId string,
 func (rl *RelayerListener) Start() error {
 	relayerEventOn1 := time.NewTicker(rl.loopInterval)
 	relayerEventOn2 := time.NewTicker(rl.loopInterval)
+	tickerBridgeRel := time.NewTicker(rl.loopInterval)
 	rl.tasks.Go(func() error {
 		for range relayerEventOn1.C {
 			err := rl.onL1Data()
@@ -76,6 +77,18 @@ func (rl *RelayerListener) Start() error {
 			err := rl.onL2Data()
 			if err != nil {
 				log.Println("no more l1 etl updates. shutting down l1 task")
+				return err
+			}
+		}
+		return nil
+	})
+
+	// start relation worker
+	rl.tasks.Go(func() error {
+		for range tickerBridgeRel.C {
+			err := rl.relationBridge()
+			if err != nil {
+				log.Println("shutting down relationBridge")
 				return err
 			}
 		}
@@ -232,43 +245,56 @@ func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) erro
 }
 
 func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
-	chainIdStr := rl.chainId
 	switch event.EventSignature.String() {
 	case bindings.MsgAbi.Events["MessageSent"].ID.String():
-		err := unpack.MessageSent(chainIdStr, event, rl.db)
+		err := unpack.MessageSent(event, rl.db)
 		return err
 	case bindings.MsgAbi.Events["MessageClaimed"].ID.String():
-		err := unpack.MessageClaimed(chainIdStr, event, rl.db)
+		err := unpack.MessageClaimed(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["FinalizeETH"].ID.String():
-		err := unpack.FinalizeETH(chainIdStr, event, rl.db)
+		err := unpack.FinalizeETH(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["FinalizeWETH"].ID.String():
-		err := unpack.FinalizeWETH(chainIdStr, event, rl.db)
+		err := unpack.FinalizeWETH(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["FinalizeERC20"].ID.String():
-		err := unpack.FinalizeERC20(chainIdStr, event, rl.db)
+		err := unpack.FinalizeERC20(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["InitiateWETH"].ID.String():
-		err := unpack.InitiateWETH(chainIdStr, event, rl.db)
+		err := unpack.InitiateWETH(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["InitiateETH"].ID.String():
-		err := unpack.InitiateETH(chainIdStr, event, rl.db)
+		err := unpack.InitiateETH(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["InitiateERC20"].ID.String():
-		err := unpack.InitiateERC20(chainIdStr, event, rl.db)
+		err := unpack.InitiateERC20(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["StarkingERC20Event"].ID.String():
-		err := unpack.StarkingERC20Event(chainIdStr, event, rl.db)
+		err := unpack.StarkingERC20Event(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["StakingETHEvent"].ID.String():
-		err := unpack.StakingETHEvent(chainIdStr, event, rl.db)
+		err := unpack.StakingETHEvent(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["StakingWETHEvent"].ID.String():
-		err := unpack.StakingWETHEvent(chainIdStr, event, rl.db)
+		err := unpack.StakingWETHEvent(event, rl.db)
 		return err
 	case bindings.L1PoolAbi.Events["ClaimEvent"].ID.String():
-		err := unpack.ClaimEvent(chainIdStr, event, rl.db)
+		err := unpack.ClaimEvent(event, rl.db)
+		return err
+	}
+	return nil
+}
+
+func (rl *RelayerListener) relationBridge() error {
+	err := rl.db.BridgeMsgHash.RelationMsgHash()
+	if err != nil {
+		log.Println("relationBridge failed", "err", err)
+		return err
+	}
+	err = rl.db.BridgeFinalize.RelationClaim()
+	if err != nil {
+		log.Println("relationBridge failed", "err", err)
 		return err
 	}
 	return nil

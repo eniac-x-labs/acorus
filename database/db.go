@@ -38,6 +38,10 @@ type DB struct {
 	RelayMessage      event.RelayMessageDB
 	StakeRecord       relayer.StakingRecordDB
 	BridgeRecord      relayer.BridgeRecordDB
+	BridgeMsgSent     relayer.BridgeMsgSentDB
+	BridgeMsgHash     relayer.BridgeMsgHashDB
+	BridgeClaim       relayer.BridgeClaimDB
+	BridgeFinalize    relayer.BridgeFinalizeDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -92,6 +96,10 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		RelayMessage:      event.NewRelayMessageDB(gorm),
 		StakeRecord:       relayer.NewStakingRecordDB(gorm),
 		BridgeRecord:      relayer.NewBridgeRecordDB(gorm),
+		BridgeMsgSent:     relayer.NewBridgeMsgSentDB(gorm),
+		BridgeMsgHash:     relayer.NewBridgeMsgHashDB(gorm),
+		BridgeClaim:       relayer.NewBridgeClaimDB(gorm),
+		BridgeFinalize:    relayer.NewBridgeFinalizeDB(gorm),
 	}
 	return db, nil
 }
@@ -113,6 +121,10 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			RelayMessage:      event.NewRelayMessageDB(gorm),
 			StakeRecord:       relayer.NewStakingRecordDB(gorm),
 			BridgeRecord:      relayer.NewBridgeRecordDB(gorm),
+			BridgeMsgSent:     relayer.NewBridgeMsgSentDB(gorm),
+			BridgeMsgHash:     relayer.NewBridgeMsgHashDB(gorm),
+			BridgeClaim:       relayer.NewBridgeClaimDB(gorm),
+			BridgeFinalize:    relayer.NewBridgeFinalizeDB(gorm),
 		}
 		return fn(txDB)
 	})
