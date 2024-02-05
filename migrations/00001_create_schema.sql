@@ -343,6 +343,9 @@ create table if not exists bridge_msg_sent
     msg_hash           varchar,
     layer_hash         varchar,
     layer_block_number UINT256          default 0,
+    layer_timestamp    INTEGER CHECK (layer_timestamp > 0),
+    fee UINT256          default 0,
+    msg_nonce UINT256          default 0,
     msg_hash_relation  boolean          default false,
     bridge_relation     boolean          default false,
     to_bridge_record     boolean          default false,
@@ -357,6 +360,8 @@ create table if not exists bridge_msg_hash
 (
     guid     text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     tx_hash  varchar,
+    fee UINT256          default 0,
+    msg_nonce UINT256          default 0,
     msg_hash varchar
 );
 CREATE INDEX IF NOT EXISTS bridge_msg_hash_tx_hash ON bridge_msg_hash (tx_hash);
@@ -367,5 +372,9 @@ create table if not exists bridge_claim
     guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     tx_hash      varchar,
     msg_hash     varchar,
+    timestamp INTEGER CHECK (timestamp > 0),
     block_number UINT256          default 0
 );
+
+CREATE INDEX IF NOT EXISTS bridge_claim_hash_tx_hash ON bridge_claim (tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_claim_hash_msg_hash ON bridge_claim (msg_hash);
