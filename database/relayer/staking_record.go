@@ -14,7 +14,7 @@ type StakingRecord struct {
 	BlockNumber *big.Int       `json:"blockNumber" gorm:"serializer:u256"`
 	UserAddress common.Address `json:"userAddress" gorm:"serializer:bytes"`
 	Token       common.Address `json:"token" gorm:"serializer:bytes"`
-	Amount      *big.Int       `json:"amount"`
+	Amount      *big.Int       `json:"amount" gorm:"serializer:u256"`
 	ChainId     string         `json:"chainIid"`
 	Status      int            `json:"status"`
 	AssetType   int            `json:"assetType"`

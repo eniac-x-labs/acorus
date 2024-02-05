@@ -37,6 +37,7 @@ type DB struct {
 	RelayRelation     relation.RelayRelationDB
 	RelayMessage      event.RelayMessageDB
 	StakeRecord       relayer.StakingRecordDB
+	BridgeRecord      relayer.BridgeRecordDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -90,6 +91,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		RelayRelation:     relation.NewEvmRelayRelationDB(gorm),
 		RelayMessage:      event.NewRelayMessageDB(gorm),
 		StakeRecord:       relayer.NewStakingRecordDB(gorm),
+		BridgeRecord:      relayer.NewBridgeRecordDB(gorm),
 	}
 	return db, nil
 }
@@ -110,6 +112,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			RelayRelation:     relation.NewEvmRelayRelationDB(gorm),
 			RelayMessage:      event.NewRelayMessageDB(gorm),
 			StakeRecord:       relayer.NewStakingRecordDB(gorm),
+			BridgeRecord:      relayer.NewBridgeRecordDB(gorm),
 		}
 		return fn(txDB)
 	})
