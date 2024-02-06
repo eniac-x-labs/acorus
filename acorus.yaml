@@ -13,26 +13,26 @@ grpc:
   port: 8082
 
 rpcs:
-  - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/-EK96JwUb8C_l_EfZqaLumlZG6PV8SDq'
-    chain_id: 1
-    start_block: 19147000
+  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/o0zYyGdlny_0bvOGS8qtNdMG4REyM0I_'
+    chain_id: 11155111
+    start_block: 5218234
     contracts:
     event_contracts:
 
-#  - rpc_url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-#    chain_id: 10
-#    start_block: 114216017
+  #  - rpc_url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+  #    chain_id: 10
+  #    start_block: 114216017
+  #    contracts:
+  #    event_contracts:
+
+#  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/XJph3lRc3_xJN3kHX7Gy0PkvkPbJD_GD"
+#    chain_id: 1101
+#    start_block: 9634600
+#    l1_event_unpack_block: 19147000
 #    contracts:
+#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
 #    event_contracts:
-
-  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/XJph3lRc3_xJN3kHX7Gy0PkvkPbJD_GD"
-    chain_id: 1101
-    start_block: 9634600
-    l1_event_unpack_block: 19147000
-    contracts:
-      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-    event_contracts:
-      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
 #  - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
 #    chain_id: 534352
 #    start_block: 2950000
@@ -77,3 +77,13 @@ slave_db:
   db_password: ""
   db_name: "acorus"
 
+relayers:
+  - chain_id: 11155111
+    eventStartBlock: 5218234
+    contracts:
+      - "0x44c8EDB79089Fe99cfb79F8284D9f9CD83B8Fbc5"
+      - "0xAC13457009a2aE49820Bd7517818436dE2202549"
+#  - chain_id: 1101
+#    eventStartBlock: 9634600
+#    contracts:
+#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"

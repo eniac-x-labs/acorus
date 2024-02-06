@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/event/linea"
-	"github.com/cornerstone-labs/acorus/protobuf/pb"
+	"github.com/cornerstone-labs/acorus/relayer"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"log"
 	"math/big"
 	"net"
@@ -41,6 +39,7 @@ type Acorus struct {
 	Synchronizer    map[uint64]*synchronizer.Synchronizer
 	Processor       map[uint64]event2.IEventProcessor
 	Worker          map[uint64]*op_stack2.WorkerProcessor
+	Relayer         map[uint64]*relayer.RelayerListener
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
@@ -83,6 +82,12 @@ func (as *Acorus) Start(ctx context.Context) error {
 		if worker != nil {
 			if err := worker.Start(context.Background()); err != nil {
 				return fmt.Errorf("failed to start worker: %w", err)
+			}
+		}
+		relayer := as.Relayer[realChainId]
+		if relayer != nil {
+			if err := relayer.Start(); err != nil {
+				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
 	}
@@ -147,8 +152,8 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initEventProcessor(cfg); err != nil {
 		return fmt.Errorf("failed to init Processor: %w", err)
 	}
-	if err := as.initGrpcServer(ctx, cfg); err != nil {
-		return fmt.Errorf("failed to init grpc: %w", err)
+	if err := as.initRelayer(ctx, cfg); err != nil {
+		return fmt.Errorf("failed to init relayer: %w", err)
 	}
 	return nil
 }
@@ -277,10 +282,39 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 	return nil
 }
 
-func (as *Acorus) initGrpcServer(ctx context.Context, cfg *config.Config) error {
-	as.GrpcPort = cfg.Grpc.Port
-	as.GrpcHostname = cfg.Grpc.Host
+func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
+	var loopInterval time.Duration = time.Second * 5
+	var epoch uint64 = 10_000
+	for i := range cfg.Relayers {
+		relayerCfg := cfg.Relayers[i]
+		chainIdStr := relayerCfg.ChainId
+		chainId, uerr := strconv.ParseUint(chainIdStr, 10, 64)
+		if uerr != nil {
+			return uerr
+		}
+		var rlworker *relayer.RelayerListener
+		var err error
+		log.Println("Init Relayer success", "chainId", chainIdStr)
+		if chainIdStr == "1" || chainIdStr == "11155111" {
+			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 1, as.shutdown, loopInterval, epoch)
+			if err != nil {
+				return err
+			}
+		} else {
+			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 2, as.shutdown, loopInterval, epoch)
+			if err != nil {
+				return err
+			}
+		}
 
+		if as.Relayer == nil {
+			as.Relayer = make(map[uint64]*relayer.RelayerListener)
+		}
+
+		as.Relayer[chainId] = rlworker
+	}
 	return nil
 }
 
@@ -299,32 +333,5 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 }
 
 func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
-	return nil
-}
-
-func (as *Acorus) startGrpcServer(ctx context.Context, cfg config.Server) error {
-	go func(as *Acorus) {
-		addr := fmt.Sprintf("%s:%v", as.GrpcHostname, as.GrpcPort)
-		log.Println("start rpc server", "addr", addr)
-
-		listener, err := net.Listen("tcp", addr)
-		if err != nil {
-			log.Fatalln("Could not start tcp listener. ")
-		}
-
-		opt := grpc.MaxRecvMsgSize(MaxRecvMessageSize)
-
-		gs := grpc.NewServer(
-			opt,
-			grpc.ChainUnaryInterceptor(),
-		)
-		reflection.Register(gs)
-		pb.RegisterBridgeServiceServer(gs, as)
-
-		log.Println("grp info", "port", as.GrpcPort, "address", listener.Addr().String())
-		if err := gs.Serve(listener); err != nil {
-			log.Fatalln("Could not GRPC server")
-		}
-	}(as)
 	return nil
 }

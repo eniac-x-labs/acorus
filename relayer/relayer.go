@@ -2,19 +2,19 @@ package relayer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/database"
-	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/relayer/bindings"
 	"github.com/cornerstone-labs/acorus/relayer/unpack"
 	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
-	"strconv"
 	"time"
 )
 
@@ -27,6 +27,7 @@ type RelayerListener struct {
 	l2EventStartBlock uint64
 	l1StartHeight     *big.Int
 	l2StartHeight     *big.Int
+	layerType         int
 	resourceCtx       context.Context
 	resourceCancel    context.CancelFunc
 	tasks             tasks.Group
@@ -34,20 +35,25 @@ type RelayerListener struct {
 	epoch             uint64
 }
 
-func NewRelayerListener(chainId string,
+func NewRelayerListener(
+	db *database.DB,
+	chainId string,
 	l1Contracts []string,
 	l2Contracts []string,
 	l1EventStartBlock uint64,
 	l2EventStartBlock uint64,
+	layerType int,
 	shutdown context.CancelCauseFunc,
 	loopInterval time.Duration, epoch uint64) (*RelayerListener, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &RelayerListener{
+		db:                db,
 		chainId:           chainId,
 		l1EventStartBlock: l1EventStartBlock,
 		l2EventStartBlock: l2EventStartBlock,
 		l1Contracts:       l1Contracts,
 		l2Contracts:       l2Contracts,
+		layerType:         layerType,
 		resourceCtx:       resCtx,
 		resourceCancel:    resCancel,
 		tasks: tasks.Group{HandleCrit: func(err error) {
@@ -59,59 +65,63 @@ func NewRelayerListener(chainId string,
 }
 
 func (rl *RelayerListener) Start() error {
-	relayerEventOn1 := time.NewTicker(rl.loopInterval)
-	relayerEventOn2 := time.NewTicker(rl.loopInterval)
-	tickerBridgeRel := time.NewTicker(rl.loopInterval)
-	rl.tasks.Go(func() error {
-		for range relayerEventOn1.C {
-			err := rl.onL1Data()
-			if err != nil {
-				log.Println("no more l1 etl updates. shutting down l1 task")
-				return err
-			}
-		}
-		return nil
-	})
-	rl.tasks.Go(func() error {
-		for range relayerEventOn2.C {
-			err := rl.onL2Data()
-			if err != nil {
-				log.Println("no more l1 etl updates. shutting down l1 task")
-				return err
-			}
-		}
-		return nil
-	})
 
-	// start relation worker
-	rl.tasks.Go(func() error {
-		for range tickerBridgeRel.C {
-			err := rl.relationBridge()
-			if err != nil {
-				log.Println("shutting down relationBridge")
-				return err
+	if rl.layerType == global_const.LayerTypeOne {
+		relayerEventOn1 := time.NewTicker(rl.loopInterval)
+		rl.tasks.Go(func() error {
+			for range relayerEventOn1.C {
+				err := rl.onL1Data()
+				if err != nil {
+					log.Println("no more l1 etl updates. shutting down l1 task")
+					return err
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
+	} else {
+		relayerEventOn2 := time.NewTicker(rl.loopInterval)
+		tickerBridgeRel := time.NewTicker(rl.loopInterval)
+
+		rl.tasks.Go(func() error {
+			for range relayerEventOn2.C {
+				err := rl.onL2Data()
+				if err != nil {
+					log.Println("no more l1 etl updates. shutting down l1 task")
+					return err
+				}
+			}
+			return nil
+		})
+
+		// start relation worker
+		rl.tasks.Go(func() error {
+			for range tickerBridgeRel.C {
+				err := rl.relationBridge()
+				if err != nil {
+					log.Println("shutting down relationBridge")
+					return err
+				}
+			}
+			return nil
+		})
+	}
 	return nil
 }
 
 func (rl *RelayerListener) onL1Data() error {
 
 	if rl.l1StartHeight == nil {
-		// todo 修改表名处理监听到最后一个区块好
-		lastBlockHeard, err := rl.db.L1ToL2.L1LatestBlockHeader(rl.chainId)
+		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err
 		}
-		if lastBlockHeard == nil {
-			lastBlockHeard = &common2.BlockHeader{
-				Number: big.NewInt(0),
+		if lastListenBlock == nil {
+			lastListenBlock = &relayer.BridgeBlockListener{
+				BlockNumber: big.NewInt(0),
 			}
 		}
-		rl.l1StartHeight = lastBlockHeard.Number
+		rl.l1StartHeight = lastListenBlock.BlockNumber
 		if rl.l1StartHeight.Cmp(big.NewInt(int64(rl.l1EventStartBlock))) == -1 {
 			rl.l1StartHeight = big.NewInt(int64(rl.l1EventStartBlock))
 		}
@@ -121,8 +131,7 @@ func (rl *RelayerListener) onL1Data() error {
 
 	fromL1Height := rl.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(rl.epoch)))
-	// todo 处理监听到最后一个区块
-	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
+	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
 		return err
 	}
@@ -133,7 +142,7 @@ func (rl *RelayerListener) onL1Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
-			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+			toL1Height = chainLatestBlockHeader.Number
 		}
 	}
 	if err := rl.db.Transaction(func(tx *database.DB) error {
@@ -141,41 +150,47 @@ func (rl *RelayerListener) onL1Data() error {
 		if l1EventsFetchErr != nil {
 			return l1EventsFetchErr
 		}
+		lastBlock := relayer.BridgeBlockListener{
+			ChainId:     rl.chainId,
+			BlockNumber: toL1Height,
+		}
+		updateErr := rl.db.BridgeBlockListener.SaveOrUpdateLastBlockNumber(lastBlock)
+		if updateErr != nil {
+			log.Println("update last block err :", updateErr)
+			return updateErr
+		}
 		return nil
 	}); err != nil {
 		return err
 	}
 	rl.l1StartHeight = toL1Height
 	return nil
-	return nil
 }
 
 func (rl *RelayerListener) onL2Data() error {
 	if rl.l2StartHeight == nil {
-		// todo 处理监听到最后一个区块
-		lastBlockHeard, err := rl.db.L2ToL1.L2LatestBlockHeader(rl.chainId)
+		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
 		if err != nil {
 			log.Println("l2 failed to get last block heard", "err", err)
 			return err
 		}
-		if lastBlockHeard == nil {
+		if lastListenBlock == nil {
 			if rl.l2EventStartBlock > 0 {
-				lastBlockHeard = &common2.BlockHeader{
-					Number: big.NewInt(int64(rl.l2EventStartBlock)),
+				lastListenBlock = &relayer.BridgeBlockListener{
+					BlockNumber: big.NewInt(int64(rl.l2EventStartBlock)),
 				}
 			} else {
-				lastBlockHeard = &common2.BlockHeader{
-					Number: big.NewInt(0),
+				lastListenBlock = &relayer.BridgeBlockListener{
+					BlockNumber: big.NewInt(0),
 				}
 			}
 		}
-		rl.l2StartHeight = lastBlockHeard.Number
+		rl.l2StartHeight = lastListenBlock.BlockNumber
 	} else {
 		rl.l2StartHeight = new(big.Int).Add(rl.l2StartHeight, bigint.One)
 	}
 	fromL2Height := rl.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(rl.epoch)))
-	// todo 处理监听到最后一个区块
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
 		return err
@@ -187,13 +202,21 @@ func (rl *RelayerListener) onL2Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
-			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+			toL2Height = chainLatestBlockHeader.Number
 		}
 	}
 	if err := rl.db.Transaction(func(tx *database.DB) error {
 		l2EventsFetchErr := rl.l2EventsFetch(fromL2Height, toL2Height)
 		if l2EventsFetchErr != nil {
 			return l2EventsFetchErr
+		}
+		lastBlock := relayer.BridgeBlockListener{
+			ChainId:     rl.chainId,
+			BlockNumber: toL2Height,
+		}
+		updateErr := rl.db.BridgeBlockListener.SaveOrUpdateLastBlockNumber(lastBlock)
+		if updateErr != nil {
+			return updateErr
 		}
 		return nil
 	}); err != nil {
@@ -204,10 +227,11 @@ func (rl *RelayerListener) onL2Data() error {
 }
 
 func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	log.Println("relayer l1EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
 	l1Contracts := rl.l1Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
-		events, err := rl.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
+		events, err := rl.db.ContractEvents.ContractEventsWithFilter(rl.chainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
@@ -224,6 +248,8 @@ func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) erro
 }
 
 func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
+	log.Println("relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+
 	chainIdStr := rl.chainId
 	l2Contracts := rl.l2Contracts
 	for _, l2contract := range l2Contracts {
@@ -287,14 +313,53 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 }
 
 func (rl *RelayerListener) relationBridge() error {
-	err := rl.db.BridgeMsgHash.RelationMsgHash()
-	if err != nil {
-		log.Println("relationBridge failed", "err", err)
-		return err
-	}
-	err = rl.db.BridgeFinalize.RelationClaim()
-	if err != nil {
-		log.Println("relationBridge failed", "err", err)
+	if err := rl.db.Transaction(func(tx *database.DB) error {
+		// step 1
+		err := rl.db.BridgeFinalize.RelationClaim()
+		if err != nil {
+			log.Println("relationBridge failed", "err", err)
+			return err
+		}
+		// step 2
+		err = rl.db.BridgeMsgHash.RelationMsgHash()
+		if err != nil {
+			log.Println("relationBridge failed", "err", err)
+			return err
+		}
+		// step 3
+		err = rl.db.BridgeClaim.RelationMsgSent()
+		if err != nil {
+			log.Println("RelationMsgSent failed", "err", err)
+			return err
+		}
+
+		list, err := rl.db.BridgeMsgSent.GetCanSaveDecodeList()
+		if err != nil {
+			return err
+		}
+		bridgeRecordSaveList := make([]relayer.BridgeRecords, 0)
+		for _, v := range list {
+			data := v.Data
+			var bridgeRecord relayer.BridgeRecords
+			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
+				return unMarErr
+			}
+			bridgeRecord.DestTokenAddress = v.DestToken
+			bridgeRecord.DestBlockNumber = v.DestBlockNumber
+			bridgeRecord.DestTxHash = v.DestHash
+			bridgeRecord.ClaimTimestamp = v.DestTimestamp
+			bridgeRecord.Nonce = v.MsgNonce
+			bridgeRecord.Fee = v.Fee
+			bridgeRecordSaveList = append(bridgeRecordSaveList, bridgeRecord)
+		}
+		if len(bridgeRecordSaveList) > 0 {
+			err = rl.db.BridgeRecord.StoreBridgeRecords(bridgeRecordSaveList)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 	return nil

@@ -148,7 +148,7 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
-			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+			toL1Height = chainLatestBlockHeader.Number
 		}
 	}
 
@@ -202,7 +202,7 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
-			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+			toL2Height = chainLatestBlockHeader.Number
 		}
 	}
 	if err := pp.db.Transaction(func(tx *database.DB) error {

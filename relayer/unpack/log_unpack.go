@@ -197,6 +197,7 @@ func StarkingERC20Event(event event.ContractEvent, db *database.DB) error {
 		Token:       erc20Event.Token,
 		Amount:      erc20Event.Amount,
 		Status:      1,
+		TxType:      1,
 		AssetType:   common2.ERC20,
 		Timestamp:   event.Timestamp,
 	}
@@ -216,6 +217,7 @@ func StakingETHEvent(event event.ContractEvent, db *database.DB) error {
 		Token:       common.Address{},
 		Amount:      ethEvent.Amount,
 		Status:      1,
+		TxType:      1,
 		AssetType:   common2.ETH,
 		Timestamp:   event.Timestamp,
 	}
@@ -234,6 +236,7 @@ func StakingWETHEvent(event event.ContractEvent, db *database.DB) error {
 		Token:       common.HexToAddress(global_const.WEthAddress),
 		Amount:      wethEvent.Amount,
 		Status:      1,
+		TxType:      1,
 		AssetType:   common2.WETH,
 		Timestamp:   event.Timestamp,
 	}
