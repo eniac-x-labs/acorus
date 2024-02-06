@@ -1,0 +1,3 @@
+[submodule "bridge-contracts"]
+	path = bridge-contracts
+	url = git@github.com:eniac-x-labs/bridge-contracts.git
