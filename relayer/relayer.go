@@ -12,6 +12,7 @@ import (
 	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/relayer/bindings"
 	"github.com/cornerstone-labs/acorus/relayer/unpack"
+	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
@@ -33,10 +34,12 @@ type RelayerListener struct {
 	tasks             tasks.Group
 	loopInterval      time.Duration
 	epoch             uint64
+	bridgeRpcService  bridge.BridgeRpcService
 }
 
 func NewRelayerListener(
 	db *database.DB,
+	bridgeRpcService bridge.BridgeRpcService,
 	chainId string,
 	l1Contracts []string,
 	l2Contracts []string,
@@ -56,6 +59,7 @@ func NewRelayerListener(
 		layerType:         layerType,
 		resourceCtx:       resCtx,
 		resourceCancel:    resCancel,
+		bridgeRpcService:  bridgeRpcService,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},

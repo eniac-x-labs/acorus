@@ -77,6 +77,9 @@ slave_db:
   db_password: ""
   db_name: "acorus"
 
+
+bridge_grpc_url: ""
+
 relayers:
   - chain_id: 11155111
     eventStartBlock: 5218234
