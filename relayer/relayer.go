@@ -312,7 +312,14 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.L1PoolAbi.Events["ClaimEvent"].ID.String():
 		err := unpack.ClaimEvent(event, rl.db)
 		return err
+	case bindings.IL1PoolAbi.Events["Withdraw"].ID.String():
+		err := unpack.Withdraw(event, rl.db)
+		return err
+	case bindings.IL1PoolAbi.Events["ClaimReward"].ID.String():
+		err := unpack.ClaimReward(event, rl.db)
+		return err
 	}
+
 	return nil
 }
 
@@ -361,6 +368,10 @@ func (rl *RelayerListener) relationBridge() error {
 			if err != nil {
 				return err
 			}
+		}
+		err = rl.db.BridgeMsgSent.CleanMsgSent()
+		if err != nil {
+			return err
 		}
 		return nil
 	}); err != nil {

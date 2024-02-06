@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	L1Unpack, _  = bindings.NewL1PoolManagerFilterer(common.Address{}, nil)
-	MsgUnpack, _ = bindings.NewIMessageManagerFilterer(common.Address{}, nil)
+	L1Unpack, _       = bindings.NewL1PoolManagerFilterer(common.Address{}, nil)
+	MsgUnpack, _      = bindings.NewIMessageManagerFilterer(common.Address{}, nil)
+	IL1PoolManager, _ = bindings.NewIL1PoolManagerFilterer(common.Address{}, nil)
 )
 
 func MessageSent(event event.ContractEvent, db *database.DB) error {
@@ -65,6 +66,7 @@ func InitiateETH(event event.ContractEvent, db *database.DB) error {
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
 		Status:             0,
+		OperaType:          global_const.BridgeOperaInitType,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),
 	}
@@ -99,6 +101,7 @@ func InitiateWETH(event event.ContractEvent, db *database.DB) error {
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
 		Status:             0,
+		OperaType:          global_const.BridgeOperaInitType,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),
 	}
@@ -131,6 +134,7 @@ func InitiateERC20(event event.ContractEvent, db *database.DB) error {
 		DestTokenAddress:   common.Address{},
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
+		OperaType:          global_const.BridgeOperaInitType,
 		Status:             0,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),
@@ -196,8 +200,11 @@ func StarkingERC20Event(event event.ContractEvent, db *database.DB) error {
 		UserAddress: erc20Event.User,
 		Token:       erc20Event.Token,
 		Amount:      erc20Event.Amount,
+		Reward:      big.NewInt(0),
+		StartPoolId: big.NewInt(0),
+		EndPoolId:   big.NewInt(0),
 		Status:      1,
-		TxType:      1,
+		TxType:      global_const.StakingTypeStake,
 		AssetType:   common2.ERC20,
 		Timestamp:   event.Timestamp,
 	}
@@ -216,8 +223,11 @@ func StakingETHEvent(event event.ContractEvent, db *database.DB) error {
 		UserAddress: ethEvent.User,
 		Token:       common.Address{},
 		Amount:      ethEvent.Amount,
+		Reward:      big.NewInt(0),
+		StartPoolId: big.NewInt(0),
+		EndPoolId:   big.NewInt(0),
 		Status:      1,
-		TxType:      1,
+		TxType:      global_const.StakingTypeStake,
 		AssetType:   common2.ETH,
 		Timestamp:   event.Timestamp,
 	}
@@ -235,8 +245,57 @@ func StakingWETHEvent(event event.ContractEvent, db *database.DB) error {
 		UserAddress: wethEvent.User,
 		Token:       common.HexToAddress(global_const.WEthAddress),
 		Amount:      wethEvent.Amount,
+		Reward:      big.NewInt(0),
+		StartPoolId: big.NewInt(0),
+		EndPoolId:   big.NewInt(0),
 		Status:      1,
-		TxType:      1,
+		TxType:      global_const.StakingTypeStake,
+		AssetType:   common2.WETH,
+		Timestamp:   event.Timestamp,
+	}
+	return db.StakeRecord.StoreStakingRecord(stake)
+}
+
+func Withdraw(event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	withdraw, unpackErr := IL1PoolManager.ParseWithdraw(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	stake := relayer.StakingRecord{
+		TxHash:      rlpLog.TxHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		UserAddress: withdraw.User,
+		Token:       common.HexToAddress(global_const.WEthAddress),
+		Amount:      withdraw.Amount,
+		Status:      1,
+		StartPoolId: withdraw.StartPoolId,
+		EndPoolId:   withdraw.EndPoolId,
+		Reward:      withdraw.Reward,
+		TxType:      global_const.StakingTypeWithdraw,
+		AssetType:   common2.WETH,
+		Timestamp:   event.Timestamp,
+	}
+	return db.StakeRecord.StoreStakingRecord(stake)
+}
+
+func ClaimReward(event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	claimReward, unpackErr := IL1PoolManager.ParseClaimReward(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	stake := relayer.StakingRecord{
+		TxHash:      rlpLog.TxHash,
+		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
+		UserAddress: claimReward.User,
+		Token:       common.HexToAddress(global_const.WEthAddress),
+		Amount:      big.NewInt(0),
+		Reward:      claimReward.Reward,
+		StartPoolId: claimReward.StartPoolId,
+		EndPoolId:   claimReward.EndPoolId,
+		Status:      1,
+		TxType:      global_const.StakingTypeReward,
 		AssetType:   common2.WETH,
 		Timestamp:   event.Timestamp,
 	}

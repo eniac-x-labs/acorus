@@ -258,7 +258,7 @@ CREATE INDEX IF NOT EXISTS template_msg_hash_msg_hash ON template_msg_hash (msg_
 
 CREATE TABLE IF NOT EXISTS template_relay_message
 (
-    guid                    text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    guid                   text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     block_number           UINT256 NOT NULL,
     relay_transaction_hash VARCHAR NOT NULL,
     message_hash           VARCHAR,
@@ -266,7 +266,7 @@ CREATE TABLE IF NOT EXISTS template_relay_message
     l2_token_address       VARCHAR,
     eth_amount             UINT256,
     erc20_amount           UINT256,
-    related                BOOLEAN DEFAULT FALSE,
+    related                BOOLEAN          DEFAULT FALSE,
     timestamp              INTEGER NOT NULL CHECK (timestamp > 0)
 );
 CREATE INDEX IF NOT EXISTS template_relay_message_message_hash ON template_relay_message (message_hash);
@@ -274,16 +274,19 @@ CREATE INDEX IF NOT EXISTS template_relay_message_timestamp ON template_relay_me
 
 CREATE TABLE IF NOT EXISTS staking_record
 (
-    guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash      VARCHAR  NOT NULL,
-    block_number UINT256  NOT NULL,
-    user_address VARCHAR  not null,
-    token        VARCHAR,
-    amount       UINT256  NOT NULL,
-    status       smallint not null,
-    tx_type      smallint not null,
-    asset_type   SMALLINT NOT NULL,
-    timestamp    INTEGER  NOT NULL CHECK (timestamp > 0)
+    guid          text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash       VARCHAR  NOT NULL,
+    block_number  UINT256  NOT NULL,
+    user_address  VARCHAR  not null,
+    token         VARCHAR,
+    amount        UINT256  NOT NULL,
+    reward        UINT256  NOT NULL,
+    start_pool_id uint256  not null,
+    end_pool_id   uint256  not null,
+    status        smallint not null,
+    tx_type       smallint not null,
+    asset_type    SMALLINT NOT NULL,
+    timestamp     INTEGER  NOT NULL CHECK (timestamp > 0)
 );
 CREATE INDEX IF NOT EXISTS staking_tx_hash ON staking_record (tx_hash);
 CREATE INDEX IF NOT EXISTS staking_block_number ON staking_record (block_number);
@@ -306,13 +309,14 @@ CREATE TABLE IF NOT EXISTS bridge_record
     source_token_address VARCHAR,
     dest_token_address   VARCHAR,
     msg_hash             varchar,
-    from_address                 varchar,
-    to_address                   varchar,
+    from_address         varchar,
+    to_address           varchar,
     status               smallint not null,
     amount               UINT256,
     nonce                UINT256,
     fee                  UINT256,
     asset_type           SMALLINT NOT NULL,
+    opera_type           smallint not null,
     msg_sent_timestamp   INTEGER,
     claim_timestamp      INTEGER
 );
@@ -340,7 +344,7 @@ create table if not exists bridge_msg_sent
     msg_hash          varchar,
     dest_hash         varchar,
     dest_block_number UINT256          default 0,
-    dest_timestamp    INTEGER ,
+    dest_timestamp    INTEGER,
     dest_token        varchar,
     fee               UINT256          default 0,
     msg_nonce         UINT256          default 0,

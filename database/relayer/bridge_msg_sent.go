@@ -34,6 +34,7 @@ type BridgeMsgSentDB interface {
 	BridgeMsgSentDBView
 	StoreBridgeMsgSent(msgSent BridgeMsgSent) error
 	StoreBridgeMsgSents(msgSentList []BridgeMsgSent) error
+	CleanMsgSent() error
 }
 
 type BridgeMsgSentDBView interface {
@@ -60,11 +61,21 @@ func (db bridgeMsgSentDB) GetCanSaveDecodeList() (mList []BridgeMsgSent, err err
 	var msgSentList []BridgeMsgSent
 	selectSql := `
 		SELECT DISTINCT ON ("a"."tx_hash") * FROM bridge_msg_sent "a" WHERE "a"."msg_hash_relation" = true
-			AND "a"."bridge_relation" = true AND "a"."to_bridge_record" = false LIMIT 1000
+			AND "a"."bridge_relation" = true AND "a"."to_bridge_record" = false order by msg_sent_timestamp desc LIMIT 1000
 	`
 	result := db.gorm.Raw(selectSql).Find(&msgSentList)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return msgSentList, nil
+}
+
+func (db bridgeMsgSentDB) CleanMsgSent() error {
+	cleanSql := `
+		update "bridge_msg_sent" a  set to_bridge_record=true
+				from  bridge_record b 
+				where  a.msg_hash=b.msg_hash  and a.to_bridge_record=false 
+	`
+	err := db.gorm.Exec(cleanSql).Error
+	return err
 }
