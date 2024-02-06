@@ -23,7 +23,7 @@ type bridgeRpcService struct {
 func NewBridgeRpcService(rpcUrl string) (BridgeRpcService, error) {
 	conn, err := grpc.Dial(rpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Println("did not connect: ", err)
 		return nil, err
 	}
 	bridgeServiceClient := pb.NewBridgeServiceClient(conn)
