@@ -31,6 +31,7 @@ type Config struct {
 	Server         Server   `yaml:"server"`
 	RPCs           []*RPC   `yaml:"rpcs"`
 	Metrics        Server   `yaml:"metrics"`
+	Grpc           Server   `yaml:"grpc"`
 	MasterDb       Database `yaml:"master_db"`
 	SlaveDb        Database `yaml:"slave_db"`
 	SlaveDbEnable  bool     `yaml:"slave_db_enable"`

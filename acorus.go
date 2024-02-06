@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/event/linea"
+	"github.com/cornerstone-labs/acorus/protobuf/pb"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"log"
 	"math/big"
 	"net"
@@ -41,7 +44,15 @@ type Acorus struct {
 	shutdown        context.CancelCauseFunc
 	stopped         atomic.Bool
 	chainIdList     []uint64
+	*RpcServerConfig
 }
+
+type RpcServerConfig struct {
+	GrpcHostname string
+	GrpcPort     int
+}
+
+const MaxRecvMessageSize = 1024 * 1024 * 300
 
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	log.Println("New acrous start️ 🕖")
@@ -135,6 +146,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	}
 	if err := as.initEventProcessor(cfg); err != nil {
 		return fmt.Errorf("failed to init Processor: %w", err)
+	}
+	if err := as.initGrpcServer(ctx, cfg); err != nil {
+		return fmt.Errorf("failed to init grpc: %w", err)
 	}
 	return nil
 }
@@ -263,6 +277,13 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 	return nil
 }
 
+func (as *Acorus) initGrpcServer(ctx context.Context, cfg *config.Config) error {
+	as.GrpcPort = cfg.Grpc.Port
+	as.GrpcHostname = cfg.Grpc.Host
+
+	return nil
+}
+
 func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error {
 	log.Println("starting http server...", "port", cfg.Port)
 	r := chi.NewRouter()
@@ -278,5 +299,32 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 }
 
 func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
+	return nil
+}
+
+func (as *Acorus) startGrpcServer(ctx context.Context, cfg config.Server) error {
+	go func(as *Acorus) {
+		addr := fmt.Sprintf("%s:%v", as.GrpcHostname, as.GrpcPort)
+		log.Println("start rpc server", "addr", addr)
+
+		listener, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalln("Could not start tcp listener. ")
+		}
+
+		opt := grpc.MaxRecvMsgSize(MaxRecvMessageSize)
+
+		gs := grpc.NewServer(
+			opt,
+			grpc.ChainUnaryInterceptor(),
+		)
+		reflection.Register(gs)
+		pb.RegisterBridgeServiceServer(gs, as)
+
+		log.Println("grp info", "port", as.GrpcPort, "address", listener.Addr().String())
+		if err := gs.Serve(listener); err != nil {
+			log.Fatalln("Could not GRPC server")
+		}
+	}(as)
 	return nil
 }

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "./protobuf/pb";
+package selaginella.proto_rpc;
+
+service BridgeService {
+  rpc crossChainTransfer(CrossChainTransferRequest) returns (CrossChainTransferResponse);
+  rpc changeTransferStatus(CrossChainTransferStatusRequest) returns (CrossChainTransferStatusResponse);
+}
+
+message CrossChainTransferRequest {
+  string source_chain_id = 1;
+  string dest_chain_id = 2;
+  string receive_address = 3;
+  string amount = 4;
+  string token_address = 5;
+  string fee = 6;
+  string nonce = 7;
+}
+
+message CrossChainTransferResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CrossChainTransferStatusRequest {
+  string source_chain_id = 1;
+  string dest_chain_id = 2;
+  string tx_hash = 3;
+}
+
+message CrossChainTransferStatusResponse {
+  bool success = 1;
+  string message = 2;
+}
