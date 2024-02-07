@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
+	"sync"
 	"time"
 )
 
@@ -96,10 +97,11 @@ func (rl *RelayerListener) Start() error {
 		})
 	}
 	tickerBridgeRel := time.NewTicker(rl.loopInterval)
+	var tickerBridgeRelMutex sync.Mutex
 	// start relation worker
 	rl.tasks.Go(func() error {
 		for range tickerBridgeRel.C {
-			err := rl.relationBridge()
+			err := rl.relationBridge(tickerBridgeRelMutex)
 			if err != nil {
 				log.Println("shutting down relationBridge")
 				continue
@@ -109,9 +111,10 @@ func (rl *RelayerListener) Start() error {
 	})
 
 	tickerCross := time.NewTicker(10 * time.Second)
+	var crossMutex sync.Mutex
 	rl.tasks.Go(func() error {
 		for range tickerCross.C {
-			err := rl.CrossChainTransfer()
+			err := rl.CrossChainTransfer(crossMutex)
 			if err != nil {
 				log.Println("shutting down relationBridge")
 				continue
@@ -121,9 +124,10 @@ func (rl *RelayerListener) Start() error {
 	})
 
 	tickerTrans := time.NewTicker(10 * time.Second)
+	var transMutex sync.Mutex
 	rl.tasks.Go(func() error {
 		for range tickerTrans.C {
-			err := rl.ChangeTransferStatus()
+			err := rl.ChangeTransferStatus(transMutex)
 			if err != nil {
 				log.Println("shutting down relationBridge")
 				continue
@@ -135,7 +139,6 @@ func (rl *RelayerListener) Start() error {
 }
 
 func (rl *RelayerListener) onL1Data() error {
-
 	if rl.l1StartHeight == nil {
 		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
 		if err != nil {
@@ -353,7 +356,9 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 	return nil
 }
 
-func (rl *RelayerListener) relationBridge() error {
+func (rl *RelayerListener) relationBridge(tickerBridgeRelMutex sync.Mutex) error {
+	tickerBridgeRelMutex.Lock()
+	defer tickerBridgeRelMutex.Unlock()
 	if errRel := rl.db.Transaction(func(tx *database.DB) error {
 		// step 1
 		log.Println("RelationClaim")
@@ -426,7 +431,9 @@ func (rl *RelayerListener) relationBridge() error {
 	return nil
 }
 
-func (rl *RelayerListener) CrossChainTransfer() error {
+func (rl *RelayerListener) CrossChainTransfer(mutex sync.Mutex) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	list := rl.db.BridgeMsgSent.GetCanCrossDataList()
 	if len(list) > 0 {
 		for _, v := range list {
@@ -456,7 +463,9 @@ func (rl *RelayerListener) CrossChainTransfer() error {
 	return nil
 }
 
-func (rl *RelayerListener) ChangeTransferStatus() error {
+func (rl *RelayerListener) ChangeTransferStatus(mutex sync.Mutex) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	list := rl.db.BridgeMsgSent.GetCanChangeTransStatusList()
 	if len(list) > 0 {
 		for _, v := range list {
