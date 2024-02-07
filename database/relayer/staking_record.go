@@ -72,7 +72,8 @@ func (db stakingRecordDB) StoreStakingRecords(stakes []StakingRecord) error {
 func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize int, order string) (sR []StakingRecord, total int64) {
 	var totalRecord int64
 	var stakingRecords []StakingRecord
-	querySR := db.gorm.Table("staking_record")
+	table := db.gorm.Table("staking_record").Select("DISTINCT ON (tx_hash) *")
+	querySR := db.gorm.Table("(?) as temp ", table)
 	if address != "0x00" {
 		err := db.gorm.Table("staking_record").Select("DISTINCT ON (tx_hash) guid").Where("user_address = ?", address).Count(&totalRecord).Error
 		if err != nil {
@@ -87,11 +88,11 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 		querySR.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 	if strings.ToLower(order) == "asc" {
-		querySR.Order("tx_hash,timestamp asc")
+		querySR.Order("timestamp asc")
 	} else {
-		querySR.Order("tx_hash,timestamp desc")
+		querySR.Order("timestamp desc")
 	}
-	qErr := querySR.Select("DISTINCT ON (tx_hash) *").Find(&stakingRecords).Error
+	qErr := querySR.Find(&stakingRecords).Error
 	if qErr != nil {
 		log.Error("get staking records fail", "err", qErr)
 	}

@@ -60,7 +60,8 @@ func NewBridgeRecordDB(db *gorm.DB) BridgeRecordDB {
 func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize int, order string) (bR []BridgeRecords, total int64) {
 	var totalRecord int64
 	var bridgeRecords []BridgeRecords
-	queryBR := db.gorm.Table("bridge_record")
+	table := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) *")
+	queryBR := db.gorm.Table("(?) as temp ", table)
 	if address != "0x00" {
 		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Where("from = ?", address).Or("to = ?", address).Count(&totalRecord).Error
 		if err != nil {
