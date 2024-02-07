@@ -68,7 +68,7 @@ resources:
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   limits:
     cpu: 300m
-    memory: 256Mi
+    memory: 500Mi
   requests:
     cpu: 100m
     memory: 128Mi
@@ -85,5 +85,13 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-livenessProbe: {}
-readinessProbe: {}
+livenessProbe: 
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+readinessProbe: 
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
