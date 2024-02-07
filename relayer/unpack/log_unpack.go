@@ -66,7 +66,6 @@ func InitiateETH(event event.ContractEvent, db *database.DB) error {
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
 		Status:             0,
-		OperaType:          global_const.BridgeOperaInitType,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),
 	}
@@ -101,7 +100,6 @@ func InitiateWETH(event event.ContractEvent, db *database.DB) error {
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
 		Status:             0,
-		OperaType:          global_const.BridgeOperaInitType,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),
 	}
@@ -134,7 +132,6 @@ func InitiateERC20(event event.ContractEvent, db *database.DB) error {
 		DestTokenAddress:   common.Address{},
 		MsgHash:            common.Hash{},
 		MsgSentTimestamp:   event.Timestamp,
-		OperaType:          global_const.BridgeOperaInitType,
 		Status:             0,
 		SourceTxHash:       rlpLog.TxHash,
 		SourceBlockNumber:  big.NewInt(int64(rlpLog.BlockNumber)),

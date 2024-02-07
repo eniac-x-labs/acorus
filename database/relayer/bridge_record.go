@@ -28,7 +28,6 @@ type BridgeRecords struct {
 	Amount             *big.Int       `json:"amount" gorm:"serializer:u256"`
 	Nonce              *big.Int       `json:"nonce" gorm:"serializer:u256"`
 	Fee                *big.Int       `json:"fee" gorm:"serializer:u256"`
-	OperaType          int            `json:"opera_type"`
 	AssetType          int            `json:"asset_type"`
 	MsgSentTimestamp   uint64         `json:"msg_sent_timestamp"`
 	ClaimTimestamp     uint64         `json:"claim_timestamp"`
