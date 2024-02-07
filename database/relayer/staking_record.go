@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -51,8 +52,15 @@ func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
 
 func (db stakingRecordDB) StoreStakingRecord(stake StakingRecord) error {
 	stakingRecord := new(StakingRecord)
-	result := db.gorm.Table(stakingRecord.TableName()).Omit("guid").Create(&stake)
-	return result.Error
+	var exitsStake StakingRecord
+	err := db.gorm.Table(stakingRecord.TableName()).Where("tx_hash = ?", stake.TxHash).Take(&exitsStake).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result := db.gorm.Table(stakingRecord.TableName()).Omit("guid").Create(&stake)
+			return result.Error
+		}
+	}
+	return err
 }
 
 func (db stakingRecordDB) StoreStakingRecords(stakes []StakingRecord) error {
@@ -66,13 +74,13 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 	var stakingRecords []StakingRecord
 	querySR := db.gorm.Table("staking_record")
 	if address != "0x00" {
-		err := db.gorm.Table("staking_record").Select("guid").Where("user_address = ?", address).Count(&totalRecord).Error
+		err := db.gorm.Table("staking_record").Select("DISTINCT ON (tx_hash) guid").Where("user_address = ?", address).Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get staking records by address count fail")
 		}
 		querySR.Where("user_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
-		err := db.gorm.Table("staking_record").Select("guid").Count(&totalRecord).Error
+		err := db.gorm.Table("staking_record").Select("DISTINCT ON (tx_hash) guid").Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get staking records no address count fail ")
 		}
@@ -83,7 +91,7 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 	} else {
 		querySR.Order("timestamp desc")
 	}
-	qErr := querySR.Find(&stakingRecords).Error
+	qErr := querySR.Select("DISTINCT ON (tx_hash) *").Find(&stakingRecords).Error
 	if qErr != nil {
 		log.Error("get staking records fail", "err", qErr)
 	}

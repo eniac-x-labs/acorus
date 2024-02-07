@@ -369,13 +369,6 @@ func (rl *RelayerListener) relationBridge() error {
 			log.Println("relationBridge failed", "err", err)
 			return err
 		}
-		// step 3
-		log.Println("RelationMsgSent")
-		err = rl.db.BridgeClaim.RelationMsgSent()
-		if err != nil {
-			log.Println("RelationMsgSent failed", "err", err)
-			return err
-		}
 
 		list, err := rl.db.BridgeMsgSent.GetCanSaveDecodeList()
 		if err != nil {
@@ -388,10 +381,6 @@ func (rl *RelayerListener) relationBridge() error {
 			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
 				return unMarErr
 			}
-			bridgeRecord.DestTokenAddress = v.DestToken
-			bridgeRecord.DestBlockNumber = v.DestBlockNumber
-			bridgeRecord.DestTxHash = v.DestHash
-			bridgeRecord.ClaimTimestamp = v.DestTimestamp
 			bridgeRecord.Nonce = v.MsgNonce
 			bridgeRecord.Fee = v.Fee
 			bridgeRecordSaveList = append(bridgeRecordSaveList, bridgeRecord)
@@ -402,6 +391,22 @@ func (rl *RelayerListener) relationBridge() error {
 			if err != nil {
 				return err
 			}
+		}
+
+		// step 3
+		log.Println("RelationMsgSent")
+		err = rl.db.BridgeClaim.RelationMsgSent()
+		if err != nil {
+			log.Println("RelationMsgSent failed", "err", err)
+			return err
+		}
+
+		// setp 4
+		log.Println("RelationClaimData")
+		err = rl.db.BridgeRecord.RelationClaimData()
+		if err != nil {
+			log.Println("RelationClaimData failed", "err", err)
+			return err
 		}
 		log.Println("CleanMsgSent")
 		err = rl.db.BridgeMsgSent.CleanMsgSent()

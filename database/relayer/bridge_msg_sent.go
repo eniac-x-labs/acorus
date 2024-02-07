@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 	"math/big"
@@ -53,8 +54,15 @@ func NewBridgeMsgSentDB(db *gorm.DB) BridgeMsgSentDB {
 
 func (db bridgeMsgSentDB) StoreBridgeMsgSent(msgSent BridgeMsgSent) error {
 	msgSentRecord := new(BridgeMsgSent)
-	result := db.gorm.Table(msgSentRecord.TableName()).Omit("guid").Create(&msgSent)
-	return result.Error
+	var exist BridgeMsgSent
+	err := db.gorm.Table(msgSentRecord.TableName()).Where("tx_hash = ?", msgSent.TxHash).Take(&exist).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result := db.gorm.Table(msgSentRecord.TableName()).Omit("guid").Create(&msgSent)
+			return result.Error
+		}
+	}
+	return err
 }
 
 func (db bridgeMsgSentDB) StoreBridgeMsgSents(msgSentList []BridgeMsgSent) error {
@@ -67,7 +75,7 @@ func (db bridgeMsgSentDB) GetCanSaveDecodeList() (mList []BridgeMsgSent, err err
 	var msgSentList []BridgeMsgSent
 	selectSql := `
 		SELECT DISTINCT ON ("a"."tx_hash") * FROM bridge_msg_sent "a" WHERE "a"."msg_hash_relation" = true
-			AND "a"."bridge_relation" = true AND "a"."to_bridge_record" = false  LIMIT 1000
+			AND "a"."bridge_relation" = false AND "a"."to_bridge_record" = false  LIMIT 1000
 	`
 	result := db.gorm.Raw(selectSql).Find(&msgSentList)
 	if result.Error != nil {
