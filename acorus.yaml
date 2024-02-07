@@ -8,9 +8,6 @@ metrics:
   host: 127.0.0.1
   port: 8081
 
-grpc:
-  host: 127.0.0.1
-  port: 8082
 
 rpcs:
   - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/o0zYyGdlny_0bvOGS8qtNdMG4REyM0I_'
@@ -64,10 +61,10 @@ rpcs:
 #      - "0x987e300fDfb06093859358522a79098848C33852"
 
 master_db:
-  db_host: "120.77.251.247"
+  db_host: "postgresql"
   db_port: 5432
   db_user: "postgres"
-  db_password: "galamini"
+  db_password: "vVb9NhLYui"
   db_name: "acorus"
 
 slave_db:
@@ -78,7 +75,7 @@ slave_db:
   db_name: "acorus"
 
 
-bridge_grpc_url: ""
+bridge_grpc_url: "selaginella-app:8080"
 
 relayers:
   - chain_id: 11155111
