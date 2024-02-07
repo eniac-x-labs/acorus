@@ -87,9 +87,9 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 		querySR.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 	if strings.ToLower(order) == "asc" {
-		querySR.Order("timestamp asc")
+		querySR.Order("tx_hash,timestamp asc")
 	} else {
-		querySR.Order("timestamp desc")
+		querySR.Order("tx_hash,timestamp desc")
 	}
 	qErr := querySR.Select("DISTINCT ON (tx_hash) *").Find(&stakingRecords).Error
 	if qErr != nil {
