@@ -445,12 +445,13 @@ func (rl *RelayerListener) CrossChainTransfer(mutex sync.Mutex) error {
 			sourceChainId := bridgeRecord.SourceChainId
 			destChainId := bridgeRecord.DestChainId
 			amount := bridgeRecord.Amount.String()
-			fee := bridgeRecord.Fee.String()
-			nonce := bridgeRecord.Nonce.String()
+			fee := v.Fee.String()
+			nonce := v.MsgNonce.String()
 			to := bridgeRecord.ToAddress.String()
 			tokenAddress := bridgeRecord.SourceTokenAddress.String()
 			transfer, err := rl.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to, tokenAddress, fee, nonce)
 			if err != nil {
+				log.Println("CrossChainTransfer", "error", err)
 				continue
 			}
 			log.Println("CrossChainTransfer", "transfer", transfer.Success)
@@ -479,6 +480,7 @@ func (rl *RelayerListener) ChangeTransferStatus(mutex sync.Mutex) error {
 			hash := v.DestHash.String()
 			changeStatus, err := rl.bridgeRpcService.ChangeTransferStatus(sourceChainId, destChainId, hash)
 			if err != nil {
+				log.Println("ChangeTransferStatus", "error", err)
 				continue
 			}
 			log.Println("ChangeTransferStatus", "changeStatus", changeStatus.Success)
