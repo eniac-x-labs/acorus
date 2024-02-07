@@ -135,7 +135,8 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
-		return nil
+		fromL1Height = chainLatestBlockHeader.Number
+		toL1Height = chainLatestBlockHeader.Number
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
 			toL1Height = chainLatestBlockHeader.Number
@@ -193,7 +194,8 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
-		return nil
+		fromL2Height = chainLatestBlockHeader.Number
+		toL2Height = chainLatestBlockHeader.Number
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
 			toL2Height = chainLatestBlockHeader.Number
