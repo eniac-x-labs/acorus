@@ -28,6 +28,7 @@ func L1Deposit(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 		L1TransactionHash: rlpLog.TxHash,
 		L2TransactionHash: common.Hash{},
 		L1TxOrigin:        common.Address{},
+		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		Status:            0,
 		FromAddress:       d.DestinationAddress,
 		ToAddress:         d.DestinationAddress,
@@ -67,14 +68,15 @@ func L1Deposit(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 func L1WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
+	c, unpackErr := utils.DecodeLog(utils.ClaimEventAbi, "ClaimEvent", *rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
+	index := big.NewInt(int64(c["index"].(uint32)))
 	relayRelation := relation.RelayRelation{
 		TxHash:      rlpLog.TxHash,
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
-		MsgHash:     common.BigToHash(c.GlobalIndex),
+		MsgHash:     common.BigToHash(index),
 	}
 	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
 	return err

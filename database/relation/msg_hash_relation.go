@@ -30,15 +30,15 @@ type MsgHashRelationDB interface {
 type MsgHashRelationView interface {
 }
 
-type msgHashRelationViewDB struct {
+type msgHashRelationDB struct {
 	gorm *gorm.DB
 }
 
-func NewMsgHashRelationViewDB(db *gorm.DB) MsgHashRelationDB {
-	return &msgHashRelationViewDB{gorm: db}
+func NewMsgHashRelationDB(db *gorm.DB) MsgHashRelationDB {
+	return &msgHashRelationDB{gorm: db}
 }
 
-func (m msgHashRelationViewDB) MsgHashRelationStore(msgHashRelation MsgHashRelation, chainId string) error {
+func (m msgHashRelationDB) MsgHashRelationStore(msgHashRelation MsgHashRelation, chainId string) error {
 	tableNameByChainId := msgHashRelation.TableNameByChainId(chainId)
 	err := m.gorm.Table(tableNameByChainId).Omit("guid").Create(msgHashRelation).Error
 	return err

@@ -27,14 +27,22 @@ type RPC struct {
 	EventContracts     []string `yaml:"event_contracts"`
 }
 
+type Relayer struct {
+	ChainId         string   `yaml:"chain_id"`
+	EventStartBlock uint64   `yaml:"eventStartBlock"`
+	Contracts       []string `yaml:"contracts"`
+}
+
 type Config struct {
-	Server         Server   `yaml:"server"`
-	RPCs           []*RPC   `yaml:"rpcs"`
-	Metrics        Server   `yaml:"metrics"`
-	MasterDb       Database `yaml:"master_db"`
-	SlaveDb        Database `yaml:"slave_db"`
-	SlaveDbEnable  bool     `yaml:"slave_db_enable"`
-	EnableApiCache bool     `yaml:"enable_api_cache"`
+	Server         Server     `yaml:"server"`
+	RPCs           []*RPC     `yaml:"rpcs"`
+	Metrics        Server     `yaml:"metrics"`
+	BridgeGrpcUrl  string     `yaml:"bridge_grpc_url"`
+	MasterDb       Database   `yaml:"master_db"`
+	SlaveDb        Database   `yaml:"slave_db"`
+	SlaveDbEnable  bool       `yaml:"slave_db_enable"`
+	EnableApiCache bool       `yaml:"enable_api_cache"`
+	Relayers       []*Relayer `yaml:"relayers"`
 }
 
 func New(path string) (*Config, error) {

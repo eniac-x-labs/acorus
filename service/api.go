@@ -24,9 +24,11 @@ import (
 )
 
 const (
-	HealthPath        = "/healthz"
-	DepositsV1Path    = "/api/v1/deposits"
-	WithdrawalsV1Path = "/api/v1/withdrawals"
+	HealthPath           = "/healthz"
+	DepositsV1Path       = "/api/v1/deposits"
+	WithdrawalsV1Path    = "/api/v1/withdrawals"
+	StakingRecordsV1Path = "/api/v1/staking-records"
+	BridgeRecordsV1Path  = "/api/v1/bridge-records"
 )
 
 type APIConfig struct {
@@ -73,7 +75,7 @@ func (a *API) initRouter(conf *config.Config) {
 		lruCache = cache.NewLruCache()
 	}
 
-	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1)
+	svc := service.New(v, a.db.L1ToL2, a.db.L2ToL1, a.db.StakeRecord, a.db.BridgeRecord)
 	apiRouter := chi.NewRouter()
 	h := routes.NewRoutes(apiRouter, svc, conf.EnableApiCache, lruCache)
 
@@ -84,6 +86,8 @@ func (a *API) initRouter(conf *config.Config) {
 
 	apiRouter.Get(fmt.Sprintf(DepositsV1Path), h.L1ToL2ListHandler)
 	apiRouter.Get(fmt.Sprintf(WithdrawalsV1Path), h.L2ToL1ListHandler)
+	apiRouter.Get(fmt.Sprintf(StakingRecordsV1Path), h.StakingRecordsHandler)
+	apiRouter.Get(fmt.Sprintf(BridgeRecordsV1Path), h.BridgeRecordsHandler)
 
 	a.router = apiRouter
 }

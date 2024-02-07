@@ -95,9 +95,10 @@ func NewBridgeProcessor(db *database.DB, l1StartHeight *big.Int, l2StartHeight *
 }
 
 func (ep *OpEventProcessor) StartUnpack() error {
-	tickerSyncer := time.NewTicker(ep.loopInterval)
+	tickerEventOn1 := time.NewTicker(ep.loopInterval)
+	tickerEventOn2 := time.NewTicker(ep.loopInterval)
 	ep.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn1.C {
 			err := ep.onL1Data()
 			if err != nil {
 				return err
@@ -107,7 +108,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 	})
 
 	ep.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn2.C {
 			err := ep.onL2Data()
 			if err != nil {
 				return err

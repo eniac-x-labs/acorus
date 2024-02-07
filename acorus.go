@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/linea"
-	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
+	"github.com/cornerstone-labs/acorus/rpc/bridge"
+
 	"log"
 	"math/big"
 	"net"
@@ -21,27 +21,39 @@ import (
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	event2 "github.com/cornerstone-labs/acorus/event"
+	"github.com/cornerstone-labs/acorus/event/linea"
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
+	"github.com/cornerstone-labs/acorus/relayer"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
+	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
 )
 
 type Acorus struct {
-	DB              *database.DB
-	ethClient       map[uint64]node.EthClient
-	apiServer       *httputil.HTTPServer
-	metricsServer   *httputil.HTTPServer
-	metricsRegistry *prometheus.Registry
-	Synchronizer    map[uint64]*synchronizer.Synchronizer
-	Processor       map[uint64]event2.IEventProcessor
-	Worker          map[uint64]*op_stack2.WorkerProcessor
-	shutdown        context.CancelCauseFunc
-	stopped         atomic.Bool
-	chainIdList     []uint64
+	DB               *database.DB
+	ethClient        map[uint64]node.EthClient
+	apiServer        *httputil.HTTPServer
+	metricsServer    *httputil.HTTPServer
+	metricsRegistry  *prometheus.Registry
+	Synchronizer     map[uint64]*synchronizer.Synchronizer
+	Processor        map[uint64]event2.IEventProcessor
+	Worker           map[uint64]*op_stack2.WorkerProcessor
+	Relayer          map[uint64]*relayer.RelayerListener
+	shutdown         context.CancelCauseFunc
+	stopped          atomic.Bool
+	chainIdList      []uint64
+	birdgeRpcService bridge.BridgeRpcService
 }
+
+type RpcServerConfig struct {
+	GrpcHostname string
+	GrpcPort     int
+}
+
+const MaxRecvMessageSize = 1024 * 1024 * 300
 
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	log.Println("New acrous start️ 🕖")
@@ -72,6 +84,12 @@ func (as *Acorus) Start(ctx context.Context) error {
 		if worker != nil {
 			if err := worker.Start(context.Background()); err != nil {
 				return fmt.Errorf("failed to start worker: %w", err)
+			}
+		}
+		relayer := as.Relayer[realChainId]
+		if relayer != nil {
+			if err := relayer.Start(); err != nil {
+				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
 	}
@@ -130,12 +148,19 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initDB(ctx, cfg.MasterDb); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
 	}
+	if err := as.initBridgeRpcService(*cfg); err != nil {
+		return fmt.Errorf("failed to init bridge rpc service: %w", err)
+	}
 	if err := as.initSynchronizer(cfg); err != nil {
 		return fmt.Errorf("failed to init L1 Sync: %w", err)
 	}
 	if err := as.initEventProcessor(cfg); err != nil {
 		return fmt.Errorf("failed to init Processor: %w", err)
 	}
+	if err := as.initRelayer(ctx, cfg); err != nil {
+		return fmt.Errorf("failed to init relayer: %w", err)
+	}
+
 	return nil
 }
 
@@ -230,7 +255,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  50,
+			HeaderBufferSize:  500,
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
@@ -259,6 +284,53 @@ func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
 			as.Worker = make(map[uint64]*op_stack2.WorkerProcessor)
 		}
 		as.Worker[rpcItem.ChainId] = worker
+	}
+	return nil
+}
+
+func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
+	var loopInterval time.Duration = time.Second * 5
+	var epoch uint64 = 10_000
+	for i := range cfg.Relayers {
+		relayerCfg := cfg.Relayers[i]
+		chainIdStr := relayerCfg.ChainId
+		chainId, uerr := strconv.ParseUint(chainIdStr, 10, 64)
+		if uerr != nil {
+			return uerr
+		}
+		var rlworker *relayer.RelayerListener
+		var err error
+		log.Println("Init Relayer success", "chainId", chainIdStr)
+		if chainIdStr == "1" || chainIdStr == "11155111" {
+			rlworker, err = relayer.NewRelayerListener(as.DB, as.birdgeRpcService, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 1, as.shutdown, loopInterval, epoch)
+			if err != nil {
+				return err
+			}
+		} else {
+			rlworker, err = relayer.NewRelayerListener(as.DB, as.birdgeRpcService, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 2, as.shutdown, loopInterval, epoch)
+			if err != nil {
+				return err
+			}
+		}
+
+		if as.Relayer == nil {
+			as.Relayer = make(map[uint64]*relayer.RelayerListener)
+		}
+
+		as.Relayer[chainId] = rlworker
+	}
+	return nil
+}
+
+func (as *Acorus) initBridgeRpcService(cfg config.Config) error {
+	service, err := bridge.NewBridgeRpcService(cfg.BridgeGrpcUrl)
+	if err != nil {
+		log.Println("init bridge rpc service failed", "err", err)
+		return err
+	} else {
+		as.birdgeRpcService = service
 	}
 	return nil
 }

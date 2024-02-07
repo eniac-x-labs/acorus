@@ -53,10 +53,12 @@ func NewBridgeProcessor(db *database.DB,
 }
 
 func (lp *LineaEventProcessor) StartUnpack() error {
-	tickerSyncer := time.NewTicker(lp.loopInterval)
+	tickerEventOn1 := time.NewTicker(lp.loopInterval)
+	tickerEventOn2 := time.NewTicker(lp.loopInterval)
+	tickerEventRel := time.NewTicker(lp.loopInterval)
 	log.Println("starting scroll bridge processor...")
 	lp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn1.C {
 			err := lp.onL1Data()
 			if err != nil {
 				log.Println("no more l1 etl updates. shutting down l1 task")
@@ -67,7 +69,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 	})
 	// start L2 worker
 	lp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventOn2.C {
 			err := lp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
@@ -78,7 +80,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 	})
 	// start relation worker
 	lp.tasks.Go(func() error {
-		for range tickerSyncer.C {
+		for range tickerEventRel.C {
 			err := lp.relationL1L2()
 			if err != nil {
 				log.Println("shutting down relation task")
@@ -129,7 +131,7 @@ func (lp *LineaEventProcessor) onL1Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL1Height) == -1 {
-			toL1Height = new(big.Int).Add(fromL1Height, chainLatestBlockHeader.Number)
+			toL1Height = chainLatestBlockHeader.Number
 		}
 	}
 
@@ -156,8 +158,14 @@ func (lp *LineaEventProcessor) onL2Data() error {
 			return err
 		}
 		if lastBlockHeard == nil {
-			lastBlockHeard = &common2.BlockHeader{
-				Number: big.NewInt(0),
+			if lp.cfgRpc.StartBlock > 0 {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(int64(lp.cfgRpc.StartBlock)),
+				}
+			} else {
+				lastBlockHeard = &common2.BlockHeader{
+					Number: big.NewInt(0),
+				}
 			}
 		}
 		lp.l2StartHeight = lastBlockHeard.Number
@@ -177,7 +185,7 @@ func (lp *LineaEventProcessor) onL2Data() error {
 		return nil
 	} else {
 		if chainLatestBlockHeader.Number.Cmp(toL2Height) == -1 {
-			toL2Height = new(big.Int).Add(fromL2Height, chainLatestBlockHeader.Number)
+			toL2Height = chainLatestBlockHeader.Number
 		}
 	}
 

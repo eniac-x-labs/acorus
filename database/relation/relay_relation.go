@@ -32,15 +32,15 @@ type RelayRelationDB interface {
 type RelayRelationView interface {
 }
 
-type relayRelationViewDB struct {
+type relayRelationDB struct {
 	gorm *gorm.DB
 }
 
-func NewEvmRelayRelationViewDB(db *gorm.DB) RelayRelationDB {
-	return &relayRelationViewDB{gorm: db}
+func NewEvmRelayRelationDB(db *gorm.DB) RelayRelationDB {
+	return &relayRelationDB{gorm: db}
 }
 
-func (m relayRelationViewDB) RelayRelationStore(relayRelation RelayRelation, chainId string) error {
+func (m relayRelationDB) RelayRelationStore(relayRelation RelayRelation, chainId string) error {
 	tableNameByChainId := relayRelation.TableNameByChainId(chainId)
 	err := m.gorm.Table(tableNameByChainId).Omit("guid").Create(relayRelation).Error
 	return err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/database/relation"
+	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/pkg/errors"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,19 +23,26 @@ import (
 )
 
 type DB struct {
-	gorm              *gorm.DB
-	CreateTable       worker.CreateTableDB
-	Blocks            common.BlocksDB
-	ContractEvents    event.ContractEventsDB
-	WithdrawProven    event.WithdrawProvenDB
-	WithdrawFinalized event.WithdrawFinalizedDB
-	StateRoots        worker.StateRootDB
-	L2ToL1            worker.L2ToL1DB
-	L1ToL2            worker.L1ToL2DB
-	MsgSentRelation   relation.MsgSentRelationDB
-	MsgHashRelation   relation.MsgHashRelationDB
-	RelayRelation     relation.RelayRelationDB
-	RelayMessage      event.RelayMessageDB
+	gorm                *gorm.DB
+	CreateTable         worker.CreateTableDB
+	Blocks              common.BlocksDB
+	ContractEvents      event.ContractEventsDB
+	WithdrawProven      event.WithdrawProvenDB
+	WithdrawFinalized   event.WithdrawFinalizedDB
+	StateRoots          worker.StateRootDB
+	L2ToL1              worker.L2ToL1DB
+	L1ToL2              worker.L1ToL2DB
+	MsgSentRelation     relation.MsgSentRelationDB
+	MsgHashRelation     relation.MsgHashRelationDB
+	RelayRelation       relation.RelayRelationDB
+	RelayMessage        event.RelayMessageDB
+	StakeRecord         relayer.StakingRecordDB
+	BridgeRecord        relayer.BridgeRecordDB
+	BridgeMsgSent       relayer.BridgeMsgSentDB
+	BridgeMsgHash       relayer.BridgeMsgHashDB
+	BridgeClaim         relayer.BridgeClaimDB
+	BridgeFinalize      relayer.BridgeFinalizeDB
+	BridgeBlockListener relayer.BridgeBlockListenerDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -74,19 +82,26 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		return nil, err
 	}
 	db := &DB{
-		gorm:              gorm,
-		CreateTable:       worker.NewCreateTableDB(gorm),
-		Blocks:            common.NewBlocksDB(gorm),
-		WithdrawProven:    event.NewWithdrawProvenDB(gorm),
-		WithdrawFinalized: event.NewWithdrawFinalizedDB(gorm),
-		ContractEvents:    event.NewContractEventsDB(gorm),
-		StateRoots:        worker.NewStateRootDB(gorm),
-		L1ToL2:            worker.NewL1ToL2DB(gorm),
-		L2ToL1:            worker.NewL21ToL1DB(gorm),
-		MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
-		MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
-		RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
-		RelayMessage:      event.NewRelayMessageDB(gorm),
+		gorm:                gorm,
+		CreateTable:         worker.NewCreateTableDB(gorm),
+		Blocks:              common.NewBlocksDB(gorm),
+		WithdrawProven:      event.NewWithdrawProvenDB(gorm),
+		WithdrawFinalized:   event.NewWithdrawFinalizedDB(gorm),
+		ContractEvents:      event.NewContractEventsDB(gorm),
+		StateRoots:          worker.NewStateRootDB(gorm),
+		L1ToL2:              worker.NewL1ToL2DB(gorm),
+		L2ToL1:              worker.NewL21ToL1DB(gorm),
+		MsgSentRelation:     relation.NewMsgSentRelationDB(gorm),
+		MsgHashRelation:     relation.NewMsgHashRelationDB(gorm),
+		RelayRelation:       relation.NewEvmRelayRelationDB(gorm),
+		RelayMessage:        event.NewRelayMessageDB(gorm),
+		StakeRecord:         relayer.NewStakingRecordDB(gorm),
+		BridgeRecord:        relayer.NewBridgeRecordDB(gorm),
+		BridgeMsgSent:       relayer.NewBridgeMsgSentDB(gorm),
+		BridgeMsgHash:       relayer.NewBridgeMsgHashDB(gorm),
+		BridgeClaim:         relayer.NewBridgeClaimDB(gorm),
+		BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
+		BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
 	}
 	return db, nil
 }
@@ -94,18 +109,25 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 func (db *DB) Transaction(fn func(db *DB) error) error {
 	return db.gorm.Transaction(func(gorm *gorm.DB) error {
 		txDB := &DB{
-			gorm:              gorm,
-			Blocks:            common.NewBlocksDB(gorm),
-			WithdrawProven:    event.NewWithdrawProvenDB(gorm),
-			WithdrawFinalized: event.NewWithdrawFinalizedDB(gorm),
-			ContractEvents:    event.NewContractEventsDB(gorm),
-			L1ToL2:            worker.NewL1ToL2DB(gorm),
-			L2ToL1:            worker.NewL21ToL1DB(gorm),
-			StateRoots:        worker.NewStateRootDB(gorm),
-			MsgSentRelation:   relation.NewMsgSentRelationViewDB(gorm),
-			MsgHashRelation:   relation.NewMsgHashRelationViewDB(gorm),
-			RelayRelation:     relation.NewEvmRelayRelationViewDB(gorm),
-			RelayMessage:      event.NewRelayMessageDB(gorm),
+			gorm:                gorm,
+			Blocks:              common.NewBlocksDB(gorm),
+			WithdrawProven:      event.NewWithdrawProvenDB(gorm),
+			WithdrawFinalized:   event.NewWithdrawFinalizedDB(gorm),
+			ContractEvents:      event.NewContractEventsDB(gorm),
+			L1ToL2:              worker.NewL1ToL2DB(gorm),
+			L2ToL1:              worker.NewL21ToL1DB(gorm),
+			StateRoots:          worker.NewStateRootDB(gorm),
+			MsgSentRelation:     relation.NewMsgSentRelationDB(gorm),
+			MsgHashRelation:     relation.NewMsgHashRelationDB(gorm),
+			RelayRelation:       relation.NewEvmRelayRelationDB(gorm),
+			RelayMessage:        event.NewRelayMessageDB(gorm),
+			StakeRecord:         relayer.NewStakingRecordDB(gorm),
+			BridgeRecord:        relayer.NewBridgeRecordDB(gorm),
+			BridgeMsgSent:       relayer.NewBridgeMsgSentDB(gorm),
+			BridgeMsgHash:       relayer.NewBridgeMsgHashDB(gorm),
+			BridgeClaim:         relayer.NewBridgeClaimDB(gorm),
+			BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
+			BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
 		}
 		return fn(txDB)
 	})
