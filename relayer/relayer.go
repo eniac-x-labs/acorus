@@ -354,7 +354,7 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 }
 
 func (rl *RelayerListener) relationBridge() error {
-	if err := rl.db.Transaction(func(tx *database.DB) error {
+	if errRel := rl.db.Transaction(func(tx *database.DB) error {
 		// step 1
 		log.Println("RelationClaim")
 		err := rl.db.BridgeFinalize.RelationClaim()
@@ -375,6 +375,26 @@ func (rl *RelayerListener) relationBridge() error {
 		if err != nil {
 			return err
 		}
+		// step 3
+		log.Println("RelationMsgSent")
+		err = rl.db.BridgeClaim.RelationMsgSent()
+		if err != nil {
+			log.Println("RelationMsgSent failed", "err", err)
+			return err
+		}
+
+		// setp 4
+		log.Println("RelationClaimData")
+		err = rl.db.BridgeRecord.RelationClaimData()
+		if err != nil {
+			log.Println("RelationClaimData failed", "err", err)
+			return err
+		}
+		return nil
+	}); errRel != nil {
+		return errRel
+	}
+	if err := rl.db.Transaction(func(tx *database.DB) error {
 
 		list, err := rl.db.BridgeMsgSent.GetCanSaveDecodeList()
 		if err != nil {
@@ -399,23 +419,6 @@ func (rl *RelayerListener) relationBridge() error {
 				return err
 			}
 		}
-
-		// step 3
-		log.Println("RelationMsgSent")
-		err = rl.db.BridgeClaim.RelationMsgSent()
-		if err != nil {
-			log.Println("RelationMsgSent failed", "err", err)
-			return err
-		}
-
-		// setp 4
-		log.Println("RelationClaimData")
-		err = rl.db.BridgeRecord.RelationClaimData()
-		if err != nil {
-			log.Println("RelationClaimData failed", "err", err)
-			return err
-		}
-
 		return nil
 	}); err != nil {
 		return err
