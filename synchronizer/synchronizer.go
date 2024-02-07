@@ -55,7 +55,7 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 		log.Println("no indexed state starting from supplied L1 height;", "height =", cfg.StartHeight.String())
 		header, err := client.BlockHeaderByNumber(cfg.StartHeight)
 		if err != nil {
-			log.Fatalf("Fetch block header by number fail", "err", err)
+			log.Println("Fetch block header by number fail", "err", err)
 			return nil, fmt.Errorf("could not fetch starting block header: %w", err)
 		}
 		fromHeader = header
