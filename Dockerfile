@@ -12,7 +12,7 @@ RUN go mod download
 # build acorus with the shared go.mod & go.sum files
 COPY . /app/acorus
 
-WORKDIR /app/acorus
+WORKDIR /app
 
 RUN make acorus
 
@@ -23,5 +23,5 @@ COPY --from=builder /app/acorus/acorus.yaml /app/acorus/acorus.yaml
 COPY --from=builder /app/acorus/migrations /app/acorus/migrations
 
 ENV INDEXER_MIGRATIONS_DIR="/app/acorus/migrations"
-
+WORKDIR /app/acorus
 #CMD ["acorus", "api", "--config", "/app/acorus/acorus.yaml"]
