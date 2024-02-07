@@ -127,9 +127,11 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 
 	chainLatestBlockHeader, err := sp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
+		sp.l1StartHeight = new(big.Int).Sub(sp.l1StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		sp.l1StartHeight = new(big.Int).Sub(sp.l1StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
@@ -146,6 +148,8 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 		}
 		return nil
 	}); err != nil {
+		sp.l1StartHeight = new(big.Int).Sub(sp.l1StartHeight, bigint.One)
+
 		return err
 	}
 	sp.l1StartHeight = toL1Height
@@ -180,9 +184,12 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(sp.epoch)))
 	chainLatestBlockHeader, err := sp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
 	if err != nil {
+		sp.l2StartHeight = new(big.Int).Sub(sp.l2StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		sp.l2StartHeight = new(big.Int).Sub(sp.l2StartHeight, bigint.One)
+
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
@@ -199,6 +206,7 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 		}
 		return nil
 	}); err != nil {
+		sp.l2StartHeight = new(big.Int).Sub(sp.l2StartHeight, bigint.One)
 		return err
 	}
 	sp.l2StartHeight = toL2Height
