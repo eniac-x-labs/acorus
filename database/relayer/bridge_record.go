@@ -12,25 +12,26 @@ import (
 )
 
 type BridgeRecords struct {
-	GUID               uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
-	SourceChainId      string         `json:"source_chain_id"`
-	DestChainId        string         `json:"dest_chain_id"`
-	SourceTxHash       common.Hash    `json:"source_tx_hash" gorm:"serializer:bytes"`
-	DestTxHash         common.Hash    `json:"dest_tx_hash" gorm:"serializer:bytes"`
-	SourceBlockNumber  *big.Int       `json:"source_block_number" gorm:"serializer:u256"`
-	DestBlockNumber    *big.Int       `json:"dest_block_number" gorm:"serializer:u256"`
-	SourceTokenAddress common.Address `json:"source_token_address" gorm:"serializer:bytes"`
-	DestTokenAddress   common.Address `json:"dest_token_address" gorm:"serializer:bytes"`
-	MsgHash            common.Hash    `json:"msg_hash" gorm:"serializer:bytes"`
-	From               common.Address `json:"from" gorm:"serializer:bytes"`
-	To                 common.Address `json:"to" gorm:"serializer:bytes"`
-	Status             int            `json:"status"`
-	Amount             *big.Int       `json:"amount" gorm:"serializer:u256"`
-	Nonce              *big.Int       `json:"nonce" gorm:"serializer:u256"`
-	Fee                *big.Int       `json:"fee" gorm:"serializer:u256"`
-	AssetType          int            `json:"asset_type"`
-	MsgSentTimestamp   uint64         `json:"msg_sent_timestamp"`
-	ClaimTimestamp     uint64         `json:"claim_timestamp"`
+	GUID                 uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	SourceChainId        string         `json:"source_chain_id"`
+	DestChainId          string         `json:"dest_chain_id"`
+	SourceTxHash         common.Hash    `json:"source_tx_hash" gorm:"serializer:bytes"`
+	DestTxHash           common.Hash    `json:"dest_tx_hash" gorm:"serializer:bytes"`
+	SourceBlockNumber    *big.Int       `json:"source_block_number" gorm:"serializer:u256"`
+	DestBlockNumber      *big.Int       `json:"dest_block_number" gorm:"serializer:u256"`
+	SourceTokenAddress   common.Address `json:"source_token_address" gorm:"serializer:bytes"`
+	DestTokenAddress     common.Address `json:"dest_token_address" gorm:"serializer:bytes"`
+	MsgHash              common.Hash    `json:"msg_hash" gorm:"serializer:bytes"`
+	FromAddress          common.Address `json:"fromAddress" gorm:"serializer:bytes"`
+	ToAddress            common.Address `json:"toAddress" gorm:"serializer:bytes"`
+	Status               int            `json:"status"`
+	Amount               *big.Int       `json:"amount" gorm:"serializer:u256"`
+	Nonce                *big.Int       `json:"nonce" gorm:"serializer:u256"`
+	Fee                  *big.Int       `json:"fee" gorm:"serializer:u256"`
+	BridgeRecordRelation bool           `json:"bridge_record_relation""`
+	AssetType            int            `json:"asset_type"`
+	MsgSentTimestamp     uint64         `json:"msg_sent_timestamp"`
+	ClaimTimestamp       uint64         `json:"claim_timestamp"`
 }
 
 func (BridgeRecords) TableName() string {
@@ -45,6 +46,7 @@ type BridgeRecordDB interface {
 	BridgeRecordDBView
 	StoreBridgeRecord(bridgeRecord BridgeRecords) error
 	StoreBridgeRecords(bridgeRecord []BridgeRecords) error
+	RelationClaimData() error
 }
 
 type BridgeRecordDBView interface {
@@ -60,13 +62,13 @@ func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize
 	var bridgeRecords []BridgeRecords
 	queryBR := db.gorm.Table("bridge_record")
 	if address != "0x00" {
-		err := db.gorm.Table("bridge_record").Select("guid").Where("from = ?", address).Or("to = ?", address).Count(&totalRecord).Error
+		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Where("from = ?", address).Or("to = ?", address).Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get bridge records by address count fail")
 		}
-		queryBR.Where("from = ?", address).Or(" to = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
+		queryBR.Where("from_address = ?", address).Or(" to_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
-		err := db.gorm.Table("bridge_record").Select("guid").Count(&totalRecord).Error
+		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get bridge records no address count fail ")
 		}
@@ -77,7 +79,7 @@ func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize
 	} else {
 		queryBR.Order("msg_sent_timestamp desc")
 	}
-	qErr := queryBR.Find(&bridgeRecords).Error
+	qErr := queryBR.Select("DISTINCT ON (source_tx_hash) *").Find(&bridgeRecords).Error
 	if qErr != nil {
 		log.Error("get bridge records fail", "err", qErr)
 	}
@@ -94,4 +96,16 @@ func (db bridgeRecordsDB) StoreBridgeRecords(brs []BridgeRecords) error {
 	bridgeRecords := new(BridgeRecords)
 	result := db.gorm.Table(bridgeRecords.TableName()).Omit("guid").Create(&brs)
 	return result.Error
+}
+
+func (db bridgeRecordsDB) RelationClaimData() error {
+	relationSql := `
+		update  bridge_record a  set dest_tx_hash=b.dest_hash,dest_token_address=b.dest_token,
+		                               dest_block_number=b.dest_block_number,claim_timestamp=b.dest_timestamp,
+		                               bridge_record_relation=true 
+				from bridge_msg_sent  b 
+				where  a.msg_hash=b.msg_hash  and b.bridge_relation=true and a.bridge_record_relation=false
+	`
+	err := db.gorm.Exec(relationSql).Error
+	return err
 }

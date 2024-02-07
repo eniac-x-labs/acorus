@@ -317,6 +317,7 @@ CREATE TABLE IF NOT EXISTS bridge_record
     nonce                UINT256,
     fee                  UINT256,
     asset_type           SMALLINT NOT NULL,
+    bridge_record_relation boolean default false,
     msg_sent_timestamp   INTEGER,
     claim_timestamp      INTEGER
 );

@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 )
@@ -35,8 +36,15 @@ func NewBridgeFinalizeDB(db *gorm.DB) BridgeFinalizeDB {
 
 func (db bridgeFinalizeDB) StoreBridgeFinalize(finalize BridgeFinalize) error {
 	bridgeFinalize := new(BridgeFinalize)
-	result := db.gorm.Table(bridgeFinalize.TableName()).Omit("guid").Create(&finalize)
-	return result.Error
+	var exist BridgeFinalize
+	err := db.gorm.Table(bridgeFinalize.TableName()).Where("tx_hash = ?", finalize.TxHash.String()).Take(&exist).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result := db.gorm.Table(bridgeFinalize.TableName()).Omit("guid").Create(&finalize)
+			return result.Error
+		}
+	}
+	return err
 }
 
 func (db bridgeFinalizeDB) StoreBridgeFinalizes(finalizes []BridgeFinalize) error {

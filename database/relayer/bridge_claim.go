@@ -1,6 +1,7 @@
 package relayer
 
 import (
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"gorm.io/gorm"
 	"math/big"
@@ -40,8 +41,15 @@ func NewBridgeClaimDB(db *gorm.DB) BridgeClaimDB {
 
 func (db bridgeClaimDB) StoreBridgeClaim(claim BridgeClaimed) error {
 	bridgeClaimed := new(BridgeClaimed)
-	result := db.gorm.Table(bridgeClaimed.TableName()).Omit("guid").Create(&claim)
-	return result.Error
+	var exist BridgeClaimed
+	err := db.gorm.Table(bridgeClaimed.TableName()).Where("tx_hash = ?", claim.TxHash.String()).Take(&exist).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result := db.gorm.Table(bridgeClaimed.TableName()).Omit("guid").Create(&claim)
+			return result.Error
+		}
+	}
+	return err
 }
 
 func (db bridgeClaimDB) StoreBridgeClaims(claims []BridgeClaimed) error {

@@ -101,7 +101,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn1.C {
 			err := ep.onL1Data()
 			if err != nil {
-				return err
+				continue
 			}
 		}
 		return nil
@@ -111,7 +111,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := ep.onL2Data()
 			if err != nil {
-				return err
+				continue
 			}
 		}
 		return nil
