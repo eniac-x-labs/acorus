@@ -49,6 +49,15 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      initContainers:
+        - name: app
+          image: "nginx:1.16.0"
+          imagePullPolicy: IfNotPresent
+          commands:
+          - acorus
+          - migrate
+          - --config
+          - /app/acorus/acorus.yaml
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
