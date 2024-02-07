@@ -62,8 +62,8 @@ spec:
           - --config
           - /app/acorus/acorus.yaml
       initContainers:
-        - name: app
-          image: "nginx:1.16.0"
+        - name: {{ .Chart.Name }}-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: IfNotPresent
           commands:
           - acorus
