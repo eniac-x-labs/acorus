@@ -33,6 +33,11 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - acorus
+          - api
+          - --config
+          - /app/acorus/acorus.yaml
           ports:
             {{- range $index, $val := .Values.ports }}
             - name: {{ $val.name }}
