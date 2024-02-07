@@ -430,6 +430,7 @@ func (rl *RelayerListener) CrossChainTransfer() error {
 				continue
 			}
 			log.Println("CrossChainTransfer", "transfer", transfer.Success)
+			// todo if call rpc fail ,need add retry times
 			if transfer.Success {
 				rl.db.BridgeMsgSent.UpdateCrossStatus(v.TxHash.String())
 			}
@@ -455,6 +456,7 @@ func (rl *RelayerListener) ChangeTransferStatus() error {
 				continue
 			}
 			log.Println("ChangeTransferStatus", "changeStatus", changeStatus.Success)
+			// todo if call rpc fail ,need add retry times
 			if changeStatus.Success {
 				rl.db.BridgeMsgSent.UpdateChangeStatus(v.TxHash.String())
 			}
