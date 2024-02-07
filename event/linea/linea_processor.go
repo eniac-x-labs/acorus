@@ -62,7 +62,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 			err := lp.onL1Data()
 			if err != nil {
 				log.Println("no more l1 etl updates. shutting down l1 task")
-				return err
+				continue
 			}
 		}
 		return nil
@@ -73,7 +73,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 			err := lp.onL2Data()
 			if err != nil {
 				log.Println("no more l2 etl updates. shutting down l2 task")
-				return err
+				continue
 			}
 		}
 		return nil
@@ -84,7 +84,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 			err := lp.relationL1L2()
 			if err != nil {
 				log.Println("shutting down relation task")
-				return err
+				continue
 			}
 		}
 		return nil

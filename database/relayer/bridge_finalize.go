@@ -37,7 +37,7 @@ func NewBridgeFinalizeDB(db *gorm.DB) BridgeFinalizeDB {
 func (db bridgeFinalizeDB) StoreBridgeFinalize(finalize BridgeFinalize) error {
 	bridgeFinalize := new(BridgeFinalize)
 	var exist BridgeFinalize
-	err := db.gorm.Table(bridgeFinalize.TableName()).Where("tx_hash = ?", finalize.TxHash).Take(&exist).Error
+	err := db.gorm.Table(bridgeFinalize.TableName()).Where("tx_hash = ?", finalize.TxHash.String()).Take(&exist).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result := db.gorm.Table(bridgeFinalize.TableName()).Omit("guid").Create(&finalize)

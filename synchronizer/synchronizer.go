@@ -91,7 +91,7 @@ func (syncer *Synchronizer) Start() error {
 				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
 				if err != nil {
 					log.Println("error querying for headers", "err", err)
-					return err
+					continue
 				} else if len(newHeaders) == 0 {
 					log.Println("no new headers. syncer at head?")
 				} else {

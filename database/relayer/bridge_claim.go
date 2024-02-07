@@ -42,7 +42,7 @@ func NewBridgeClaimDB(db *gorm.DB) BridgeClaimDB {
 func (db bridgeClaimDB) StoreBridgeClaim(claim BridgeClaimed) error {
 	bridgeClaimed := new(BridgeClaimed)
 	var exist BridgeClaimed
-	err := db.gorm.Table(bridgeClaimed.TableName()).Where("tx_hash = ?", claim.TxHash).Take(&exist).Error
+	err := db.gorm.Table(bridgeClaimed.TableName()).Where("tx_hash = ?", claim.TxHash.String()).Take(&exist).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result := db.gorm.Table(bridgeClaimed.TableName()).Omit("guid").Create(&claim)

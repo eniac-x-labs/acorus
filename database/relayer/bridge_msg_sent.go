@@ -55,7 +55,7 @@ func NewBridgeMsgSentDB(db *gorm.DB) BridgeMsgSentDB {
 func (db bridgeMsgSentDB) StoreBridgeMsgSent(msgSent BridgeMsgSent) error {
 	msgSentRecord := new(BridgeMsgSent)
 	var exist BridgeMsgSent
-	err := db.gorm.Table(msgSentRecord.TableName()).Where("tx_hash = ?", msgSent.TxHash).Take(&exist).Error
+	err := db.gorm.Table(msgSentRecord.TableName()).Where("tx_hash = ?", msgSent.TxHash.String()).Take(&exist).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result := db.gorm.Table(msgSentRecord.TableName()).Omit("guid").Create(&msgSent)

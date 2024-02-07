@@ -22,8 +22,8 @@ type BridgeRecords struct {
 	SourceTokenAddress   common.Address `json:"source_token_address" gorm:"serializer:bytes"`
 	DestTokenAddress     common.Address `json:"dest_token_address" gorm:"serializer:bytes"`
 	MsgHash              common.Hash    `json:"msg_hash" gorm:"serializer:bytes"`
-	From                 common.Address `json:"from" gorm:"serializer:bytes"`
-	To                   common.Address `json:"to" gorm:"serializer:bytes"`
+	FromAddress          common.Address `json:"fromAddress" gorm:"serializer:bytes"`
+	ToAddress            common.Address `json:"toAddress" gorm:"serializer:bytes"`
 	Status               int            `json:"status"`
 	Amount               *big.Int       `json:"amount" gorm:"serializer:u256"`
 	Nonce                *big.Int       `json:"nonce" gorm:"serializer:u256"`
@@ -66,7 +66,7 @@ func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize
 		if err != nil {
 			log.Error("get bridge records by address count fail")
 		}
-		queryBR.Where("from = ?", address).Or(" to = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
+		queryBR.Where("from_address = ?", address).Or(" to_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
 		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Count(&totalRecord).Error
 		if err != nil {

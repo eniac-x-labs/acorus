@@ -53,7 +53,7 @@ func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
 func (db stakingRecordDB) StoreStakingRecord(stake StakingRecord) error {
 	stakingRecord := new(StakingRecord)
 	var exitsStake StakingRecord
-	err := db.gorm.Table(stakingRecord.TableName()).Where("tx_hash = ?", stake.TxHash).Take(&exitsStake).Error
+	err := db.gorm.Table(stakingRecord.TableName()).Where("tx_hash = ?", stake.TxHash.String()).Take(&exitsStake).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result := db.gorm.Table(stakingRecord.TableName()).Omit("guid").Create(&stake)

@@ -40,7 +40,7 @@ func NewBridgeMsgHashDB(db *gorm.DB) BridgeMsgHashDB {
 func (db bridgeMsgHashDB) StoreBridgeMsgHash(msgHash BridgeMsgHash) error {
 	msgHashRecord := new(BridgeMsgHash)
 	var exist BridgeMsgHash
-	err := db.gorm.Table(msgHashRecord.TableName()).Where("tx_hash = ?", msgHash.TxHash).Take(&exist).Error
+	err := db.gorm.Table(msgHashRecord.TableName()).Where("tx_hash = ?", msgHash.TxHash.String()).Take(&exist).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			result := db.gorm.Table(msgHashRecord.TableName()).Omit("guid").Create(&msgHash)

@@ -57,8 +57,8 @@ func InitiateETH(event event.ContractEvent, db *database.DB) error {
 	bridgeRecord := relayer.BridgeRecords{
 		SourceChainId:      uEvent.SourceChainId.String(),
 		DestChainId:        uEvent.DestChainId.String(),
-		From:               uEvent.From,
-		To:                 uEvent.To,
+		FromAddress:        uEvent.From,
+		ToAddress:          uEvent.To,
 		Amount:             uEvent.Value,
 		AssetType:          common2.ETH,
 		SourceTokenAddress: common.Address{},
@@ -91,8 +91,8 @@ func InitiateWETH(event event.ContractEvent, db *database.DB) error {
 	bridgeRecord := relayer.BridgeRecords{
 		SourceChainId:      uEvent.SourceChainId.String(),
 		DestChainId:        uEvent.DestChainId.String(),
-		From:               uEvent.From,
-		To:                 uEvent.To,
+		FromAddress:        uEvent.From,
+		ToAddress:          uEvent.To,
 		Amount:             uEvent.Value,
 		AssetType:          common2.WETH,
 		SourceTokenAddress: common.Address{},
@@ -124,8 +124,8 @@ func InitiateERC20(event event.ContractEvent, db *database.DB) error {
 	bridgeRecord := relayer.BridgeRecords{
 		SourceChainId:      uEvent.SourceChainId.String(),
 		DestChainId:        uEvent.DestChainId.String(),
-		From:               uEvent.From,
-		To:                 uEvent.To,
+		FromAddress:        uEvent.From,
+		ToAddress:          uEvent.To,
 		Amount:             uEvent.Value,
 		AssetType:          common2.ERC20,
 		SourceTokenAddress: uEvent.ERC20Address,

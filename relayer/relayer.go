@@ -77,7 +77,7 @@ func (rl *RelayerListener) Start() error {
 				err := rl.onL1Data()
 				if err != nil {
 					log.Println("no more l1 etl updates. shutting down l1 task")
-					return err
+					continue
 				}
 			}
 			return nil
@@ -89,7 +89,7 @@ func (rl *RelayerListener) Start() error {
 				err := rl.onL2Data()
 				if err != nil {
 					log.Println("no more l1 etl updates. shutting down l1 task")
-					return err
+					continue
 				}
 			}
 			return nil
@@ -102,7 +102,7 @@ func (rl *RelayerListener) Start() error {
 			err := rl.relationBridge()
 			if err != nil {
 				log.Println("shutting down relationBridge")
-				return err
+				continue
 			}
 		}
 		return nil
@@ -114,7 +114,7 @@ func (rl *RelayerListener) Start() error {
 			err := rl.CrossChainTransfer()
 			if err != nil {
 				log.Println("shutting down relationBridge")
-				return err
+				continue
 			}
 		}
 		return nil
@@ -126,7 +126,7 @@ func (rl *RelayerListener) Start() error {
 			err := rl.ChangeTransferStatus()
 			if err != nil {
 				log.Println("shutting down relationBridge")
-				return err
+				continue
 			}
 		}
 		return nil
@@ -370,6 +370,12 @@ func (rl *RelayerListener) relationBridge() error {
 			return err
 		}
 
+		log.Println("CleanMsgSent")
+		err = rl.db.BridgeMsgSent.CleanMsgSent()
+		if err != nil {
+			return err
+		}
+
 		list, err := rl.db.BridgeMsgSent.GetCanSaveDecodeList()
 		if err != nil {
 			return err
@@ -381,6 +387,7 @@ func (rl *RelayerListener) relationBridge() error {
 			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
 				return unMarErr
 			}
+			bridgeRecord.MsgHash = v.MsgHash
 			bridgeRecord.Nonce = v.MsgNonce
 			bridgeRecord.Fee = v.Fee
 			bridgeRecordSaveList = append(bridgeRecordSaveList, bridgeRecord)
@@ -408,11 +415,7 @@ func (rl *RelayerListener) relationBridge() error {
 			log.Println("RelationClaimData failed", "err", err)
 			return err
 		}
-		log.Println("CleanMsgSent")
-		err = rl.db.BridgeMsgSent.CleanMsgSent()
-		if err != nil {
-			return err
-		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -434,7 +437,7 @@ func (rl *RelayerListener) CrossChainTransfer() error {
 			amount := bridgeRecord.Amount.String()
 			fee := bridgeRecord.Fee.String()
 			nonce := bridgeRecord.Nonce.String()
-			to := bridgeRecord.To.String()
+			to := bridgeRecord.ToAddress.String()
 			tokenAddress := bridgeRecord.SourceTokenAddress.String()
 			transfer, err := rl.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to, tokenAddress, fee, nonce)
 			if err != nil {
