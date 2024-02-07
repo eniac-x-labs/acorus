@@ -26,4 +26,4 @@ WORKDIR /app
 
 ENV INDEXER_MIGRATIONS_DIR="/app/acorus/migrations"
 
-CMD ["acorus", "migrate", "--config", "/app/acorus/acorus.yaml", "&&", "acorus", "index", "--config", "/app/acorus/acorus.yaml", "&&", "acorus", "api", "--config", "/app/acorus/acorus.yaml"]
+CMD ["acorus", "api", "--config", "/app/acorus/acorus.yaml"]
