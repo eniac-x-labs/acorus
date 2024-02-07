@@ -255,7 +255,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  500,
+			HeaderBufferSize:  50,
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),

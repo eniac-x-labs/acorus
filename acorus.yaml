@@ -1,64 +1,38 @@
 slave_db_enable: false
 
 server:
-  host: 127.0.0.1
+  host: 0.0.0.0
   port: 8080
 
 metrics:
-  host: 127.0.0.1
+  host: 0.0.0.0
   port: 8081
-
 
 rpcs:
   - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/o0zYyGdlny_0bvOGS8qtNdMG4REyM0I_'
-    chain_id: 11155111
-    start_block: 5218234
+    chain_id: 1
+    start_block: 5237021
     contracts:
     event_contracts:
 
-  #  - rpc_url: 'https://rpc.ankr.com/optimism/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-  #    chain_id: 10
-  #    start_block: 114216017
-  #    contracts:
-  #    event_contracts:
+  - rpc_url: 'https://opt-sepolia.g.alchemy.com/v2/FzuTJBqbf8-w1E6AAcPkWO1a2OGFX2DL'
+    chain_id: 10
+    start_block: 7746768
+    contracts:
+    event_contracts:
 
-#  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/XJph3lRc3_xJN3kHX7Gy0PkvkPbJD_GD"
-#    chain_id: 1101
-#    start_block: 9634600
-#    l1_event_unpack_block: 19147000
-#    contracts:
-#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-#    event_contracts:
-#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
-#  - rpc_url: 'https://rpc.ankr.com/scroll/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-#    chain_id: 534352
-#    start_block: 2950000
-#    l1_event_unpack_block: 19126200
-#    contracts:
-#      - "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6"
-#      - "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367"
-#      - "0x7F2b8C31F88B6006c382775eea88297Ec1e3E905"
-#      - "0x7AC440cAe8EB6328de4fA621163a792c1EA9D4fE"
-#      - "0xD8A791fE2bE73eb6E6cF1eb0cb3F36adC9B3F8f9"
-#      - "0xb2b10a289A229415a124EFDeF310C10cb004B6ff"
-#      - "0x6260aF48e8948617b8FA17F4e5CEa2d21D21554B"
-#      - "0xb94f7F6ABcb811c5Ac709dE14E37590fcCd975B6"
-#      - "0x37ba659D6CC380D12Fb96567CC52FC8e1DF4E334"
-#      - "0x892dDB2899325aBBA1fD00FDA8249B40Cbbc33F9"
-#      - "0xD8dD7787f89c7E6243AD32E0d0cCf460243C8130"
-#    event_contracts:
-#      - "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
-#      - "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC"
-#      - "0x6EA73e05AdC79974B931123675ea8F78FfdacDF0"
-#      - "0x7003E7B7186f0E6601203b99F7B8DECBfA391cf9"
-#      - "0xE2b4795039517653c5Ae8C2A9BFdd783b48f447A"
-#      - "0x64CCBE37c9A82D85A1F2E74649b7A42923067988"
-#      - "0x7bC08E1c04fb41d75F1410363F0c5746Eae80582"
-#      - "0x62597Cc19703aF10B58feF87B0d5D29eFE263bcc"
-#      - "0x987e300fDfb06093859358522a79098848C33852"
-#      - "0xE9c5C9f67ec7B773fC76440845751F657bb953FF"
-#      - "0xC5034eB8F682b73F93C9246aa95A8eBbF82793aA"
-#      - "0x987e300fDfb06093859358522a79098848C33852"
+  - rpc_url: "https://polygonzkevm-testnet.g.alchemy.com/v2/dmeCZ-Yf1YjIrgExOXbfrTF_Z_51GyBx"
+    chain_id: 1101
+    start_block: 3961436
+    l1_event_unpack_block: 5237021
+    contracts:
+    event_contracts:
+  - rpc_url: 'https://rpc.ankr.com/scroll_sepolia_testnet/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 534352
+    start_block: 2945654
+    l1_event_unpack_block: 5237021
+    contracts:
+    event_contracts:
 
 master_db:
   db_host: "postgresql"
@@ -78,12 +52,24 @@ slave_db:
 bridge_grpc_url: "selaginella-app:8080"
 
 relayers:
-  - chain_id: 11155111
+  - chain_id: 1
     eventStartBlock: 5218234
     contracts:
       - "0x44c8EDB79089Fe99cfb79F8284D9f9CD83B8Fbc5"
       - "0xAC13457009a2aE49820Bd7517818436dE2202549"
-#  - chain_id: 1101
-#    eventStartBlock: 9634600
-#    contracts:
-#      - "0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe"
+  - chain_id: 1101
+    eventStartBlock: 5237021
+    contracts:
+      - "0x8fEE59c274eA82fAc9280FeB04B7364A80c63BA6"
+      - "0x03C43a778A4157c8781aA1bc645F2703B224b9d8"
+  - chain_id: 534352
+    eventStartBlock: 2945654
+    contracts:
+      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
+      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+  - chain_id: 10
+    eventStartBlock: 7746768
+    contracts:
+      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
+      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+
