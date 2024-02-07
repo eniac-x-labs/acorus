@@ -76,11 +76,11 @@ func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize
 		queryBR.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
 	if strings.ToLower(order) == "asc" {
-		queryBR.Order("source_tx_hash,msg_sent_timestamp asc")
+		queryBR.Order("msg_sent_timestamp asc")
 	} else {
-		queryBR.Order("source_tx_hash,msg_sent_timestamp desc")
+		queryBR.Order("msg_sent_timestamp desc")
 	}
-	qErr := queryBR.Select("DISTINCT ON (source_tx_hash) *").Find(&bridgeRecords).Error
+	qErr := queryBR.Find(&bridgeRecords).Error
 	if qErr != nil {
 		log.Error("get bridge records fail", "err", qErr)
 	}
