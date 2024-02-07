@@ -12,7 +12,7 @@ RUN go mod download
 # build acorus with the shared go.mod & go.sum files
 COPY . /app/acorus
 
-WORKDIR /app
+WORKDIR /app/acorus
 
 RUN make acorus
 
