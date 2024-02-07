@@ -36,8 +36,6 @@ spec:
           command:
           - acorus
           - api
-          - --config
-          - /app/acorus/acorus.yaml
           ports:
             {{- range $index, $val := .Values.ports }}
             - name: {{ $val.name }}
@@ -64,8 +62,6 @@ spec:
           command:
           - acorus
           - index
-          - --config
-          - /app/acorus/acorus.yaml
       initContainers:
         - name: {{ .Chart.Name }}-migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -73,8 +69,6 @@ spec:
           command:
           - acorus
           - migrate
-          - --config
-          - /app/acorus/acorus.yaml
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
