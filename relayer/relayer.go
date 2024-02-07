@@ -84,7 +84,6 @@ func (rl *RelayerListener) Start() error {
 		})
 	} else {
 		relayerEventOn2 := time.NewTicker(rl.loopInterval)
-
 		rl.tasks.Go(func() error {
 			for range relayerEventOn2.C {
 				err := rl.onL2Data()
@@ -348,7 +347,6 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 
 func (rl *RelayerListener) relationBridge() error {
 	if err := rl.db.Transaction(func(tx *database.DB) error {
-
 		// step 1
 		log.Println("RelationClaim")
 		err := rl.db.BridgeFinalize.RelationClaim()
