@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"math/big"
 
 	"gorm.io/gorm"
@@ -14,6 +15,7 @@ import (
 )
 
 type BlockHeader struct {
+	GUID       uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
 	Hash       common.Hash `gorm:"primaryKey;serializer:bytes"`
 	ParentHash common.Hash `gorm:"serializer:bytes"`
 	Number     *big.Int    `gorm:"serializer:u256"`
@@ -60,7 +62,7 @@ func NewBlocksDB(db *gorm.DB) BlocksDB {
 }
 
 func (db *blocksDB) StoreBlockHeaders(chainId string, headers []ChainBlockHeader) error {
-	result := db.gorm.Table("block_headers_" + chainId).Create(&headers)
+	result := db.gorm.Table("block_headers_" + chainId).Omit("guid").Create(&headers)
 	return result.Error
 }
 
