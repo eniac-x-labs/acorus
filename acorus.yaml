@@ -67,8 +67,8 @@ relayers:
   - chain_id: 1101
     eventStartBlock: 5237021
     contracts:
-      - "0x8fEE59c274eA82fAc9280FeB04B7364A80c63BA6"
-      - "0x03C43a778A4157c8781aA1bc645F2703B224b9d8"
+      - "0xeC9F0cB0c61ea321491F5EB1B77c0C499F986f35"
+      - "0xB781CB03FBd0CC91Fe42957EAAC0d2059FB17Dd5"
 #  - chain_id: 534352
 #    eventStartBlock: 2945654
 #    contracts:

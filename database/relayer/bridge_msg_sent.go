@@ -97,7 +97,7 @@ func (db bridgeMsgSentDB) CleanMsgSent() error {
 func (db bridgeMsgSentDB) GetCanCrossDataList() []BridgeMsgSent {
 	getSql := `
 		select DISTINCT ON ("a"."tx_hash") * from bridge_msg_sent a where a.bridge_relation=false
-			and a.to_bridge_record = false and a.to_cross_status = false and a.msg_hash_relation = true  LIMIT 20
+			and a.to_bridge_record = true and a.to_cross_status = false and a.msg_hash_relation = true  LIMIT 20
 	`
 	var bridgeMsgSent []BridgeMsgSent
 	result := db.gorm.Raw(getSql).Find(&bridgeMsgSent)
