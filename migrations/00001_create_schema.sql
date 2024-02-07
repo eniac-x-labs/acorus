@@ -17,9 +17,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" cascade;
 
 CREATE TABLE IF NOT EXISTS template_block_headers
 (
-    hash        VARCHAR PRIMARY KEY,
-    parent_hash VARCHAR NOT NULL UNIQUE,
-    number      UINT256 NOT NULL UNIQUE,
+    guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    hash        VARCHAR NOT NULL,
+    parent_hash VARCHAR NOT NULL,
+    number      UINT256 NOT NULL,
     timestamp   INTEGER NOT NULL,
     rlp_bytes   VARCHAR NOT NULL
 );
@@ -30,7 +31,7 @@ CREATE INDEX IF NOT EXISTS template_block_headers_number ON template_block_heade
 CREATE TABLE IF NOT EXISTS template_contract_events
 (
     guid             text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    block_hash       VARCHAR NOT NULL REFERENCES template_block_headers (hash) ON DELETE CASCADE,
+    block_hash       VARCHAR NOT NULL,
     contract_address VARCHAR NOT NULL,
     transaction_hash VARCHAR NOT NULL,
     log_index        INTEGER NOT NULL,
@@ -338,21 +339,21 @@ CREATE INDEX IF NOT EXISTS bridge_record_claim_timestamp ON bridge_record (claim
 
 create table if not exists bridge_msg_sent
 (
-    guid              text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash           varchar,
-    msg_hash          varchar,
-    dest_hash         varchar,
-    dest_block_number UINT256          default 0,
-    dest_timestamp    INTEGER,
-    dest_token        varchar,
-    fee               UINT256          default 0,
-    msg_nonce         UINT256          default 0,
-    msg_hash_relation boolean          default false,
-    bridge_relation   boolean          default false,
-    to_bridge_record  boolean          default false,
-    to_change_trans_status boolean    default false,
-    to_cross_status  boolean          default false,
-    data              varchar
+    guid                   text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash                varchar,
+    msg_hash               varchar,
+    dest_hash              varchar,
+    dest_block_number      UINT256          default 0,
+    dest_timestamp         INTEGER,
+    dest_token             varchar,
+    fee                    UINT256          default 0,
+    msg_nonce              UINT256          default 0,
+    msg_hash_relation      boolean          default false,
+    bridge_relation        boolean          default false,
+    to_bridge_record       boolean          default false,
+    to_change_trans_status boolean          default false,
+    to_cross_status        boolean          default false,
+    data                   varchar
 );
 
 CREATE INDEX IF NOT EXISTS bridge_msg_sent_tx_hash ON bridge_msg_sent (tx_hash);
