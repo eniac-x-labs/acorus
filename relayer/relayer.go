@@ -159,9 +159,11 @@ func (rl *RelayerListener) onL1Data() error {
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(rl.epoch)))
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
+		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
@@ -187,6 +189,7 @@ func (rl *RelayerListener) onL1Data() error {
 		}
 		return nil
 	}); err != nil {
+		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return err
 	}
 	rl.l1StartHeight = toL1Height
@@ -219,9 +222,11 @@ func (rl *RelayerListener) onL2Data() error {
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(rl.epoch)))
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
+		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
@@ -246,6 +251,7 @@ func (rl *RelayerListener) onL2Data() error {
 		}
 		return nil
 	}); err != nil {
+		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return err
 	}
 	rl.l2StartHeight = toL2Height

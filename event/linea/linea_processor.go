@@ -122,9 +122,13 @@ func (lp *LineaEventProcessor) onL1Data() error {
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(lp.epoch)))
 	chainLatestBlockHeader, err := lp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
+		lp.l1StartHeight = new(big.Int).Sub(lp.l1StartHeight, bigint.One)
+
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		lp.l1StartHeight = new(big.Int).Sub(lp.l1StartHeight, bigint.One)
+
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
@@ -142,6 +146,7 @@ func (lp *LineaEventProcessor) onL1Data() error {
 		}
 		return nil
 	}); err != nil {
+		lp.l1StartHeight = new(big.Int).Sub(lp.l1StartHeight, bigint.One)
 		return err
 	}
 	lp.l1StartHeight = toL1Height
@@ -176,9 +181,13 @@ func (lp *LineaEventProcessor) onL2Data() error {
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(lp.epoch)))
 	chainLatestBlockHeader, err := lp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
 	if err != nil {
+		lp.l2StartHeight = new(big.Int).Sub(lp.l2StartHeight, bigint.One)
+
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		lp.l2StartHeight = new(big.Int).Sub(lp.l2StartHeight, bigint.One)
+
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
@@ -196,6 +205,8 @@ func (lp *LineaEventProcessor) onL2Data() error {
 		}
 		return nil
 	}); err != nil {
+		lp.l2StartHeight = new(big.Int).Sub(lp.l2StartHeight, bigint.One)
+
 		return err
 	}
 	lp.l2StartHeight = toL2Height

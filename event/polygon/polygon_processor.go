@@ -139,9 +139,13 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 
 	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
 	if err != nil {
+		pp.l1StartHeight = new(big.Int).Sub(pp.l1StartHeight, bigint.One)
+
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		pp.l1StartHeight = new(big.Int).Sub(pp.l1StartHeight, bigint.One)
+
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
@@ -159,6 +163,8 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 		}
 		return nil
 	}); err != nil {
+		pp.l1StartHeight = new(big.Int).Sub(pp.l1StartHeight, bigint.One)
+
 		return err
 	}
 	pp.l1StartHeight = toL1Height
@@ -193,9 +199,11 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(pp.epoch)))
 	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
 	if err != nil {
+		pp.l2StartHeight = new(big.Int).Sub(pp.l2StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
+		pp.l2StartHeight = new(big.Int).Sub(pp.l2StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
@@ -212,6 +220,7 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 		}
 		return nil
 	}); err != nil {
+		pp.l2StartHeight = new(big.Int).Sub(pp.l2StartHeight, bigint.One)
 		return err
 	}
 	pp.l2StartHeight = toL2Height
