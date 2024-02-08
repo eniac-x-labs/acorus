@@ -33,19 +33,20 @@ import (
 )
 
 type Acorus struct {
-	DB               *database.DB
-	ethClient        map[uint64]node.EthClient
-	apiServer        *httputil.HTTPServer
-	metricsServer    *httputil.HTTPServer
-	metricsRegistry  *prometheus.Registry
-	Synchronizer     map[uint64]*synchronizer.Synchronizer
-	Processor        map[uint64]event2.IEventProcessor
-	Worker           map[uint64]*op_stack2.WorkerProcessor
-	Relayer          map[uint64]*relayer.RelayerListener
-	shutdown         context.CancelCauseFunc
-	stopped          atomic.Bool
-	chainIdList      []uint64
-	birdgeRpcService bridge.BridgeRpcService
+	DB                    *database.DB
+	ethClient             map[uint64]node.EthClient
+	apiServer             *httputil.HTTPServer
+	metricsServer         *httputil.HTTPServer
+	metricsRegistry       *prometheus.Registry
+	Synchronizer          map[uint64]*synchronizer.Synchronizer
+	Processor             map[uint64]event2.IEventProcessor
+	Worker                map[uint64]*op_stack2.WorkerProcessor
+	Relayer               map[uint64]*relayer.RelayerListener
+	shutdown              context.CancelCauseFunc
+	stopped               atomic.Bool
+	chainIdList           []uint64
+	birdgeRpcService      bridge.BridgeRpcService
+	relayerBridgeRelation *relayer.RelayerBridgeRelation
 }
 
 type RpcServerConfig struct {
@@ -92,6 +93,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
+	}
+	if err := as.relayerBridgeRelation.Start(); err != nil {
+		return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
 	}
 	return nil
 }
@@ -160,7 +164,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initRelayer(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to init relayer: %w", err)
 	}
-
+	if err := as.initRelayerRelation(); err != nil {
+		fmt.Errorf("failed to init relayer relation: %w", err)
+	}
 	return nil
 }
 
@@ -302,13 +308,13 @@ func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
 		var err error
 		log.Println("Init Relayer success", "chainId", chainIdStr)
 		if chainIdStr == "1" || chainIdStr == "11155111" {
-			rlworker, err = relayer.NewRelayerListener(as.DB, as.birdgeRpcService, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
 				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 1, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}
 		} else {
-			rlworker, err = relayer.NewRelayerListener(as.DB, as.birdgeRpcService, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
+			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
 				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 2, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
@@ -320,6 +326,17 @@ func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
 		}
 
 		as.Relayer[chainId] = rlworker
+	}
+	return nil
+}
+
+func (as *Acorus) initRelayerRelation() error {
+	relayerBridgeRelation, err := relayer.NewRelayerBridgeRelation(as.DB, as.birdgeRpcService, as.shutdown)
+	if err != nil {
+		log.Println("initRelayerRelation failed", "err", err)
+		return err
+	} else {
+		as.relayerBridgeRelation = relayerBridgeRelation
 	}
 	return nil
 }

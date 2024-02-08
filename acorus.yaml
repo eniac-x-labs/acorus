@@ -34,19 +34,19 @@ rpcs:
 #    contracts:
 #    event_contracts:
 
-#master_db:
-#  db_host: "postgresql"
-#  db_port: 5432
-#  db_user: "postgres"
-#  db_password: "vVb9NhLYui"
-#  db_name: "acorus"
-
 master_db:
-  db_host: "120.77.251.247"
+  db_host: "postgresql"
   db_port: 5432
   db_user: "postgres"
-  db_password: "galamini"
+  db_password: "vVb9NhLYui"
   db_name: "acorus"
+
+#master_db:
+#  db_host: "120.77.251.247"
+#  db_port: 5432
+#  db_user: "postgres"
+#  db_password: "galamini"
+#  db_name: "acorus"
 
 slave_db:
   db_host: "127.0.0.1"
