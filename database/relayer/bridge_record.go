@@ -103,9 +103,10 @@ func (db bridgeRecordsDB) RelationClaimData() error {
 	relationSql := `
 		update  bridge_record a  set dest_tx_hash=b.dest_hash,dest_token_address=b.dest_token,
 		                               dest_block_number=b.dest_block_number,claim_timestamp=b.dest_timestamp,
+		                               status=1
 		                               bridge_record_relation=true 
 				from bridge_msg_sent  b 
-				where  a.msg_hash=b.msg_hash  and b.bridge_relation=true and a.bridge_record_relation=false
+				where  a.msg_hash=b.msg_hash  and b.bridge_relation=true and a.bridge_record_relation=false and a.status=0
 	`
 	err := db.gorm.Exec(relationSql).Error
 	return err
