@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/global_const"
@@ -12,11 +11,9 @@ import (
 	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/relayer/bindings"
 	"github.com/cornerstone-labs/acorus/relayer/unpack"
-	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
-	"sync"
 	"time"
 )
 
@@ -35,12 +32,10 @@ type RelayerListener struct {
 	tasks             tasks.Group
 	loopInterval      time.Duration
 	epoch             uint64
-	bridgeRpcService  bridge.BridgeRpcService
 }
 
 func NewRelayerListener(
 	db *database.DB,
-	bridgeRpcService bridge.BridgeRpcService,
 	chainId string,
 	l1Contracts []string,
 	l2Contracts []string,
@@ -60,7 +55,6 @@ func NewRelayerListener(
 		layerType:         layerType,
 		resourceCtx:       resCtx,
 		resourceCancel:    resCancel,
-		bridgeRpcService:  bridgeRpcService,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
@@ -70,7 +64,6 @@ func NewRelayerListener(
 }
 
 func (rl *RelayerListener) Start() error {
-
 	if rl.layerType == global_const.LayerTypeOne {
 		relayerEventOn1 := time.NewTicker(rl.loopInterval)
 		rl.tasks.Go(func() error {
@@ -96,45 +89,6 @@ func (rl *RelayerListener) Start() error {
 			return nil
 		})
 	}
-	tickerBridgeRel := time.NewTicker(rl.loopInterval)
-	var tickerBridgeRelMutex sync.Mutex
-	// start relation worker
-	rl.tasks.Go(func() error {
-		for range tickerBridgeRel.C {
-			err := rl.relationBridge(tickerBridgeRelMutex)
-			if err != nil {
-				log.Println("shutting down relationBridge")
-				continue
-			}
-		}
-		return nil
-	})
-
-	tickerCross := time.NewTicker(10 * time.Second)
-	var crossMutex sync.Mutex
-	rl.tasks.Go(func() error {
-		for range tickerCross.C {
-			err := rl.CrossChainTransfer(crossMutex)
-			if err != nil {
-				log.Println("shutting down relationBridge")
-				continue
-			}
-		}
-		return nil
-	})
-
-	tickerTrans := time.NewTicker(10 * time.Second)
-	var transMutex sync.Mutex
-	rl.tasks.Go(func() error {
-		for range tickerTrans.C {
-			err := rl.ChangeTransferStatus(transMutex)
-			if err != nil {
-				log.Println("shutting down relationBridge")
-				continue
-			}
-		}
-		return nil
-	})
 	return nil
 }
 
@@ -351,144 +305,6 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.IL1PoolAbi.Events["ClaimReward"].ID.String():
 		err := unpack.ClaimReward(event, rl.db)
 		return err
-	}
-
-	return nil
-}
-
-func (rl *RelayerListener) relationBridge(tickerBridgeRelMutex sync.Mutex) error {
-	tickerBridgeRelMutex.Lock()
-	defer tickerBridgeRelMutex.Unlock()
-	if errRel := rl.db.Transaction(func(tx *database.DB) error {
-		// step 1
-		log.Println("RelationClaim")
-		err := rl.db.BridgeFinalize.RelationClaim()
-		if err != nil {
-			log.Println("relationBridge failed", "err", err)
-			return err
-		}
-		// step 2
-		log.Println("RelationMsgHash")
-		err = rl.db.BridgeMsgHash.RelationMsgHash()
-		if err != nil {
-			log.Println("relationBridge failed", "err", err)
-			return err
-		}
-
-		log.Println("CleanMsgSent")
-		err = rl.db.BridgeMsgSent.CleanMsgSent()
-		if err != nil {
-			return err
-		}
-		// step 3
-		log.Println("RelationMsgSent")
-		err = rl.db.BridgeClaim.RelationMsgSent()
-		if err != nil {
-			log.Println("RelationMsgSent failed", "err", err)
-			return err
-		}
-
-		// setp 4
-		log.Println("RelationClaimData")
-		err = rl.db.BridgeRecord.RelationClaimData()
-		if err != nil {
-			log.Println("RelationClaimData failed", "err", err)
-			return err
-		}
-		return nil
-	}); errRel != nil {
-		return errRel
-	}
-	if err := rl.db.Transaction(func(tx *database.DB) error {
-
-		list, err := rl.db.BridgeMsgSent.GetCanSaveDecodeList()
-		if err != nil {
-			return err
-		}
-		bridgeRecordSaveList := make([]relayer.BridgeRecords, 0)
-		for _, v := range list {
-			data := v.Data
-			var bridgeRecord relayer.BridgeRecords
-			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
-				return unMarErr
-			}
-			bridgeRecord.MsgHash = v.MsgHash
-			bridgeRecord.Nonce = v.MsgNonce
-			bridgeRecord.Fee = v.Fee
-			bridgeRecordSaveList = append(bridgeRecordSaveList, bridgeRecord)
-		}
-		if len(bridgeRecordSaveList) > 0 {
-			log.Println("StoreBridgeRecords")
-			err = rl.db.BridgeRecord.StoreBridgeRecords(bridgeRecordSaveList)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (rl *RelayerListener) CrossChainTransfer(mutex sync.Mutex) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-	list := rl.db.BridgeMsgSent.GetCanCrossDataList()
-	if len(list) > 0 {
-		for _, v := range list {
-			data := v.Data
-			var bridgeRecord relayer.BridgeRecords
-			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
-				continue
-			}
-			sourceChainId := bridgeRecord.SourceChainId
-			destChainId := bridgeRecord.DestChainId
-			amount := bridgeRecord.Amount.String()
-			fee := v.Fee.String()
-			nonce := v.MsgNonce.String()
-			to := bridgeRecord.ToAddress.String()
-			tokenAddress := bridgeRecord.SourceTokenAddress.String()
-			transfer, err := rl.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to, tokenAddress, fee, nonce)
-			if err != nil {
-				log.Println("CrossChainTransfer", "error", err)
-				continue
-			}
-			log.Println("CrossChainTransfer", "transfer", transfer.Success)
-			// todo if call rpc fail ,need add retry times
-			if transfer.Success {
-				rl.db.BridgeMsgSent.UpdateCrossStatus(v.TxHash.String())
-			}
-		}
-	}
-	return nil
-}
-
-func (rl *RelayerListener) ChangeTransferStatus(mutex sync.Mutex) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-	list := rl.db.BridgeMsgSent.GetCanChangeTransStatusList()
-	if len(list) > 0 {
-		for _, v := range list {
-			data := v.Data
-			var bridgeRecord relayer.BridgeRecords
-			if unMarErr := json.Unmarshal([]byte(data), &bridgeRecord); unMarErr != nil {
-				continue
-			}
-			sourceChainId := bridgeRecord.SourceChainId
-			destChainId := bridgeRecord.DestChainId
-			hash := v.DestHash.String()
-			changeStatus, err := rl.bridgeRpcService.ChangeTransferStatus(sourceChainId, destChainId, hash)
-			if err != nil {
-				log.Println("ChangeTransferStatus", "error", err)
-				continue
-			}
-			log.Println("ChangeTransferStatus", "changeStatus", changeStatus.Success)
-			// todo if call rpc fail ,need add retry times
-			if changeStatus.Success {
-				rl.db.BridgeMsgSent.UpdateChangeStatus(v.TxHash.String())
-			}
-		}
 	}
 	return nil
 }
