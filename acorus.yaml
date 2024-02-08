@@ -69,14 +69,14 @@ relayers:
     contracts:
       - "0xeC9F0cB0c61ea321491F5EB1B77c0C499F986f35"
       - "0xB781CB03FBd0CC91Fe42957EAAC0d2059FB17Dd5"
-#  - chain_id: 534352
-#    eventStartBlock: 2945654
-#    contracts:
-#      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
-#      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+  - chain_id: 534352
+    eventStartBlock: 2945654
+    contracts:
+      - "0x23210966fF2fEc36aE70A9F5fc3b4b9C000a18D3"
+      - "0xafd56A31541062D67Fa9430f704A0D2BE02E7EEa"
   - chain_id: 10
     eventStartBlock: 7746768
     contracts:
-      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
-      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+      - "0xA8F4896AF2A8B288D24b8d5A3353bfC4CB5A9e5d"
+      - "0xb161fd3b9dC2e476B667701450f82577b661fF41"
 

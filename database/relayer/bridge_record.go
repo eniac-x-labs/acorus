@@ -63,7 +63,7 @@ func (db bridgeRecordsDB) GetBridgeRecordList(address string, page int, pageSize
 	table := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) *")
 	queryBR := db.gorm.Table("(?) as temp ", table)
 	if address != "0x00" {
-		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Where("from = ?", address).Or("to = ?", address).Count(&totalRecord).Error
+		err := db.gorm.Table("bridge_record").Select("DISTINCT ON (source_tx_hash) guid").Where("from_address = ?", address).Or("to_address = ?", address).Count(&totalRecord).Error
 		if err != nil {
 			log.Error("get bridge records by address count fail")
 		}
