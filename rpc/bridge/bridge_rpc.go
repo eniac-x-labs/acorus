@@ -13,7 +13,7 @@ import (
 type BridgeRpcService interface {
 	ChangeTransferStatus(sourceChainId, destChainId, txHash string) (*pb.CrossChainTransferStatusResponse, error)
 	CrossChainTransfer(sourceChainId, destChainId, amount,
-		receiveAddress, tokenAddress, fee, nonce string) (*pb.CrossChainTransferResponse, error)
+		receiveAddress, tokenAddress, fee, nonce, sourceHash string) (*pb.CrossChainTransferResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -41,7 +41,7 @@ func (r *bridgeRpcService) ChangeTransferStatus(sourceChainId, destChainId, txHa
 }
 
 func (r *bridgeRpcService) CrossChainTransfer(sourceChainId, destChainId, amount,
-	receiveAddress, tokenAddress, fee, nonce string) (*pb.CrossChainTransferResponse, error) {
+	receiveAddress, tokenAddress, fee, nonce, sourceHash string) (*pb.CrossChainTransferResponse, error) {
 	ctx := context.Background()
 	crossChainReq := &pb.CrossChainTransferRequest{
 		SourceChainId:  sourceChainId,
@@ -51,6 +51,7 @@ func (r *bridgeRpcService) CrossChainTransfer(sourceChainId, destChainId, amount
 		TokenAddress:   tokenAddress,
 		Fee:            fee,
 		Nonce:          nonce,
+		SourceHash:     sourceHash,
 	}
 	crossChainTransfer, err := r.bRpcService.CrossChainTransfer(ctx, crossChainReq)
 	return crossChainTransfer, err

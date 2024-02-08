@@ -165,8 +165,10 @@ func (rbr *RelayerBridgeRelation) CrossChainTransfer() error {
 			fee := v.Fee.String()
 			nonce := v.MsgNonce.String()
 			to := bridgeRecord.ToAddress.String()
+			sourceTxHash := bridgeRecord.SourceTxHash.String()
 			tokenAddress := bridgeRecord.SourceTokenAddress.String()
-			transfer, err := rbr.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to, tokenAddress, fee, nonce)
+			transfer, err := rbr.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to,
+				tokenAddress, fee, nonce, sourceTxHash)
 			if err != nil {
 				log.Println("CrossChainTransfer", "error", err)
 				continue
