@@ -16,6 +16,7 @@ message CrossChainTransferRequest {
   string token_address = 5;
   string fee = 6;
   string nonce = 7;
+  string source_hash = 8;
 }
 
 message CrossChainTransferResponse {

@@ -27,12 +27,12 @@ rpcs:
     l1_event_unpack_block: 5237021
     contracts:
     event_contracts:
-#  - rpc_url: 'https://rpc.ankr.com/scroll_sepolia_testnet/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
-#    chain_id: 534352
-#    start_block: 2945654
-#    l1_event_unpack_block: 5237021
-#    contracts:
-#    event_contracts:
+  - rpc_url: 'https://rpc.ankr.com/scroll_sepolia_testnet/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702'
+    chain_id: 534352
+    start_block: 2945654
+    l1_event_unpack_block: 5237021
+    contracts:
+    event_contracts:
 
 master_db:
   db_host: "postgresql"
@@ -62,21 +62,21 @@ relayers:
   - chain_id: 1
     eventStartBlock: 5218234
     contracts:
-      - "0x44c8EDB79089Fe99cfb79F8284D9f9CD83B8Fbc5"
-      - "0xAC13457009a2aE49820Bd7517818436dE2202549"
+      - "0x1038F4349bcCc26adf5Bc5018b0cd9d60743936e"
+      - "0xEfA2c69cc3D6Cb0cE58B260D1010031C8383b465"
   - chain_id: 1101
     eventStartBlock: 5237021
     contracts:
       - "0xeC9F0cB0c61ea321491F5EB1B77c0C499F986f35"
       - "0xB781CB03FBd0CC91Fe42957EAAC0d2059FB17Dd5"
-#  - chain_id: 534352
-#    eventStartBlock: 2945654
-#    contracts:
-#      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
-#      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+  - chain_id: 534352
+    eventStartBlock: 2945654
+    contracts:
+      - "0x23210966fF2fEc36aE70A9F5fc3b4b9C000a18D3"
+      - "0xafd56A31541062D67Fa9430f704A0D2BE02E7EEa"
   - chain_id: 10
     eventStartBlock: 7746768
     contracts:
-      - "0x82Ec3E6DBf43b6D6751b0645f1Ff06AEaD426dd1"
-      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+      - "0xA8F4896AF2A8B288D24b8d5A3353bfC4CB5A9e5d"
+      - "0xb161fd3b9dC2e476B667701450f82577b661fF41"
 
