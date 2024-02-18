@@ -11,9 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
@@ -23,6 +20,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/polygon/abi"
 	"github.com/cornerstone-labs/acorus/event/polygon/bridge"
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type PolygonEventProcessor struct {
@@ -40,16 +38,13 @@ type PolygonEventProcessor struct {
 }
 
 func NewBridgeProcessor(db *database.DB,
-	l1cfg *config.RPC, l2cfg *config.RPC, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*PolygonEventProcessor, error) {
+	l2cfg *config.RPC, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*PolygonEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
-	ethClient, _ := ethclient.Dial(l1cfg.RpcUrl)
-	zkEVMClient, _ := ethclient.Dial(l2cfg.RpcUrl)
-
-	l1PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L1PolygonZKEVMBridgeAddr, ethClient)
+	l1PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L1PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
 		return nil, err
 	}
-	l2PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, zkEVMClient)
+	l2PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
 		return nil, err
 	}
