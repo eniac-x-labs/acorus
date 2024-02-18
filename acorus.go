@@ -203,12 +203,6 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 	var loopInterval time.Duration = time.Second * 5
 	var epoch uint64 = 10_000
 	var l1StartBlockNumber *big.Int
-	var l1RPC *config.RPC
-	for i := range cfg.RPCs {
-		if cfg.RPCs[i].ChainId == global_const.EthereumChainId {
-			l1RPC = cfg.RPCs[i]
-		}
-	}
 	for i := range cfg.RPCs {
 		log.Println("init chain processor", "chainId", cfg.RPCs[i].ChainId)
 		if as.Processor == nil {
@@ -226,7 +220,7 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 				return err
 			}
 		} else if rpcItem.ChainId == global_const.PolygonChainId {
-			processor, err = polygon.NewBridgeProcessor(as.DB, l1RPC, rpcItem, as.shutdown, loopInterval, epoch)
+			processor, err = polygon.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
 			if err != nil {
 				return err
 			}
