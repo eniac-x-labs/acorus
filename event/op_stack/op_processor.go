@@ -203,7 +203,7 @@ func (ep *OpEventProcessor) processInitiatedL2Events() error {
 	}
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastL2BlockNumber)
+		headers := newQuery.Table("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastL2BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, strconv.FormatUint(global_const.OpChinId, 10))
@@ -242,7 +242,7 @@ func (ep *OpEventProcessor) processProvenL1Events() error {
 	}
 	latestProvenL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastProvenL1BlockNumber)
+		headers := newQuery.Table("block_headers_1").Where("number > ?", lastProvenL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	if latestProvenL1HeaderScope == nil {
@@ -274,7 +274,7 @@ func (ep *OpEventProcessor) processFinalizedL1Events() error {
 	}
 	latestFinalizedL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastFinalizedL1BlockNumber)
+		headers := newQuery.Table("block_headers_1").Where("number > ?", lastFinalizedL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	if latestFinalizedL1HeaderScope == nil {
@@ -326,7 +326,7 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 	}
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ? AND number <= ?", lastFinalizedL2BlockNumber, latestL1L2BlockNumber)
+		headers := newQuery.Table("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ? AND number <= ?", lastFinalizedL2BlockNumber, latestL1L2BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL2Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestL2HeaderScope, "10")
@@ -366,7 +366,7 @@ func (ep *OpEventProcessor) processRollupStateRoot() error {
 	}
 	latestRollupL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Model(common2.BlockHeader{}).Where("number > ?", lastStateRootL1BlockNumber)
+		headers := newQuery.Table("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastStateRootL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
 	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope, "10")
