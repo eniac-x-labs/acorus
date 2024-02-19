@@ -33,24 +33,24 @@ rpcs:
     l1_event_unpack_block: 5314457
     contracts:
     event_contracts:
-#  - rpc_url: 'https://arb-sepolia.g.alchemy.com/v2/NBY1oJ2p9rGIqN2uvX_2gpc0eSkGWw1l'
-#    chain_id: 421614
-#    start_block: 14666826
-#    l1_event_unpack_block: 5314457
-#    contracts:
-#    event_contracts:
-#  - rpc_url: 'https://rpc.ankr.com/zksync_era_sepolia/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
-#    chain_id: 300
-#    start_block: 14666826
-#    l1_event_unpack_block: 5237021
-#    contracts:
-#    event_contracts:
-#  - rpc_url: 'https://base-sepolia.g.alchemy.com/v2/XBMhzm0JcYtvq35NAbDOxEVI3NzqgAb3'
-#    chain_id: 84532
-#    start_block: 6155463
-#    l1_event_unpack_block: 5314457
-#    contracts:
-#    event_contracts:
+  - rpc_url: 'https://arb-sepolia.g.alchemy.com/v2/NBY1oJ2p9rGIqN2uvX_2gpc0eSkGWw1l'
+    chain_id: 421614
+    start_block: 15357758
+    l1_event_unpack_block: 5314457
+    contracts:
+    event_contracts:
+  #  - rpc_url: 'https://rpc.ankr.com/zksync_era_sepolia/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
+  #    chain_id: 300
+  #    start_block: 14666826
+  #    l1_event_unpack_block: 5237021
+  #    contracts:
+  #    event_contracts:
+  - rpc_url: 'https://base-sepolia.g.alchemy.com/v2/XBMhzm0JcYtvq35NAbDOxEVI3NzqgAb3'
+    chain_id: 84532
+    start_block: 6252803
+    l1_event_unpack_block: 5314457
+    contracts:
+    event_contracts:
 #  - rpc_url: 'https://rpc.ankr.com/mantle_sepolia/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
 #    chain_id: 5003
 #    start_block: 6155463
@@ -103,21 +103,21 @@ relayers:
     contracts:
       - "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
       - "0x11ef6B6D5Df3822B4da44d98801DD6B36D7985cc"
-#  - chain_id: 421614
-#    eventStartBlock: 14675027
-#    contracts:
-#      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
-#      - "0xfd6533dBE0dd900886153b6C91007870591389A5"
-#  - chain_id: 300
-#    eventStartBlock: 14675027
-#    contracts:
-#      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
-#      - "0xfd6533dBE0dd900886153b6C91007870591389A5"
-#  - chain_id: 84532
-#    eventStartBlock: 6155463
-#    contracts:
-#      - "0x8fEE59c274eA82fAc9280FeB04B7364A80c63BA6"
-#      - "0x03C43a778A4157c8781aA1bc645F2703B224b9d8"
+  - chain_id: 421614
+    eventStartBlock: 15357758
+    contracts:
+      - "0x89bc318D74eE9B3b28252Ae94444414676d480F4"
+      - "0xA3b75eE08132F108Ca28a937dDC3fE5fF2AEECA0"
+  #  - chain_id: 300
+  #    eventStartBlock: 14675027
+  #    contracts:
+  #      - "0xf6f3Ef5419F5B3e7655a6D81bad5B33dad26A4AE"
+  #      - "0xfd6533dBE0dd900886153b6C91007870591389A5"
+  - chain_id: 84532
+    eventStartBlock: 6252803
+    contracts:
+      - "0x0DF967269C10f959CaFcE3B10acA4Af97a5DaDfF"
+      - "0x99Df32674E5368413F4062264FD40D1517dac0d2"
 #  - chain_id: 5003
 #    eventStartBlock: 6155463
 #    contracts:
