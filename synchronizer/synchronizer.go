@@ -103,7 +103,9 @@ func (syncer *Synchronizer) Start() error {
 				}
 			}
 			err := syncer.processBatch(syncer.headers)
-			if err == nil {
+			if err != nil {
+				continue
+			} else {
 				syncer.headers = nil
 			}
 		}
