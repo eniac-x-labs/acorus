@@ -51,19 +51,9 @@ jobs:
           # echo 'EOF' >> $GITHUB_ENV
           HELM_OPTS="${HELM_OPTS} --set image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.app }}"
           HELM_OPTS="${HELM_OPTS} --set image.tag=${{ steps.get-commit-sha.outputs.commit_sha }}"
-          helm template ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS} 
-          helm upgrade --install ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS}
-            
-      # - name: helm deploy
-      #   uses: koslib/helm-eks-action@master
-      #   env:
-      #     KUBE_CONFIG_DATA: ${{ env.KUBE_CONFIG_DATA }}
-      #   with:
-      #     command: |
-      #       HELM_OPTS="${HELM_OPTS} --set image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.app }}"
-      #       HELM_OPTS="${HELM_OPTS} --set image.tag=${{ steps.get-commit-sha.outputs.commit_sha }}"
-      #       helm template ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS} 
-      #       helm upgrade --install ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS}
+          helm template ${{ env.app }} -f values.yaml charts -n mainnet ${HELM_OPTS} 
+          helm upgrade --install ${{ env.app }} -f values.yaml charts -n mainnet ${HELM_OPTS}
+
             
         
           
