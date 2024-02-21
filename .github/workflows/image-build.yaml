@@ -2,7 +2,7 @@ name: Acorus Image Build Only
 on:
   push:
     branches:
-      - main
+      - qa
 env:
   AWS_REGION : "ap-southeast-1"
   app: acorus
@@ -52,7 +52,7 @@ jobs:
           HELM_OPTS="${HELM_OPTS} --set image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.app }}"
           HELM_OPTS="${HELM_OPTS} --set image.tag=${{ steps.get-commit-sha.outputs.commit_sha }}"
           helm template ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS} 
-          helm upgrade --install ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS}
+          helm upgrade --install ${{ env.app }} -f values.yaml charts -n qa ${HELM_OPTS}
             
       # - name: helm deploy
       #   uses: koslib/helm-eks-action@master
