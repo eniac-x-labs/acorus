@@ -19,7 +19,7 @@ RUN make acorus
 FROM alpine:3.18
 
 COPY --from=builder /app/acorus/acorus /usr/local/bin
-COPY --from=builder /app/acorus/acorus.yaml /app/acorus/acorus.yaml
+COPY --from=builder /app/acorus/acorus_prod.yaml /app/acorus/acorus.yaml
 COPY --from=builder /app/acorus/migrations /app/acorus/migrations
 
 ENV INDEXER_MIGRATIONS_DIR="/app/acorus/migrations"
