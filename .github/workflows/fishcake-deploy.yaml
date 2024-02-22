@@ -1,1 +1,73 @@
+name: Fishcake Image Build And Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: environment to choice
+        options: 
+        - testnet
+        - mainnet
+env:
+  AWS_REGION : "ap-southeast-1"
+  app: fishcake
+permissions:
+  id-token: write
+  contents: read  
+run-name: Build Image For Repo
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.get-commit-sha.outputs.commit_sha }}
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          repository: "FishcakeLab/fishcake-service"
+      - name: Get Commit Sha
+        id: get-commit-sha
+        run: |
+          echo "::set-output name=commit_sha::$(git rev-parse --short=7 HEAD)"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::942583694543:role/github_assume_role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: samplerolesession
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPO: ${{ env.app }}
+          #REF: ${{ github.event.inputs.ref }}
+          COMMIT_SHA: ${{ steps.get-commit-sha.outputs.commit_sha }}
+        run: |
+          # aws s3 cp s3://eniac-x-labs-config-center/${{ env.app }}/${{ github.event.inputs.environment }}/acorus.yaml acorus.yaml
+          ls -al
+          IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
+          export NODE_OPTIONS="--max_old_space_size=9000"
+          docker build --pull  -t ${IMAGE_URL1} .
+          docker push ${IMAGE_URL1}
+      # - name: deploy app
+      #   run: |
+      #     aws eks update-kubeconfig --name savour-layer3-eks
+      #     # echo 'KUBE_CONFIG_DATA<<EOF' >> $GITHUB_ENV
+      #     # echo $(cat /home/runner/.kube/config | base64) >> $GITHUB_ENV
+      #     # echo 'EOF' >> $GITHUB_ENV
+      #     HELM_OPTS="${HELM_OPTS} --set image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.app }}"
+      #     HELM_OPTS="${HELM_OPTS} --set image.tag=${{ steps.get-commit-sha.outputs.commit_sha }}"
+      #     if [ ${{github.event.inputs.environment }} == "testnet" ]; then
+      #       helm template ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS} 
+      #       helm upgrade --install ${{ env.app }} -f values.yaml charts -n testnet-layer3 ${HELM_OPTS}
+      #     else
+      #       helm template ${{ env.app }} -f values.yaml charts -n mainnet ${HELM_OPTS} 
+      #       helm upgrade --install ${{ env.app }} -f values.yaml charts -n mainnet ${HELM_OPTS}
+      #     fi
 
+            
+        
+          
