@@ -1,8 +1,13 @@
 name: Acorus Image Build Only
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      name:
+        type: choice
+        description: environment
+        options: 
+        - testnet
+        - mainnet
 env:
   AWS_REGION : "ap-southeast-1"
   app: acorus
