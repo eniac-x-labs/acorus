@@ -2,7 +2,7 @@ name: Acorus Image Build Only
 on:
   push:
     branches:
-      - main
+      - testnet
 env:
   AWS_REGION : "ap-southeast-1"
   app: acorus
@@ -41,7 +41,7 @@ jobs:
         run: |
           IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
           export NODE_OPTIONS="--max_old_space_size=9000"
-          docker build --pull  -t ${IMAGE_URL1} .
+          docker build --pull -f Dockerfile.testnet  -t ${IMAGE_URL1} .
           docker push ${IMAGE_URL1}
       - name: deploy app
         run: |
