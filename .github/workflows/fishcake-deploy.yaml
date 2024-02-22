@@ -46,7 +46,6 @@ jobs:
           #REF: ${{ github.event.inputs.ref }}
           COMMIT_SHA: ${{ steps.get-commit-sha.outputs.commit_sha }}
         run: |
-          # aws s3 cp s3://eniac-x-labs-config-center/${{ env.app }}/${{ github.event.inputs.environment }}/acorus.yaml acorus.yaml
           ls -al
           IMAGE_URL1=${ECR_REGISTRY}/${REPO}:${COMMIT_SHA}
           export NODE_OPTIONS="--max_old_space_size=9000"
@@ -54,6 +53,7 @@ jobs:
           docker push ${IMAGE_URL1}
       # - name: deploy app
       #   run: |
+       # aws s3 cp s3://eniac-x-labs-config-center/${{ env.app }}/${{ github.event.inputs.environment }}/acorus.yaml acorus.yaml
       #     aws eks update-kubeconfig --name savour-layer3-eks
       #     # echo 'KUBE_CONFIG_DATA<<EOF' >> $GITHUB_ENV
       #     # echo $(cat /home/runner/.kube/config | base64) >> $GITHUB_ENV
