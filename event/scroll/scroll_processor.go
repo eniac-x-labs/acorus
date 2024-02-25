@@ -327,15 +327,15 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 
 	if err := sp.db.Transaction(func(tx *database.DB) error {
 		// step 1
-		if err := sp.db.MsgSentRelation.MsgHashRelation(chainIdStr); err != nil {
+		if err := sp.db.MsgSentRelationD.MsgHashToRelation(chainIdStr); err != nil {
 			return err
 		}
 		// step 2
-		if err := sp.db.MsgSentRelation.RelayRelation(chainIdStr); err != nil {
+		if err := sp.db.MsgSentRelationD.L1RelayToRelation(chainIdStr); err != nil {
 			return err
 		}
 		// step 3
-		if canSaveDataList, err := sp.db.MsgSentRelation.GetCanSaveDataList(chainIdStr); err != nil {
+		if canSaveDataList, err := sp.db.MsgSentRelationD.GetCanSaveDataList(chainIdStr); err != nil {
 			return err
 		} else {
 			l1ToL2s := make([]worker.L1ToL2, 0)
@@ -348,9 +348,7 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 						return unMarErr
 					}
 					l1Tol2.MessageHash = data.MsgHash
-					l1Tol2.L2BlockNumber = data.LayerBlockNumber
-					l1Tol2.L2TransactionHash = data.LayerHash
-					l1Tol2.Status = 1
+					l1Tol2.Status = 0
 					l1ToL2s = append(l1ToL2s, l1Tol2)
 				}
 				if data.LayerType == global_const.LayerTypeTwo {
@@ -359,9 +357,8 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 						return unMarErr
 					}
 					l2Tol1.MessageHash = data.MsgHash
-					l2Tol1.L1BlockNumber = data.LayerBlockNumber
-					l2Tol1.L1FinalizeTxHash = data.LayerHash
-					l2Tol1.Status = 1
+
+					l2Tol1.Status = 0
 					l2ToL1s = append(l2ToL1s, l2Tol1)
 				}
 
@@ -384,12 +381,10 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 			}
 
 		}
-		if err := sp.db.MsgSentRelation.L1RelationClear(chainIdStr); err != nil {
+		if err := sp.db.MsgSentRelationD.RelationClear(chainIdStr); err != nil {
 			return err
 		}
-		if err := sp.db.MsgSentRelation.L2RelationClear(chainIdStr); err != nil {
-			return err
-		}
+		// todo add relation
 		return nil
 	}); err != nil {
 		return err

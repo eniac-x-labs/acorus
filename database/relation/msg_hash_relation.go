@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"errors"
 	"gorm.io/gorm"
 
 	"github.com/google/uuid"
@@ -40,6 +41,13 @@ func NewMsgHashRelationDB(db *gorm.DB) MsgHashRelationDB {
 
 func (m msgHashRelationDB) MsgHashRelationStore(msgHashRelation MsgHashRelation, chainId string) error {
 	tableNameByChainId := msgHashRelation.TableNameByChainId(chainId)
-	err := m.gorm.Table(tableNameByChainId).Omit("guid").Create(msgHashRelation).Error
+	var exist MsgHashRelation
+	err := m.gorm.Table(tableNameByChainId).Where("tx_hash = ?", msgHashRelation.TxHash.String()).Take(&exist).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			result := m.gorm.Table(tableNameByChainId).Omit("guid").Create(msgHashRelation)
+			return result.Error
+		}
+	}
 	return err
 }

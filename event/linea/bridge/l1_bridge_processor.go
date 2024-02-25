@@ -60,14 +60,14 @@ func L1SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:          rlpLog.TxHash,
 		LayerType:       global_const.LayerTypeOne,
 		Data:            string(marshal),
 		MsgHash:         l1ToL2.MessageHash,
 		MsgHashRelation: true,
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
@@ -86,6 +86,6 @@ func L1ClaimedMessageEvent(chainId string, event event.ContractEvent, db *databa
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
 		MsgHash:     messageHash,
 	}
-	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	err := db.RelayRelationD.RelayRelationStore(relayRelation, chainId)
 	return err
 }

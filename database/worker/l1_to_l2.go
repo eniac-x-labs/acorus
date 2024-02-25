@@ -89,7 +89,7 @@ func (l1l2 l1ToL2DB) UpdateL1ToL2L2TxHashByMsgHash(chainId string, l1L2Stu L1ToL
 
 func (l1l2 l1ToL2DB) L1ToL2TransactionDeposit(chainId string, messageHash common.Hash) (*L1ToL2, error) {
 	var l1ToL2Withdrawal L1ToL2
-	result := l1l2.gorm.Table("l1_to_l2_", chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l1ToL2Withdrawal)
+	result := l1l2.gorm.Table("l1_to_l2_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l1ToL2Withdrawal)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -102,7 +102,7 @@ func (l1l2 l1ToL2DB) L1ToL2TransactionDeposit(chainId string, messageHash common
 func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSize int, order string) (l1l2List []L1ToL2, total int64) {
 	var totalRecord int64
 	var l1ToL2List []L1ToL2
-	queryStateRoot := l1l2.gorm.Table("l1_to_l2_", chainId)
+	queryStateRoot := l1l2.gorm.Table("l1_to_l2_" + chainId)
 	if address != "0x00" {
 		err := l1l2.gorm.Table("l1_to_l2_"+chainId).Select("l2_block_number").Where("from_address = ?", address).Or(" to_address = ?", address).Count(&totalRecord).Error
 		if err != nil {

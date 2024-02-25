@@ -46,12 +46,12 @@ func L1DepositETH(chainId string, event event.ContractEvent, db *database.DB) er
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -89,12 +89,12 @@ func L1DepositERC20(chainId string, event event.ContractEvent, db *database.DB) 
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -132,12 +132,12 @@ func L1DepositERC721(chainId string, event event.ContractEvent, db *database.DB)
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -172,12 +172,12 @@ func L1DepositERC1155(chainId string, event event.ContractEvent, db *database.DB
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
@@ -212,12 +212,12 @@ func L1BatchDepositERC721(chainId string, event event.ContractEvent, db *databas
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -252,12 +252,12 @@ func L1BatchDepositERC1155(chainId string, event event.ContractEvent, db *databa
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeOne,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -279,7 +279,7 @@ func L1SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 		MsgHash: msgHash,
 	}
 
-	err := db.MsgHashRelation.MsgHashRelationStore(relayRelation, chainId)
+	err := db.MsgHashRelationD.MsgHashRelationStore(relayRelation, chainId)
 	return err
 }
 
@@ -295,6 +295,6 @@ func L1RelayedMessageEvent(chainId string, event event.ContractEvent, db *databa
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
 		MsgHash:     l1RelayedMessageEvent.MessageHash,
 	}
-	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	err := db.RelayRelationD.RelayRelationStore(relayRelation, chainId)
 	return err
 }

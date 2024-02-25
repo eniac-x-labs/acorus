@@ -72,9 +72,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
 		log.Println("starting Sync", "chainId", as.chainIdList[i])
 		realChainId := as.chainIdList[i]
-		if err := as.Synchronizer[realChainId].Start(); err != nil {
-			return fmt.Errorf("failed to start L1 Sync: %w", err)
-		}
+		//if err := as.Synchronizer[realChainId].Start(); err != nil {
+		//	return fmt.Errorf("failed to start L1 Sync: %w", err)
+		//}
 		processor := as.Processor[realChainId]
 		if processor != nil {
 			if err := processor.StartUnpack(); err != nil {
@@ -255,7 +255,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  50,
+			HeaderBufferSize:  uint(rpcItem.HeaderBufferSize),
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),

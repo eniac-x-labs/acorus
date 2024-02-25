@@ -297,14 +297,9 @@ func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error 
 func (pp *PolygonEventProcessor) relationL1L2() error {
 	chainId := pp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
-
 	if err := pp.db.Transaction(func(tx *database.DB) error {
 		// step 1
-		if err := pp.db.MsgSentRelation.RelayRelation(chainIdStr); err != nil {
-			return err
-		}
-		// step 2
-		if canSaveDataList, err := pp.db.MsgSentRelation.GetCanSaveDataList(chainIdStr); err != nil {
+		if canSaveDataList, err := pp.db.MsgSentRelationD.GetCanSaveDataList(chainIdStr); err != nil {
 			return err
 		} else {
 			l1ToL2s := make([]worker.L1ToL2, 0)
@@ -317,9 +312,7 @@ func (pp *PolygonEventProcessor) relationL1L2() error {
 						return unMarErr
 					}
 					l1Tol2.MessageHash = data.MsgHash
-					l1Tol2.L2BlockNumber = data.LayerBlockNumber
-					l1Tol2.L2TransactionHash = data.LayerHash
-					l1Tol2.Status = 1
+					l1Tol2.Status = 0
 					l1ToL2s = append(l1ToL2s, l1Tol2)
 				}
 				if data.LayerType == global_const.LayerTypeTwo {
@@ -328,14 +321,10 @@ func (pp *PolygonEventProcessor) relationL1L2() error {
 						return unMarErr
 					}
 					l2Tol1.MessageHash = data.MsgHash
-					l2Tol1.L1BlockNumber = data.LayerBlockNumber
-					l2Tol1.L1FinalizeTxHash = data.LayerHash
-					l2Tol1.Status = 1
+					l2Tol1.Status = 0
 					l2ToL1s = append(l2ToL1s, l2Tol1)
 				}
-
 			}
-
 			if len(l1ToL2s) > 0 {
 				saveErr := pp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
 				if saveErr != nil {
@@ -343,7 +332,6 @@ func (pp *PolygonEventProcessor) relationL1L2() error {
 					return saveErr
 				}
 			}
-
 			if len(l2ToL1s) > 0 {
 				saveErr := pp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
 				if saveErr != nil {
@@ -351,12 +339,14 @@ func (pp *PolygonEventProcessor) relationL1L2() error {
 					return saveErr
 				}
 			}
-
 		}
-		if err := pp.db.MsgSentRelation.L1RelationClear(chainIdStr); err != nil {
+		if err := pp.db.MsgSentRelationD.RelationClear(chainIdStr); err != nil {
 			return err
 		}
-		if err := pp.db.MsgSentRelation.L2RelationClear(chainIdStr); err != nil {
+		if err := pp.db.MsgSentRelationD.L1RelayToRelation(chainIdStr); err != nil {
+			return err
+		}
+		if err := pp.db.MsgSentRelationD.L2RelayToRelation(chainIdStr); err != nil {
 			return err
 		}
 		return nil

@@ -12,7 +12,7 @@ import (
 var (
 	DepositEventSignatureHash  = crypto.Keccak256Hash([]byte("BridgeEvent(uint8,uint32,address,uint32,address,uint256,bytes,uint32)")) // Used in oldBridge as well
 	WithdrawEventSignatureHash = crypto.Keccak256Hash([]byte("BridgeEvent(uint8,uint32,address,uint32,address,uint256,bytes,uint32)")) // Used in oldBridge as well
-	ClaimEventSignatureHash    = crypto.Keccak256Hash([]byte("ClaimEvent(uint32,uint32,address,address,uint256)"))
+	ClaimEventSignatureHash    = crypto.Keccak256Hash([]byte("ClaimEvent(uint256,uint32,address,address,uint256)"))
 	L1_ETH                     = "0x0000000000000000000000000000000000000000"
 	L1PolygonZKEVMBridgeAddr   = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
 	L2PolygonZKEVMBridgeAddr   = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")

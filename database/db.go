@@ -32,9 +32,9 @@ type DB struct {
 	StateRoots          worker.StateRootDB
 	L2ToL1              worker.L2ToL1DB
 	L1ToL2              worker.L1ToL2DB
-	MsgSentRelation     relation.MsgSentRelationDB
-	MsgHashRelation     relation.MsgHashRelationDB
-	RelayRelation       relation.RelayRelationDB
+	MsgSentRelationD    relation.MsgSentRelationDB
+	MsgHashRelationD    relation.MsgHashRelationDB
+	RelayRelationD      relation.RelayRelationDB
 	RelayMessage        event.RelayMessageDB
 	StakeRecord         relayer.StakingRecordDB
 	BridgeRecord        relayer.BridgeRecordDB
@@ -91,9 +91,9 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		StateRoots:          worker.NewStateRootDB(gorm),
 		L1ToL2:              worker.NewL1ToL2DB(gorm),
 		L2ToL1:              worker.NewL21ToL1DB(gorm),
-		MsgSentRelation:     relation.NewMsgSentRelationDB(gorm),
-		MsgHashRelation:     relation.NewMsgHashRelationDB(gorm),
-		RelayRelation:       relation.NewEvmRelayRelationDB(gorm),
+		MsgSentRelationD:    relation.NewMsgSentRelationStructDB(gorm),
+		MsgHashRelationD:    relation.NewMsgHashRelationDB(gorm),
+		RelayRelationD:      relation.NewEvmRelayRelationDB(gorm),
 		RelayMessage:        event.NewRelayMessageDB(gorm),
 		StakeRecord:         relayer.NewStakingRecordDB(gorm),
 		BridgeRecord:        relayer.NewBridgeRecordDB(gorm),
@@ -117,9 +117,9 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			L1ToL2:              worker.NewL1ToL2DB(gorm),
 			L2ToL1:              worker.NewL21ToL1DB(gorm),
 			StateRoots:          worker.NewStateRootDB(gorm),
-			MsgSentRelation:     relation.NewMsgSentRelationDB(gorm),
-			MsgHashRelation:     relation.NewMsgHashRelationDB(gorm),
-			RelayRelation:       relation.NewEvmRelayRelationDB(gorm),
+			MsgSentRelationD:    relation.NewMsgSentRelationStructDB(gorm),
+			MsgHashRelationD:    relation.NewMsgHashRelationDB(gorm),
+			RelayRelationD:      relation.NewEvmRelayRelationDB(gorm),
 			RelayMessage:        event.NewRelayMessageDB(gorm),
 			StakeRecord:         relayer.NewStakingRecordDB(gorm),
 			BridgeRecord:        relayer.NewBridgeRecordDB(gorm),

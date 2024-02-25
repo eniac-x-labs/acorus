@@ -39,17 +39,17 @@ func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address
 
 	// Grab both ETH & ERC20 Events
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: ethDepositEventAbi.ID}
-	ethDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	ethDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
 	contractEventFilter.EventSignature = erc20DepositEventAbi.ID
-	erc20DepositEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	erc20DepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
 	contractEventFilter.EventSignature = mntDepositEventAbi.ID
-	mntDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	mntDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

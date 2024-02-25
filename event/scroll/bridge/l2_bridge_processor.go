@@ -48,12 +48,12 @@ func L2WithdrawETH(chainId string, event event.ContractEvent, db *database.DB) e
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -91,12 +91,12 @@ func L2WithdrawERC20(chainId string, event event.ContractEvent, db *database.DB)
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
@@ -133,12 +133,12 @@ func L2WithdrawERC721(chainId string, event event.ContractEvent, db *database.DB
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -175,12 +175,12 @@ func L2WithdrawERC1155(chainId string, event event.ContractEvent, db *database.D
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
@@ -216,12 +216,12 @@ func L2BatchWithdrawERC721(chainId string, event event.ContractEvent, db *databa
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
@@ -257,12 +257,12 @@ func L2BatchWithdrawERC1155(chainId string, event event.ContractEvent, db *datab
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:    rlpLog.TxHash,
 		LayerType: global_const.LayerTypeTwo,
 		Data:      string(marshal),
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 
 }
@@ -284,7 +284,7 @@ func L2SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 		MsgHash: msgHash,
 	}
 
-	err := db.MsgHashRelation.MsgHashRelationStore(relayRelation, chainId)
+	err := db.MsgHashRelationD.MsgHashRelationStore(relayRelation, chainId)
 	return err
 }
 
@@ -300,6 +300,6 @@ func L2RelayedMessageEvent(chainId string, event event.ContractEvent, db *databa
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
 		MsgHash:     l2RelayedMessageEvent.MessageHash,
 	}
-	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	err := db.RelayRelationD.RelayRelationStore(relayRelation, chainId)
 	return err
 }
