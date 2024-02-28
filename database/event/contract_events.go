@@ -13,7 +13,7 @@ import (
 )
 
 type ContractEvent struct {
-	GUID            uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID            uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	BlockHash       common.Hash    `gorm:"serializer:bytes"`
 	ContractAddress common.Address `gorm:"serializer:bytes"`
 	TransactionHash common.Hash    `gorm:"serializer:bytes"`

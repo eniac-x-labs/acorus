@@ -18,7 +18,7 @@ import (
 )
 
 type L2ToL1 struct {
-	GUID                    uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''" json:"guid"`
+	GUID                    uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','';serializer:uuid" json:"guid"`
 	L1BlockNumber           *big.Int       `gorm:"serializer:u256;column:l1_block_number" db:"l1_block_number" json:"l1BlockNumber" form:"l1_block_number"`
 	L2BlockNumber           *big.Int       `gorm:"serializer:u256;column:l2_block_number;primaryKey" db:"l2_block_number" json:"l2BlockNumber" form:"l2_block_number"`
 	MsgNonce                *big.Int       `gorm:"column:msg_nonce;serializer:u256" db:"msg_nonce" json:"msgNonce" form:"msg_nonce"`
@@ -47,6 +47,7 @@ type L2ToL1DB interface {
 	L2ToL1View
 	StoreL2ToL1Transactions(string, []L2ToL1) error
 	UpdateTokenPairsAndAddress(chainId string, l2L1List []L2ToL1) error
+	UpdateMessageHash(chainId string, l1L2List []L2ToL1) error
 	UpdateReadyForProvedStatus(chainId string, blockTimestamp int64, fraudProofWindows time.Duration) error
 	UpdateL1FinalizeStatus(chainId string, withdrawalHash common.Hash, finalizedL1EventGuid uuid.UUID) error
 	UpdateTimeLeft(chainId string) error
@@ -134,18 +135,38 @@ func (l2l1 l2ToL1DB) UpdateTokenPairsAndAddress(chainId string, l2L1List []L2ToL
 			}
 			return result.Error
 		}
-		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
+		l2ToL1.L2TransactionHash = l2L1List[i].L2TransactionHash
 		l2ToL1.FromAddress = l2L1List[i].FromAddress
 		l2ToL1.ToAddress = l2L1List[i].ToAddress
 		l2ToL1.L1TokenAddress = l2L1List[i].L1TokenAddress
 		l2ToL1.L2TokenAddress = l2L1List[i].L2TokenAddress
-
-		err := l2l1.gorm.Save(l2ToL1).Error
+		l2ToL1.TokenAmounts = l2L1List[i].TokenAmounts
+		l2ToL1.ETHAmount = l2L1List[i].ETHAmount
+		l2ToL1.AssetType = l2L1List[i].AssetType
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+func (l2l1 l2ToL1DB) UpdateMessageHash(chainId string, l2L1List []L2ToL1) error {
+	for i := 0; i < len(l2L1List); i++ {
+		var l2ToL1 = L2ToL1{}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{L2TransactionHash: l2L1List[i].L2TransactionHash}).Take(&l2ToL1)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+		l2ToL1.MessageHash = l2L1List[i].MessageHash
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -162,7 +183,7 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalProven(chainId string, l2L1L
 		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
 		l2ToL1.L1ProveTxHash = l2L1List[i].L1ProveTxHash
 		l2ToL1.Status = l2L1List[i].Status // in challenge period
-		err := l2l1.gorm.Save(l2ToL1).Error
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
 		if err != nil {
 			return err
 		}
@@ -213,8 +234,8 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalFinalized(chainId string, l2
 		}
 		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
 		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
-		l2ToL1.Status = l2L1List[i].Status // relayed
-		err := l2l1.gorm.Save(l2ToL1).Error
+		l2ToL1.Status = common3.L2ToL1Claimed // relayed
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
 		if err != nil {
 			return err
 		}

@@ -68,7 +68,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 	gormConfig := gorm.Config{
 		Logger:                 DbLogger,
 		SkipDefaultTransaction: true,
-		CreateBatchSize:        3_000,
+		CreateBatchSize:        500,
 	}
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
 	gorm, err := retry.Do[*gorm.DB](context.Background(), 10, retryStrategy, func() (*gorm.DB, error) {

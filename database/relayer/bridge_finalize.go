@@ -7,7 +7,7 @@ import (
 )
 
 type BridgeFinalize struct {
-	GUID      string         `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID      string         `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	TxHash    common.Hash    `json:"tx_hash" gorm:"serializer:bytes"`
 	DestToken common.Address `json:"dest_token" gorm:"serializer:bytes"`
 }

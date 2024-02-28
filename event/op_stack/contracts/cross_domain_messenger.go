@@ -60,7 +60,7 @@ type CrossDomainMessengerRelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
-func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerSentMessageEvent, error) {
+func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerSentMessageEvent, error) {
 	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *d
 
 	sentMessageEventAbi := crossDomainMessengerAbi.Events["SentMessage"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: sentMessageEventAbi.ID}
-	sentMessageEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	sentMessageEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *d
 
 	sentMessageExtensionEventAbi := crossDomainMessengerAbi.Events["SentMessageExtension1"]
 	contractEventFilter = event.ContractEvent{ContractAddress: contractAddress, EventSignature: sentMessageExtensionEventAbi.ID}
-	sentMessageExtensionEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	sentMessageExtensionEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +99,7 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *d
 		if i < numVersionZeroMessages && version != 0 {
 			return nil, fmt.Errorf("expected version zero nonce. nonce %d tx_hash %s", sentMessage.MessageNonce, sentMessage.Raw.TxHash)
 		}
-		mntValue := big.NewInt(0)
-		ethValue := big.NewInt(0)
+		value := big.NewInt(0)
 		hashVersion := 0
 		if version > 0 {
 			sentMessageExtension := bindings.CrossDomainMessengerSentMessageExtension1{Raw: *sentMessageExtensionEvents[i].RLPLog}
@@ -108,11 +107,10 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *d
 			if err != nil {
 				return nil, err
 			}
-			mntValue = sentMessageExtension.Value
-			ethValue = sentMessageExtension.Value
+			value = sentMessageExtension.Value
 			hashVersion = 1
 		}
-		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, mntValue, ethValue)
+		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, value)
 		if err != nil {
 			return nil, err
 		}
@@ -125,17 +123,17 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, db *d
 			GasLimit:             sentMessage.GasLimit,
 			FromAddress:          sentMessage.Sender,
 			ToAddress:            sentMessage.Target,
-			ETHAmount:            ethValue,
+			ETHAmount:            value,
 			Data:                 sentMessage.Message,
 			Timestamp:            sentMessageEvents[i].Timestamp,
 			HashVersion:          uint64(hashVersion),
-			ERC20Amount:          mntValue,
+			ERC20Amount:          value,
 		}
 	}
 	return crossDomainSentMessages, nil
 }
 
-func CrossDomainMessengerRelayedMessageEvents(chainSelector string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerRelayedMessageEvent, error) {
+func CrossDomainMessengerRelayedMessageEvents(chainId string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerRelayedMessageEvent, error) {
 	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -143,7 +141,7 @@ func CrossDomainMessengerRelayedMessageEvents(chainSelector string, contractAddr
 
 	relayedMessageEventAbi := crossDomainMessengerAbi.Events["RelayedMessage"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: relayedMessageEventAbi.ID}
-	relayedMessageEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	relayedMessageEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +171,7 @@ func CrossDomainMessageCalldataV0(sentMsg *bindings.CrossDomainMessengerSentMess
 	return append(CrossDomainMessengerLegacyRelayMessageEncoding.ID, inputBytes...), nil
 }
 
-func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMessengerSentMessage, mntValue *big.Int, ethValue *big.Int) ([]byte, error) {
+func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMessengerSentMessage, value *big.Int) ([]byte, error) {
 	version, _ := DecodeVersionedNonce(sentMsg.MessageNonce)
 	switch version {
 	case 0:
@@ -183,7 +181,7 @@ func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMesse
 		}
 		return append(CrossDomainMessengerLegacyRelayMessageEncoding.ID, inputBytes...), nil
 	case 1:
-		msgBytes, err := abi.Pack("relayMessage", sentMsg.MessageNonce, sentMsg.Sender, sentMsg.Target, mntValue, ethValue, sentMsg.GasLimit, sentMsg.Message)
+		msgBytes, err := abi.Pack("relayMessage", sentMsg.MessageNonce, sentMsg.Sender, sentMsg.Target, value, sentMsg.GasLimit, sentMsg.Message)
 		if err != nil {
 			return nil, err
 		}

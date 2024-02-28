@@ -67,7 +67,7 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(pp.loopInterval)
 	tickerEventOn2 := time.NewTicker(pp.loopInterval)
 	tickerEventRel := time.NewTicker(pp.loopInterval)
-	log.Println("starting polygon bridge processor...")
+	log.Println("starting polygon_worker bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := pp.onL1Data()

@@ -9,7 +9,7 @@ import (
 )
 
 type MsgSentRelationStruct struct {
-	GUID            uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID            uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	TxHash          common.Hash `gorm:"serializer:bytes"`
 	MsgHash         common.Hash `gorm:"serializer:bytes"`
 	MsgHashRelation bool

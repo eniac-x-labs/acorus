@@ -15,7 +15,7 @@ import (
 )
 
 type BlockHeader struct {
-	GUID       uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID       uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	Hash       common.Hash `gorm:"primaryKey;serializer:bytes"`
 	ParentHash common.Hash `gorm:"serializer:bytes"`
 	Number     *big.Int    `gorm:"serializer:u256"`

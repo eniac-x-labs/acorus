@@ -2,11 +2,10 @@ package crossdomain
 
 import (
 	"fmt"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
+	"log"
+	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
@@ -113,7 +112,7 @@ func GetPendingWithdrawals(messengers *Messengers, version *big.Int, start, end 
 		}
 
 		if !relayed {
-			log.Info("%s not yet relayed", event.Raw.TxHash)
+			log.Println("%s not yet relayed", event.Raw.TxHash)
 
 			withdrawal := PendingWithdrawal{
 				LegacyWithdrawal: LegacyWithdrawal{
@@ -127,7 +126,7 @@ func GetPendingWithdrawals(messengers *Messengers, version *big.Int, start, end 
 
 			withdrawals = append(withdrawals, withdrawal)
 		} else {
-			log.Info("%s already relayed", event.Raw.TxHash)
+			log.Println("%s already relayed", event.Raw.TxHash)
 		}
 	}
 	return withdrawals, nil

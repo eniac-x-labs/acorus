@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
@@ -111,7 +111,7 @@ func ReadWitnessData(path string) ([]*SentMessage, OVMETHAddresses, error) {
 			// Skip any errors
 			calldata, err := decodeWitnessCalldata(msgB)
 			if err != nil {
-				log.Warn("cannot decode witness calldata", "err", err)
+				log.Println("cannot decode witness calldata", "err", err)
 				continue
 			}
 
@@ -221,7 +221,7 @@ func (m *MigrationData) ToWithdrawals() (DangerousUnfilteredWithdrawals, []Inval
 	for _, msg := range m.EvmMessages {
 		wd, err := msg.ToLegacyWithdrawal()
 		if err != nil {
-			log.Warn("Discovered mal-formed withdrawal", "who", msg.Who, "data", msg.Msg)
+			log.Println("Discovered mal-formed withdrawal", "who", msg.Who, "data", msg.Msg)
 			invalidMessages = append(invalidMessages, InvalidMessage(*msg))
 			continue
 		}

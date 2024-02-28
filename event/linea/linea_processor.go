@@ -56,7 +56,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(lp.loopInterval)
 	tickerEventOn2 := time.NewTicker(lp.loopInterval)
 	tickerEventRel := time.NewTicker(lp.loopInterval)
-	log.Println("starting scroll bridge processor...")
+	log.Println("starting scroll_worker bridge processor...")
 	lp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := lp.onL1Data()

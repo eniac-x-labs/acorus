@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
-
 	"gorm.io/gorm"
+	"log"
 	"math/big"
 	"strconv"
 	"time"
@@ -101,6 +101,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn1.C {
 			err := ep.onL1Data()
 			if err != nil {
+				log.Println("failed to process L1 data", "err", err)
 				continue
 			}
 		}
@@ -111,6 +112,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := ep.onL2Data()
 			if err != nil {
+				log.Println("failed to process L2 data", "err", err)
 				continue
 			}
 		}
@@ -248,7 +250,7 @@ func (ep *OpEventProcessor) processProvenL1Events() error {
 	if latestProvenL1HeaderScope == nil {
 		return nil
 	}
-	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestProvenL1HeaderScope, "10")
+	latestL1Header, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestProvenL1HeaderScope, "1")
 	if err != nil {
 		return fmt.Errorf("failed to query for latest unfinalized L1 state: %w", err)
 	} else if latestL1Header == nil {
@@ -366,10 +368,10 @@ func (ep *OpEventProcessor) processRollupStateRoot() error {
 	}
 	latestRollupL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
-		headers := newQuery.Table("block_headers_"+strconv.FormatUint(global_const.OpChinId, 10)).Where("number > ?", lastStateRootL1BlockNumber)
+		headers := newQuery.Table("block_headers_"+strconv.FormatUint(global_const.EthereumChainId, 10)).Where("number > ?", lastStateRootL1BlockNumber)
 		return db.Where("number = (?)", newQuery.Table("(?) as block_numbers", headers.Order("number ASC").Limit(int(ep.epoch))).Select("MAX(number)"))
 	}
-	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope, "10")
+	latestL1StateRootHeader, err := ep.db.Blocks.ChainBlockHeaderWithScope(latestRollupL1HeaderScope, "1")
 	if err != nil {
 		return fmt.Errorf("failed to query new L1 state: %w", err)
 	} else if latestL1StateRootHeader == nil {

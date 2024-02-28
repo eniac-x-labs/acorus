@@ -41,13 +41,13 @@ type StandardBridgeFinalizedEvent struct {
 
 // StandardBridgeInitiatedEvents extracts all initiated bridge events from the contracts that follow the StandardBridge ABI. The
 // correlated CrossDomainMessenger nonce is also parsed from the associated messenger events.
-func StandardBridgeInitiatedEvents(chainSelector string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]StandardBridgeInitiatedEvent, error) {
-	ethBridgeInitiatedEvents, err := _standardBridgeInitiatedEvents[bindings.StandardBridgeETHBridgeInitiated](contractAddress, chainSelector, db, fromHeight, toHeight)
+func StandardBridgeInitiatedEvents(chainId string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]StandardBridgeInitiatedEvent, error) {
+	ethBridgeInitiatedEvents, err := _standardBridgeInitiatedEvents[bindings.StandardBridgeETHBridgeInitiated](contractAddress, chainId, db, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
 
-	erc20BridgeInitiatedEvents, err := _standardBridgeInitiatedEvents[bindings.StandardBridgeERC20BridgeInitiated](contractAddress, chainSelector, db, fromHeight, toHeight)
+	erc20BridgeInitiatedEvents, err := _standardBridgeInitiatedEvents[bindings.StandardBridgeERC20BridgeInitiated](contractAddress, chainId, db, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func StandardBridgeFinalizedEvents(chainSelector string, contractAddress common.
 }
 
 func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBridgeInitiated | bindings.StandardBridgeERC20BridgeInitiated](
-	contractAddress common.Address, chainSelector string, db *database.DB, fromHeight, toHeight *big.Int,
+	contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int,
 ) ([]StandardBridgeInitiatedEvent, error) {
 	standardBridgeAbi, err := bindings.StandardBridgeMetaData.GetAbi()
 	if err != nil {
@@ -92,7 +92,7 @@ func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBr
 
 	initiatedBridgeEventAbi := standardBridgeAbi.Events[eventName]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: initiatedBridgeEventAbi.ID}
-	initiatedBridgeEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	initiatedBridgeEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBr
 }
 
 func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBridgeFinalized | bindings.StandardBridgeERC20BridgeFinalized](
-	contractAddress common.Address, chainSelector string, db *database.DB, fromHeight, toHeight *big.Int,
+	contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int,
 ) ([]StandardBridgeFinalizedEvent, error) {
 	standardBridgeAbi, err := bindings.StandardBridgeMetaData.GetAbi()
 	if err != nil {
@@ -160,7 +160,7 @@ func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBr
 
 	bridgeFinalizedEventAbi := standardBridgeAbi.Events[eventName]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: bridgeFinalizedEventAbi.ID}
-	bridgeFinalizedEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	bridgeFinalizedEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

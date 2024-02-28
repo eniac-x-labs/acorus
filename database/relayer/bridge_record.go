@@ -12,7 +12,7 @@ import (
 )
 
 type BridgeRecords struct {
-	GUID                 uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID                 uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	SourceChainId        string         `json:"source_chain_id"`
 	DestChainId          string         `json:"dest_chain_id"`
 	SourceTxHash         common.Hash    `json:"source_tx_hash" gorm:"serializer:bytes"`

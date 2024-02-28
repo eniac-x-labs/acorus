@@ -1,10 +1,10 @@
 package ovm1
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/event/op_stack/bridge/ovm1/crossdomain"
 )
@@ -18,6 +18,6 @@ func CalcTransaction(legacyWithdrawal *crossdomain.LegacyWithdrawal, l1Crossdoma
 	if err != nil {
 		return common.Hash{}, err
 	}
-	log.Info("withdraw hash", hash)
+	log.Println("withdraw hash", hash)
 	return hash, nil
 }

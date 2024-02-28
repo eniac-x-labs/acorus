@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"gorm.io/gorm"
+	"log"
 	"math/big"
 	"strings"
 
 	"github.com/google/uuid"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	common3 "github.com/cornerstone-labs/acorus/common"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
@@ -17,7 +16,7 @@ import (
 )
 
 type L1ToL2 struct {
-	GUID                  uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''" json:"guid"`
+	GUID                  uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid" json:"guid"`
 	L1BlockNumber         *big.Int       `gorm:"serializer:u256;column:l1_block_number" db:"l1_block_number" json:"l1BlockNumber" form:"l1_block_number"`
 	L2BlockNumber         *big.Int       `gorm:"serializer:u256;column:l2_block_number" db:"l2_block_number" json:"l2BlockNumber" form:"l2_block_number"`
 	QueueIndex            *big.Int       `gorm:"serializer:u256;column:queue_index" json:"queueIndex"`
@@ -106,13 +105,13 @@ func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSi
 	if address != "0x00" {
 		err := l1l2.gorm.Table("l1_to_l2_"+chainId).Select("l2_block_number").Where("from_address = ?", address).Or(" to_address = ?", address).Count(&totalRecord).Error
 		if err != nil {
-			log.Error("get l1 to l2 by address count fail")
+			log.Println("get l1 to l2 by address count fail")
 		}
 		queryStateRoot.Where("from_address = ?", address).Or(" to_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
 		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Select("l2_block_number").Count(&totalRecord).Error
 		if err != nil {
-			log.Error("get l1 to l2 no address count fail ")
+			log.Println("get l1 to l2 no address count fail ")
 		}
 		queryStateRoot.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
@@ -123,7 +122,7 @@ func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSi
 	}
 	qErr := queryStateRoot.Find(&l1ToL2List).Error
 	if qErr != nil {
-		log.Error("get l1 to l2 list fail", "err", qErr)
+		log.Println("get l1 to l2 list fail", "err", qErr)
 	}
 	return l1ToL2List, totalRecord
 }
@@ -143,7 +142,10 @@ func (l1l2 l1ToL2DB) UpdateTokenPairAndAddress(chainId string, l1L2List []L1ToL2
 		l1ToL2.FromAddress = l1L2List[i].FromAddress
 		l1ToL2.ToAddress = l1L2List[i].ToAddress
 		l1ToL2.TokenAmounts = l1L2List[i].TokenAmounts
-		err := l1l2.gorm.Save(l1ToL2).Error
+		l1ToL2.ETHAmount = l1L2List[i].ETHAmount
+		l1ToL2.TokenAmounts = l1L2List[i].TokenAmounts
+		l1ToL2.AssetType = l1L2List[i].AssetType
+		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Save(l1ToL2).Error
 		if err != nil {
 			return err
 		}
@@ -162,7 +164,7 @@ func (l1l2 l1ToL2DB) UpdateMessageHash(chainId string, l1L2List []L1ToL2) error 
 			return result.Error
 		}
 		l1ToL2.MessageHash = l1L2List[i].MessageHash
-		err := l1l2.gorm.Save(l1ToL2).Error
+		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Save(l1ToL2).Error
 		if err != nil {
 			return err
 		}
@@ -173,7 +175,7 @@ func (l1l2 l1ToL2DB) UpdateMessageHash(chainId string, l1L2List []L1ToL2) error 
 func (l1l2 l1ToL2DB) MarkL1ToL2TransactionDepositFinalized(chainId string, L1l2List []L1ToL2) error {
 	for i := 0; i < len(L1l2List); i++ {
 		var l1ToL2 = L1ToL2{}
-		if L1l2List[i].L1BlockNumber.Uint64() <= 0 {
+		if L1l2List[i].L2BlockNumber.Uint64() <= 0 {
 			continue
 		}
 		result := l1l2.gorm.Table("l1_to_l2_" + chainId).Where(&L2ToL1{MessageHash: L1l2List[i].MessageHash}).Take(&l1ToL2)
@@ -183,7 +185,7 @@ func (l1l2 l1ToL2DB) MarkL1ToL2TransactionDepositFinalized(chainId string, L1l2L
 			}
 			return result.Error
 		}
-		log.Info("mark transaction finalized", "L1BlockNumber", L1l2List[i].L1BlockNumber, "L1TransactionHash", L1l2List[i].L1TransactionHash)
+		log.Println("mark transaction finalized", "L2BlockNumber", L1l2List[i].L2BlockNumber, "L2TransactionHash", L1l2List[i].L2TransactionHash)
 		l1ToL2.L2BlockNumber = L1l2List[i].L2BlockNumber
 		l1ToL2.L2TransactionHash = L1l2List[i].L2TransactionHash
 		l1ToL2.Status = common3.L1ToL2Claimed // relayed
@@ -206,7 +208,7 @@ func (l1l2 l1ToL2DB) RelayedL1ToL2Transaction(chainId string, l1L2List []L1ToL2)
 			return result.Error
 		}
 		l1ToL2.L2TransactionHash = l1L2List[i].L2TransactionHash
-		err := l1l2.gorm.Save(l1ToL2).Error
+		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Save(l1ToL2).Error
 		if err != nil {
 			return err
 		}
@@ -227,7 +229,7 @@ func (l1l2 l1ToL2DB) FinalizedL1ToL2Transaction(chainId string, l1L2List []L1ToL
 		l1ToL2.L2TransactionHash = l1L2List[i].L2TransactionHash
 		l1ToL2.L2BlockNumber = l1L2List[i].L2BlockNumber
 		l1ToL2.Status = l1L2List[i].Status
-		err := l1l2.gorm.Save(l1ToL2).Error
+		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Save(l1ToL2).Error
 		if err != nil {
 			return err
 		}
@@ -296,7 +298,7 @@ func (l1l2 l1ToL2DB) latestFinalizedBlockHeaderWithChainId(l2ChainId, destChainI
 func (l1l2 l1ToL2DB) L1ToL2Transaction(chainId string, msgHash common.Hash) (*L1ToL2, error) {
 	var l1tol2Tx L1ToL2
 	filterMessageHash := L1ToL2{MessageHash: msgHash}
-	result := l1l2.gorm.Table("block_headers" + chainId).Where(&filterMessageHash).Take(&l1tol2Tx)
+	result := l1l2.gorm.Table("l1_to_l2_" + chainId).Where(&filterMessageHash).Take(&l1tol2Tx)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
