@@ -225,15 +225,14 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 		}
 		withdrawTx, _ := b.db.L2ToL1.L2ToL1TransactionWithdrawal(strconv.FormatUint(global_const.OpChinId, 10), finalizedTxn.WithdrawHash)
 		if withdrawTx != nil {
-			if withdrawTx != nil {
-				if withdrawTx.Version != 0 {
-					withdrawL2ToL1List = append(withdrawL2ToL1List, l2l1Tx)
-					needMarkWithdrawList = append(needMarkWithdrawList, finalizedTxn)
-				} else {
-					withdrawL2ToL1ListV0 = append(withdrawL2ToL1ListV0, l2l1Tx)
-					needMarkWithdrawListV0 = append(needMarkWithdrawListV0, finalizedTxn)
-				}
+			if withdrawTx.Version != 0 {
+				withdrawL2ToL1List = append(withdrawL2ToL1List, l2l1Tx)
+				needMarkWithdrawList = append(needMarkWithdrawList, finalizedTxn)
+			} else {
+				withdrawL2ToL1ListV0 = append(withdrawL2ToL1ListV0, l2l1Tx)
+				needMarkWithdrawListV0 = append(needMarkWithdrawListV0, finalizedTxn)
 			}
+
 		}
 	}
 	if err := b.db.Transaction(func(tx *database.DB) error {

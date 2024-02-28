@@ -284,16 +284,12 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	finalizedTokens := make(map[common.Address]int)
 	for i := range finalizedBridges {
 		finalizedBridge := finalizedBridges[i]
-		relayedMessage, ok := relayedMessages[logKey{finalizedBridge.Event.BlockHash, finalizedBridge.Event.LogIndex + 1}]
-		if !ok {
-			log.Println("expected RelayedMessage following BridgeFinalized event", "tx_hash", finalizedBridge.Event.TransactionHash.String())
-			return fmt.Errorf("expected RelayedMessage following BridgeFinalized event. tx_hash = %s", finalizedBridge.Event.TransactionHash.String())
-		}
+
 		withdrawFinalizedBridgeList[i].L1TokenAddress = finalizedBridge.LocalTokenAddress
 		withdrawFinalizedBridgeList[i].L2TokenAddress = finalizedBridge.RemoteTokenAddress
 		withdrawFinalizedBridgeList[i].ETHAmount = finalizedBridge.ETHAmount
 		withdrawFinalizedBridgeList[i].ERC20Amount = finalizedBridge.ERC20Amount
-		withdrawFinalizedBridgeList[i].MessageHash = relayedMessage.MessageHash
+		withdrawFinalizedBridgeList[i].FinalizedTransactionHash = finalizedBridge.Event.TransactionHash
 		finalizedTokens[finalizedBridge.LocalTokenAddress]++
 	}
 	if len(finalizedBridges) > 0 {

@@ -55,8 +55,6 @@ type L2ToL1DB interface {
 	MarkL2ToL1TransactionWithdrawalProvenV0(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalized(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, l2L1List []L2ToL1) error
-	UpdateL2ToL1MsgHashByL2TxHash(chainId string, l2L1 L2ToL1) error
-	UpdateL2ToL1L1TxHashByMsgHash(chainId string, l2L1 L2ToL1) error
 	UpdateL2ToL1ClaimedStatus(chainId string, l1L2 L2ToL1) error
 }
 
@@ -76,19 +74,6 @@ type l2ToL1DB struct {
 
 func NewL21ToL1DB(db *gorm.DB) L2ToL1DB {
 	return &l2ToL1DB{gorm: db}
-}
-
-func (l2l1 l2ToL1DB) UpdateL2ToL1MsgHashByL2TxHash(chainId string, l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Model(&l2L1Stu).Where(&L2ToL1{L2TransactionHash: l2L1Stu.L2TransactionHash})
-	result = result.UpdateColumn("message_hash", l2L1Stu.MessageHash.String())
-	return result.Error
-}
-
-func (l2l1 l2ToL1DB) UpdateL2ToL1L1TxHashByMsgHash(chainId string, l2L1Stu L2ToL1) error {
-	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Model(&l2L1Stu).Where(&L2ToL1{MessageHash: l2L1Stu.MessageHash})
-	result = result.UpdateColumn("l1_finalize_tx_hash", l2L1Stu.L1FinalizeTxHash.String()).UpdateColumn("status", 1)
-	result = result.UpdateColumn("l1_block_number", l2L1Stu.L1BlockNumber.String())
-	return result.Error
 }
 
 func (l2l1 l2ToL1DB) StoreL2ToL1Transactions(chainId string, l1L2List []L2ToL1) error {
@@ -128,7 +113,12 @@ func (l2l1 l2ToL1DB) L2ToL1List(chainId string, address string, page int, pageSi
 func (l2l1 l2ToL1DB) UpdateTokenPairsAndAddress(chainId string, l2L1List []L2ToL1) error {
 	for i := 0; i < len(l2L1List); i++ {
 		var l2ToL1 = L2ToL1{}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: l2L1List[i].WithdrawTransactionHash}).Take(&l2ToL1)
+		withdrawTransactionHash := l2L1List[i].WithdrawTransactionHash
+		nilHash := common.Hash{}
+		if withdrawTransactionHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawTransactionHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -154,7 +144,12 @@ func (l2l1 l2ToL1DB) UpdateTokenPairsAndAddress(chainId string, l2L1List []L2ToL
 func (l2l1 l2ToL1DB) UpdateMessageHash(chainId string, l2L1List []L2ToL1) error {
 	for i := 0; i < len(l2L1List); i++ {
 		var l2ToL1 = L2ToL1{}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{L2TransactionHash: l2L1List[i].L2TransactionHash}).Take(&l2ToL1)
+		nilHash := common.Hash{}
+		l2TransactionHash := l2L1List[i].L2TransactionHash
+		if l2TransactionHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{L2TransactionHash: l2TransactionHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -173,7 +168,12 @@ func (l2l1 l2ToL1DB) UpdateMessageHash(chainId string, l2L1List []L2ToL1) error 
 func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalProven(chainId string, l2L1List []L2ToL1) error {
 	for i := 0; i < len(l2L1List); i++ {
 		var l2ToL1 = L2ToL1{}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: l2L1List[i].WithdrawTransactionHash}).Take(&l2ToL1)
+		withdrawTransactionHash := l2L1List[i].WithdrawTransactionHash
+		nilHash := common.Hash{}
+		if withdrawTransactionHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawTransactionHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -182,7 +182,7 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalProven(chainId string, l2L1L
 		}
 		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
 		l2ToL1.L1ProveTxHash = l2L1List[i].L1ProveTxHash
-		l2ToL1.Status = l2L1List[i].Status // in challenge period
+		l2ToL1.Status = common3.L2ToL1InChallengePeriod // in challenge period
 		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
 		if err != nil {
 			return err
@@ -197,7 +197,12 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalProvenV0(chainId string, l2L
 		if l2L1List[i].L1BlockNumber.Uint64() <= 0 {
 			continue
 		}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: l2L1List[i].MessageHash}).Take(&l2ToL1)
+		messageHash := l2L1List[i].MessageHash
+		nilHash := common.Hash{}
+		if messageHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -225,7 +230,12 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalProvenV0(chainId string, l2L
 func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalFinalized(chainId string, l2L1List []L2ToL1) error {
 	for i := 0; i < len(l2L1List); i++ {
 		var l2ToL1 = L2ToL1{}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: l2L1List[i].WithdrawTransactionHash}).Take(&l2ToL1)
+		withdrawTransactionHash := l2L1List[i].WithdrawTransactionHash
+		nilHash := common.Hash{}
+		if withdrawTransactionHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawTransactionHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -249,7 +259,12 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, 
 		if l2L1List[i].L1BlockNumber.Uint64() <= 0 {
 			continue
 		}
-		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: l2L1List[i].MessageHash}).Take(&l2ToL1)
+		withdrawTransactionHash := l2L1List[i].WithdrawTransactionHash
+		nilHash := common.Hash{}
+		if withdrawTransactionHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawTransactionHash}).Take(&l2ToL1)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -280,6 +295,10 @@ func (l2l1 l2ToL1DB) UpdateReadyForProvedStatus(chainId string, blockTimestamp i
 
 func (l2l1 l2ToL1DB) UpdateL1FinalizeStatus(chainId string, withdrawalHash common.Hash, finalizedL1EventGuid uuid.UUID) error {
 	var l2ToL1 = L2ToL1{}
+	nilHash := common.Hash{}
+	if withdrawalHash == nilHash {
+		return nil
+	}
 	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawalHash}).Take(&l2ToL1)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

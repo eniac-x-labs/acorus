@@ -144,12 +144,12 @@ func (w withdrawFinalizedDB) MarkedWithdrawFinalizedRelated(chainId string, with
 func (w withdrawFinalizedDB) UpdateWithdrawFinalizedInfo(chainId string, withdrawFinalizedList []WithdrawFinalized) error {
 	for i := 0; i < len(withdrawFinalizedList); i++ {
 		var withdrawFinalizeds = WithdrawFinalized{}
-		messageHash := withdrawFinalizedList[i].MessageHash
+		finalizedTransactionHash := withdrawFinalizedList[i].FinalizedTransactionHash
 		hash := common.Hash{}
-		if messageHash == hash {
+		if finalizedTransactionHash == hash {
 			continue
 		}
-		result := w.gorm.Table("withdraw_finalized_" + chainId).Where(&WithdrawFinalized{MessageHash: messageHash}).Take(&withdrawFinalizeds)
+		result := w.gorm.Table("withdraw_finalized_" + chainId).Where(&WithdrawFinalized{FinalizedTransactionHash: finalizedTransactionHash}).Take(&withdrawFinalizeds)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -160,7 +160,6 @@ func (w withdrawFinalizedDB) UpdateWithdrawFinalizedInfo(chainId string, withdra
 		withdrawFinalizeds.L2TokenAddress = withdrawFinalizedList[i].L2TokenAddress
 		withdrawFinalizeds.ETHAmount = withdrawFinalizedList[i].ETHAmount
 		withdrawFinalizeds.ERC20Amount = withdrawFinalizedList[i].ERC20Amount
-		withdrawFinalizeds.MessageHash = messageHash
 		err := w.gorm.Table("withdraw_finalized_" + chainId).Save(withdrawFinalizeds).Error
 		if err != nil {
 			return err
