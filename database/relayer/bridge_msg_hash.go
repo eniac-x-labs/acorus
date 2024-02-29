@@ -3,12 +3,13 @@ package relayer
 import (
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"math/big"
 )
 
 type BridgeMsgHash struct {
-	GUID     string      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
+	GUID     uuid.UUID   `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	TxHash   common.Hash `json:"tx_hash" gorm:"serializer:bytes"`
 	Fee      *big.Int    `json:"fee" gorm:"serializer:u256"`
 	MsgNonce *big.Int    `json:"msg_nonce" gorm:"serializer:u256"`
