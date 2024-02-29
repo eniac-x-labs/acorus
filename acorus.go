@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
-
 	"log"
 	"math/big"
 	"net"
@@ -29,6 +28,7 @@ import (
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
+	worker2 "github.com/cornerstone-labs/acorus/worker"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
 )
 
@@ -40,7 +40,7 @@ type Acorus struct {
 	metricsRegistry       *prometheus.Registry
 	Synchronizer          map[uint64]*synchronizer.Synchronizer
 	Processor             map[uint64]event2.IEventProcessor
-	Worker                map[uint64]*op_stack2.WorkerProcessor
+	Worker                map[uint64]worker2.IWorkerProcessor
 	Relayer               map[uint64]*relayer.RelayerListener
 	shutdown              context.CancelCauseFunc
 	stopped               atomic.Bool
@@ -83,7 +83,7 @@ func (as *Acorus) Start(ctx context.Context) error {
 		}
 		worker := as.Worker[realChainId]
 		if worker != nil {
-			if err := worker.Start(context.Background()); err != nil {
+			if err := worker.WorkerStart(); err != nil {
 				return fmt.Errorf("failed to start worker: %w", err)
 			}
 		}
@@ -205,11 +205,16 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 	var l1StartBlockNumber *big.Int
 	for i := range cfg.RPCs {
 		log.Println("init chain processor", "chainId", cfg.RPCs[i].ChainId)
+		log.Println("Init processor success", "chainId", cfg.RPCs[i].ChainId)
 		if as.Processor == nil {
 			as.Processor = make(map[uint64]event2.IEventProcessor)
 		}
+		if as.Worker == nil {
+			as.Worker = make(map[uint64]worker2.IWorkerProcessor)
+		}
 		rpcItem := cfg.RPCs[i]
 		var processor event2.IEventProcessor
+		var worker worker2.IWorkerProcessor
 		var err error
 		if rpcItem.ChainId == global_const.EthereumChainId {
 			l1StartBlockNumber = big.NewInt(int64(rpcItem.StartBlock))
@@ -225,15 +230,17 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 				return err
 			}
 		} else if rpcItem.ChainId == global_const.OpChinId {
-			processor, err = op_stack.NewBridgeProcessor(
+			if worker, err = op_stack2.NewWorkerProcessor(as.DB, strconv.FormatUint(cfg.RPCs[i].ChainId, 10), as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = op_stack.NewBridgeProcessor(
 				as.DB,
 				l1StartBlockNumber,
 				big.NewInt(int64(rpcItem.StartBlock)),
 				as.shutdown,
 				loopInterval,
 				epoch,
-			)
-			if err != nil {
+			); err != nil {
 				return err
 			}
 		} else if rpcItem.ChainId == global_const.LineaChainId {
@@ -245,6 +252,9 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 		if processor != nil {
 			as.Processor[rpcItem.ChainId] = processor
 		}
+		if worker != nil {
+			as.Worker[rpcItem.ChainId] = worker
+		}
 	}
 	return nil
 }
@@ -255,7 +265,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
-			HeaderBufferSize:  50,
+			HeaderBufferSize:  uint(rpcItem.HeaderBufferSize),
 			ConfirmationDepth: big.NewInt(int64(1)),
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
@@ -268,22 +278,6 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 			as.Synchronizer = make(map[uint64]*synchronizer.Synchronizer)
 		}
 		as.Synchronizer[rpcItem.ChainId] = synchronizerTemp
-	}
-	return nil
-}
-
-func (as *Acorus) initBusinessProcessor(cfg config.Config) error {
-	for i := range cfg.RPCs {
-		log.Println("Init processor success", "chainId", cfg.RPCs[i].ChainId)
-		rpcItem := cfg.RPCs[i]
-		worker, err := op_stack2.NewWorkerProcessor(as.DB, strconv.FormatUint(cfg.RPCs[i].ChainId, 10), as.shutdown)
-		if err != nil {
-			return err
-		}
-		if as.Worker == nil {
-			as.Worker = make(map[uint64]*op_stack2.WorkerProcessor)
-		}
-		as.Worker[rpcItem.ChainId] = worker
 	}
 	return nil
 }

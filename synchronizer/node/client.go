@@ -24,7 +24,7 @@ import (
 const (
 	// defaultDialTimeout is default duration the processor will wait on
 	// startup to make a connection to the backend
-	defaultDialTimeout = 5 * time.Second
+	defaultDialTimeout = 50 * time.Second
 
 	// defaultDialAttempts is the default attempts a connection will be made
 	// before failing
@@ -32,7 +32,7 @@ const (
 
 	// defaultRequestTimeout is the default duration the processor will
 	// wait for a request to be fulfilled
-	defaultRequestTimeout = 10 * time.Second
+	defaultRequestTimeout = 100 * time.Second
 )
 
 type EthClient interface {

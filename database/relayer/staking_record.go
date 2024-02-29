@@ -13,7 +13,7 @@ import (
 )
 
 type StakingRecord struct {
-	GUID        uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','')"`
+	GUID        uuid.UUID      `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	TxHash      common.Hash    `json:"txHash" gorm:"serializer:bytes"`
 	BlockNumber *big.Int       `json:"blockNumber" gorm:"serializer:u256"`
 	UserAddress common.Address `json:"userAddress" gorm:"serializer:bytes"`

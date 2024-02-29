@@ -33,16 +33,14 @@ func L2Withdraw(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 		FromAddress:       w.DestinationAddress,
 		ToAddress:         w.DestinationAddress,
 		L2BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
-		L1TokenAddress:    w.OriginAddress,
+		L1TokenAddress:    common.Address{},
 		L2TokenAddress:    common.Address{},
 		ETHAmount:         big.NewInt(0),
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(event.Timestamp),
-		AssetType:         int64(common2.ETH),
 		MsgNonce:          big.NewInt(0),
 		MessageHash:       common.BigToHash(big.NewInt(int64(w.DepositCount))),
 		ClaimedIndex:      int64(w.DepositCount),
-		TokenAmounts:      "0",
 	}
 
 	if w.OriginAddress.String() == utils.L1_ETH {
@@ -57,30 +55,31 @@ func L2Withdraw(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 	if unpackErr != nil {
 		return unpackErr
 	}
-	msgSent := relation.MsgSentRelation{
+	msgSent := relation.MsgSentRelationStruct{
 		TxHash:          rlpLog.TxHash,
 		LayerType:       global_const.LayerTypeTwo,
 		Data:            string(marshal),
 		MsgHash:         l2ToL1.MessageHash,
 		MsgHashRelation: true,
 	}
-	saveErr := db.MsgSentRelation.MsgSentRelationStore(msgSent, chainId)
+	saveErr := db.MsgSentRelationD.MsgSentRelationStore(msgSent, chainId)
 	return saveErr
 }
 
 func L2WithdrawClaimed(chainId string, polygonBridge *abi.Polygonzkevmbridge,
 	event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	c, unpackErr := utils.DecodeLog(utils.ClaimEventAbi, "ClaimEvent", *rlpLog)
+	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
-	index := big.NewInt(int64(c["index"].(uint32)))
+	index := c.GlobalIndex
 	relayRelation := relation.RelayRelation{
 		TxHash:      rlpLog.TxHash,
+		LayerType:   global_const.LayerTypeTwo,
 		BlockNumber: big.NewInt(int64(rlpLog.BlockNumber)),
 		MsgHash:     common.BigToHash(index),
 	}
-	err := db.RelayRelation.RelayRelationStore(relayRelation, chainId)
+	err := db.RelayRelationD.RelayRelationStore(relayRelation, chainId)
 	return err
 }

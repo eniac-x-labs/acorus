@@ -17,7 +17,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" cascade;
 
 CREATE TABLE IF NOT EXISTS template_block_headers
 (
-    guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    guid        text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
     hash        VARCHAR NOT NULL,
     parent_hash VARCHAR NOT NULL,
     number      UINT256 NOT NULL,
@@ -224,26 +224,25 @@ CREATE INDEX IF NOT EXISTS template_state_root_transaction_hash ON template_stat
 
 create table if not exists template_msg_sent
 (
-    guid               text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash            varchar,
-    msg_hash           varchar,
-    layer_hash         varchar,
-    layer_block_number UINT256          default 0,
-    msg_hash_relation  boolean          default false,
-    l1_l2_relation     boolean          default false,
-    to_l1_l2_table     boolean          default false,
-    layer_type         smallint not null,
-    data               varchar
+    guid              text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash           varchar,
+    msg_hash          varchar,
+    msg_hash_relation boolean          default false,
+    to_l1_l2_table    boolean          default false,
+    layer_type        smallint not null,
+    data              varchar
 );
 CREATE INDEX IF NOT EXISTS template_msg_sent_tx_hash ON template_msg_sent (tx_hash);
 CREATE INDEX IF NOT EXISTS template_msg_sent_msg_hash ON template_msg_sent (msg_hash);
 
 create table if not exists template_relay
 (
-    guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash      varchar,
-    msg_hash     varchar,
-    block_number UINT256          default 0
+    guid           text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash        varchar,
+    msg_hash       varchar,
+    layer_type     smallint not null,
+    l1_l2_relation boolean          default false,
+    block_number   UINT256          default 0
 );
 CREATE INDEX IF NOT EXISTS template_relay_tx_hash ON template_relay (tx_hash);
 CREATE INDEX IF NOT EXISTS template_relay_msg_hash ON template_relay (msg_hash);
@@ -281,9 +280,9 @@ CREATE TABLE IF NOT EXISTS staking_record
     user_address  VARCHAR  not null,
     token         VARCHAR,
     amount        UINT256  not null,
-    reward        UINT256  ,
-    start_pool_id uint256  ,
-    end_pool_id   uint256  ,
+    reward        UINT256,
+    start_pool_id uint256,
+    end_pool_id   uint256,
     status        smallint not null,
     tx_type       smallint not null,
     asset_type    SMALLINT NOT NULL,
@@ -300,26 +299,26 @@ CREATE INDEX IF NOT EXISTS staking_timestamp ON staking_record (timestamp);
 
 CREATE TABLE IF NOT EXISTS bridge_record
 (
-    guid                 text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    source_chain_id      varchar,
-    dest_chain_id        varchar,
-    source_tx_hash       VARCHAR,
-    dest_tx_hash         VARCHAR,
-    source_block_number  UINT256,
-    dest_block_number    UINT256,
-    source_token_address VARCHAR,
-    dest_token_address   VARCHAR,
-    msg_hash             varchar,
-    from_address         varchar,
-    to_address           varchar,
-    status               smallint not null,
-    amount               UINT256,
-    nonce                UINT256,
-    fee                  UINT256,
-    asset_type           SMALLINT NOT NULL,
-    bridge_record_relation boolean default false,
-    msg_sent_timestamp   INTEGER,
-    claim_timestamp      INTEGER
+    guid                   text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    source_chain_id        varchar,
+    dest_chain_id          varchar,
+    source_tx_hash         VARCHAR,
+    dest_tx_hash           VARCHAR,
+    source_block_number    UINT256,
+    dest_block_number      UINT256,
+    source_token_address   VARCHAR,
+    dest_token_address     VARCHAR,
+    msg_hash               varchar,
+    from_address           varchar,
+    to_address             varchar,
+    status                 smallint not null,
+    amount                 UINT256,
+    nonce                  UINT256,
+    fee                    UINT256,
+    asset_type             SMALLINT NOT NULL,
+    bridge_record_relation boolean          default false,
+    msg_sent_timestamp     INTEGER,
+    claim_timestamp        INTEGER
 );
 CREATE INDEX IF NOT EXISTS bridge_record_source_chain_id ON bridge_record (source_chain_id);
 CREATE INDEX IF NOT EXISTS bridge_record_dest_chain_id ON bridge_record (dest_chain_id);

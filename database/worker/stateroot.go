@@ -15,7 +15,7 @@ import (
 )
 
 type StateRoot struct {
-	GUID              uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''" json:"guid"`
+	GUID              uuid.UUID   `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','';serializer:uuid" json:"guid"`
 	BlockHash         common.Hash `gorm:"serializer:bytes;column:block_hash;primaryKey" json:"blockHash"`
 	TransactionHash   common.Hash `gorm:"serializer:bytes;column:transaction_hash" json:"transactionHash"`
 	L1BlockNumber     *big.Int    `gorm:"serializer:u256" json:"l1BlockNumber"`
@@ -61,7 +61,7 @@ func (s stateRootDB) StoreBatchStateRoots(chainId string, roots []StateRoot) err
 	for i := 1; i < len(roots); i++ {
 		roots[i].BlockSize = new(big.Int).Sub(roots[i].L2BlockNumber, roots[i-1].L2BlockNumber).Uint64()
 	}
-	result = s.gorm.Omit("guid").Create(&roots)
+	result = s.gorm.Table("state_root_" + chainId).Omit("guid").Create(&roots)
 	return result.Error
 }
 

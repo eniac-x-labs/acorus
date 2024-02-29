@@ -14,7 +14,7 @@ import (
 )
 
 type WithdrawProven struct {
-	GUID                  uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-',''"`
+	GUID                  uuid.UUID      `gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','';serializer:uuid"`
 	BlockNumber           *big.Int       `gorm:"serializer:u256;column:block_number" db:"block_number"`
 	WithdrawHash          common.Hash    `gorm:"serializer:bytes"`
 	MessageHash           common.Hash    `gorm:"serializer:bytes"`
@@ -72,7 +72,12 @@ func (w withdrawProvenDB) StoreWithdrawProven(chainId string, withdrawProvenList
 func (w withdrawProvenDB) MarkedWithdrawProvenRelated(chainId string, withdrawProvenList []WithdrawProven) error {
 	for i := 0; i < len(withdrawProvenList); i++ {
 		var withdrawProvens = WithdrawProven{}
-		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
+		withdrawHash := withdrawProvenList[i].WithdrawHash
+		hash := common.Hash{}
+		if withdrawHash == hash {
+			continue
+		}
+		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawHash}).Take(&withdrawProvens)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -80,7 +85,7 @@ func (w withdrawProvenDB) MarkedWithdrawProvenRelated(chainId string, withdrawPr
 			return result.Error
 		}
 		withdrawProvens.Related = true
-		err := w.gorm.Save(withdrawProvens).Error
+		err := w.gorm.Table("withdraw_proven_" + chainId).Save(withdrawProvens).Error
 		if err != nil {
 			return err
 		}
@@ -91,7 +96,12 @@ func (w withdrawProvenDB) MarkedWithdrawProvenRelated(chainId string, withdrawPr
 func (w withdrawProvenDB) UpdateWithdrawProvenInfo(chainId string, withdrawProvenList []WithdrawProven) error {
 	for i := 0; i < len(withdrawProvenList); i++ {
 		var withdrawProvens = WithdrawProven{}
-		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawProvenList[i].WithdrawHash}).Take(&withdrawProvens)
+		withdrawHash := withdrawProvenList[i].WithdrawHash
+		hash := common.Hash{}
+		if withdrawHash == hash {
+			continue
+		}
+		result := w.gorm.Table("withdraw_proven_" + chainId).Where(&WithdrawProven{WithdrawHash: withdrawHash}).Take(&withdrawProvens)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -103,7 +113,7 @@ func (w withdrawProvenDB) UpdateWithdrawProvenInfo(chainId string, withdrawProve
 		withdrawProvens.ETHAmount = withdrawProvenList[i].ETHAmount
 		withdrawProvens.ERC20Amount = withdrawProvenList[i].ERC20Amount
 		withdrawProvens.MessageHash = withdrawProvenList[i].MessageHash
-		err := w.gorm.Save(withdrawProvens).Error
+		err := w.gorm.Table("withdraw_proven_" + chainId).Save(withdrawProvens).Error
 		if err != nil {
 			return err
 		}

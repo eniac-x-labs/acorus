@@ -9,7 +9,7 @@ import (
 )
 
 type BridgeBlockListener struct {
-	GUID        string   `json:"guid"`
+	GUID        string   `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
 	ChainId     string   `json:"chain_id"`
 	BlockNumber *big.Int `json:"block_number" gorm:"serializer:u256"`
 	Created     uint64   `json:"created"`

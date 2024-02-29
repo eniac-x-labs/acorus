@@ -3,11 +3,11 @@ package crossdomain
 import (
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/log"
+	"log"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
@@ -62,7 +62,7 @@ func MigrateWithdrawals(
 		}
 
 		db.SetState(predeploys.L2ToL1MessagePasserAddr, slot, abiTrue)
-		log.Info("Migrated withdrawal", "number", i, "slot", slot)
+		log.Println("Migrated withdrawal", "number", i, "slot", slot)
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func CalcWithdrawalHash(
 	if err != nil {
 		return nil, fmt.Errorf("cannot migrate withdrawal: %w", err)
 	}
-	log.Info("Extract MNT and ETH Values from LegacyWithdrawal",
+	log.Println("Extract MNT and ETH Values from LegacyWithdrawal",
 		"MessageSender", withdrawal.MessageSender.String(),
 		"XDomainSender", withdrawal.XDomainSender.String(),
 		"XDomainTarget", withdrawal.XDomainTarget.String(),

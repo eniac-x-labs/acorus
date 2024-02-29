@@ -14,7 +14,7 @@ import (
 )
 
 type RelayMessage struct {
-	GUID                 uuid.UUID      `gorm:"primaryKey"`
+	GUID                 uuid.UUID      `gorm:"primaryKey;serializer:uuid"`
 	BlockNumber          *big.Int       `gorm:"serializer:u256;column:block_number" db:"block_number"`
 	RelayTransactionHash common.Hash    `gorm:"serializer:bytes"`
 	MessageHash          common.Hash    `gorm:"serializer:bytes"`
@@ -64,14 +64,36 @@ func (rm relayMessageDB) RelayMessageL1BlockHeader(chainId string) (*common2.Blo
 }
 
 func (rm relayMessageDB) StoreRelayMessage(chainId string, relayMessageList []RelayMessage) error {
-	result := rm.gorm.Omit("guid").Table("relay_message" + chainId).Create(&relayMessageList)
-	return result.Error
+	tableName := "relay_message_" + chainId
+	newRelayMessageList := make([]RelayMessage, 0)
+
+	for i := 0; i < len(relayMessageList); i++ {
+		var relayMessages = RelayMessage{}
+		messageNew := relayMessageList[i]
+		result := rm.gorm.Table(tableName).Where(&RelayMessage{MessageHash: messageNew.MessageHash}).Take(&relayMessages)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				newRelayMessageList = append(newRelayMessageList, messageNew)
+				continue
+			}
+			return result.Error
+		}
+	}
+	if len(newRelayMessageList) > 0 {
+		return rm.gorm.Table(tableName).Omit("guid").Create(newRelayMessageList).Error
+	}
+	return nil
 }
 
 func (rm relayMessageDB) MarkedRelayMessageRelated(chainId string, relayMessageList []RelayMessage) error {
 	for i := 0; i < len(relayMessageList); i++ {
 		var relayMessages = RelayMessage{}
-		result := rm.gorm.Table("relay_message_" + chainId).Where(&RelayMessage{MessageHash: relayMessageList[i].MessageHash}).Take(&relayMessages)
+		messageHash := relayMessageList[i].MessageHash
+		hash := common.Hash{}
+		if messageHash == hash {
+			continue
+		}
+		result := rm.gorm.Table("relay_message_" + chainId).Where(&RelayMessage{MessageHash: messageHash}).Take(&relayMessages)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -79,7 +101,7 @@ func (rm relayMessageDB) MarkedRelayMessageRelated(chainId string, relayMessageL
 			return result.Error
 		}
 		relayMessages.Related = true
-		err := rm.gorm.Save(relayMessages).Error
+		err := rm.gorm.Table("relay_message_" + chainId).Save(relayMessages).Error
 		if err != nil {
 			return err
 		}
@@ -90,7 +112,12 @@ func (rm relayMessageDB) MarkedRelayMessageRelated(chainId string, relayMessageL
 func (rm relayMessageDB) UpdateRelayMessageInfo(chainId string, relayMessageList []RelayMessage) error {
 	for i := 0; i < len(relayMessageList); i++ {
 		var relayMessages = RelayMessage{}
-		result := rm.gorm.Table("relay_message_" + chainId).Where(&RelayMessage{MessageHash: relayMessageList[i].MessageHash}).Take(&relayMessages)
+		messageHash := relayMessageList[i].MessageHash
+		hash := common.Hash{}
+		if messageHash == hash {
+			continue
+		}
+		result := rm.gorm.Table("relay_message_" + chainId).Where(&RelayMessage{MessageHash: messageHash}).Take(&relayMessages)
 		if result.Error != nil {
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 				return nil
@@ -101,8 +128,8 @@ func (rm relayMessageDB) UpdateRelayMessageInfo(chainId string, relayMessageList
 		relayMessages.L2TokenAddress = relayMessageList[i].L2TokenAddress
 		relayMessages.ETHAmount = relayMessageList[i].ETHAmount
 		relayMessages.ERC20Amount = relayMessageList[i].ERC20Amount
-		relayMessages.MessageHash = relayMessageList[i].MessageHash
-		err := rm.gorm.Save(relayMessages).Error
+		relayMessages.MessageHash = messageHash
+		err := rm.gorm.Table("relay_message_" + chainId).Save(relayMessages).Error
 		if err != nil {
 			return err
 		}

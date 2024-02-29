@@ -59,7 +59,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 	}
 
 	// (2) L1CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy, "1", db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 
 func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, "10", db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 }
 
 func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l1", common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("1", common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight 
 
 func LegacyL2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("l2", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("10", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}

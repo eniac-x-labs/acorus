@@ -20,7 +20,7 @@ func L2OutputProposedEvent(contractAddress common.Address, db *database.DB, from
 	}
 	outputProposedEventAbi := l2OutputAbi.Events["OutputProposed"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: outputProposedEventAbi.ID}
-	outputProposedEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	outputProposedEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func L2OutputProposedEvent(contractAddress common.Address, db *database.DB, from
 		if err != nil {
 			return nil, err
 		}
-		l1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash("10", outputProposedEvents[i].BlockHash)
+		l1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash("1", outputProposedEvents[i].BlockHash)
 		if err != nil {
 			return nil, err
 		}

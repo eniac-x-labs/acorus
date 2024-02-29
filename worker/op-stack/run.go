@@ -2,6 +2,7 @@ package op_stack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -31,7 +32,7 @@ func NewWorkerProcessor(db *database.DB, chainId string, shutdown context.Cancel
 	return &workerProcessor, nil
 }
 
-func (b *WorkerProcessor) Start(ctx context.Context) error {
+func (b *WorkerProcessor) WorkerStart() error {
 	ticker := time.NewTicker(time.Second)
 	b.tasks.Go(func() error {
 		for range ticker.C {
@@ -46,7 +47,19 @@ func (b *WorkerProcessor) Start(ctx context.Context) error {
 		for range tickerRun.C {
 			err := b.syncL2ToL1StateRoot()
 			if err != nil {
-				return err
+				log.Println("syncL2ToL1StateRoot ", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
+	tickerRunMarked := time.NewTicker(time.Second * 5)
+	b.tasks.Go(func() error {
+		for range tickerRunMarked.C {
+			err := b.marked()
+			if err != nil {
+				log.Println("marked ", "err", err)
+				continue
 			}
 		}
 		return nil
@@ -80,6 +93,20 @@ func (b *WorkerProcessor) syncL2ToL1StateRoot() error {
 	return nil
 }
 
+func (b *WorkerProcessor) marked() error {
+	var errs error
+	if err := b.markedL1ToL2Finalized(); err != nil {
+		errors.Join(errs, err)
+	}
+	if err := b.markedL2ToL1Proven(); err != nil {
+		errors.Join(errs, err)
+	}
+	if err := b.markedL2ToL1Finalized(); err != nil {
+		errors.Join(errs, err)
+	}
+	return errs
+}
+
 func (b *WorkerProcessor) markedL1ToL2Finalized() error {
 	log.Println("start marked l1 to l2 finalized")
 	finalizedList, err := b.db.RelayMessage.RelayMessageUnRelatedList(strconv.FormatUint(global_const.OpChinId, 10))
@@ -92,7 +119,8 @@ func (b *WorkerProcessor) markedL1ToL2Finalized() error {
 		finalized := finalizedList[i]
 		l1l2Tx := worker.L1ToL2{
 			L2TransactionHash: finalized.RelayTransactionHash,
-			L1BlockNumber:     finalized.BlockNumber,
+			L2BlockNumber:     finalized.BlockNumber,
+			MessageHash:       finalized.MessageHash,
 		}
 		withdrawTx, _ := b.db.L1ToL2.L1ToL2TransactionDeposit(strconv.FormatUint(global_const.OpChinId, 10), finalized.MessageHash)
 		if withdrawTx != nil {
@@ -102,7 +130,7 @@ func (b *WorkerProcessor) markedL1ToL2Finalized() error {
 	}
 	if err := b.db.Transaction(func(tx *database.DB) error {
 		if len(depositL2ToL1List) > 0 {
-			if err := b.db.L1ToL2.MarkL1ToL2TransactionDepositFinalized(global_const.ChainId, depositL2ToL1List); err != nil {
+			if err := b.db.L1ToL2.MarkL1ToL2TransactionDepositFinalized(strconv.FormatUint(global_const.OpChinId, 10), depositL2ToL1List); err != nil {
 				log.Println("Marked l2 to l1 transaction withdraw proven fail", "err", err)
 				return err
 			}
@@ -197,15 +225,14 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 		}
 		withdrawTx, _ := b.db.L2ToL1.L2ToL1TransactionWithdrawal(strconv.FormatUint(global_const.OpChinId, 10), finalizedTxn.WithdrawHash)
 		if withdrawTx != nil {
-			if withdrawTx != nil {
-				if withdrawTx.Version != 0 {
-					withdrawL2ToL1List = append(withdrawL2ToL1List, l2l1Tx)
-					needMarkWithdrawList = append(needMarkWithdrawList, finalizedTxn)
-				} else {
-					withdrawL2ToL1ListV0 = append(withdrawL2ToL1ListV0, l2l1Tx)
-					needMarkWithdrawListV0 = append(needMarkWithdrawListV0, finalizedTxn)
-				}
+			if withdrawTx.Version != 0 {
+				withdrawL2ToL1List = append(withdrawL2ToL1List, l2l1Tx)
+				needMarkWithdrawList = append(needMarkWithdrawList, finalizedTxn)
+			} else {
+				withdrawL2ToL1ListV0 = append(withdrawL2ToL1ListV0, l2l1Tx)
+				needMarkWithdrawListV0 = append(needMarkWithdrawListV0, finalizedTxn)
 			}
+
 		}
 	}
 	if err := b.db.Transaction(func(tx *database.DB) error {

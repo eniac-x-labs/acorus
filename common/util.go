@@ -18,12 +18,12 @@ import (
 )
 
 const (
-	Polygon = "polygon"
-	Scroll  = "scroll"
+	Polygon = "polygon_worker"
+	Scroll  = "scroll_worker"
 	Zksync  = "zksync"
 	Op      = "Op"
 	Mantle  = "mantle"
-	Linea   = "linea"
+	Linea   = "linea_worker"
 )
 
 func PrefixEnvVar(prefix, suffix string) []string {
