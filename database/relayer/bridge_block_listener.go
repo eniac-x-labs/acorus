@@ -3,17 +3,18 @@ package relayer
 import (
 	"errors"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"math/big"
 	"time"
 )
 
 type BridgeBlockListener struct {
-	GUID        string   `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
-	ChainId     string   `json:"chain_id"`
-	BlockNumber *big.Int `json:"block_number" gorm:"serializer:u256"`
-	Created     uint64   `json:"created"`
-	Updated     uint64   `json:"updated"`
+	GUID        uuid.UUID `json:"guid" gorm:"primaryKey;DEFAULT replace(uuid_generate_v4()::text,'-','');serializer:uuid"`
+	ChainId     string    `json:"chain_id"`
+	BlockNumber *big.Int  `json:"block_number" gorm:"serializer:u256"`
+	Created     uint64    `json:"created"`
+	Updated     uint64    `json:"updated"`
 }
 
 func (BridgeBlockListener) TableName() string {
