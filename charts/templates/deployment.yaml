@@ -67,7 +67,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: IfNotPresent
           command:
-          - acorus
+          - echo
           - migrate
       {{- with .Values.nodeSelector }}
       nodeSelector:
