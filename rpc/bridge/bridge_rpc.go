@@ -14,6 +14,8 @@ type BridgeRpcService interface {
 	ChangeTransferStatus(sourceChainId, destChainId, txHash string) (*pb.CrossChainTransferStatusResponse, error)
 	CrossChainTransfer(sourceChainId, destChainId, amount,
 		receiveAddress, tokenAddress, fee, nonce, sourceHash string) (*pb.CrossChainTransferResponse, error)
+	UpdateFundingPoolBalance(sourceChainId, destChainId, amount,
+		receiveAddress, tokenAddress, hash string) (*pb.UpdateFundingPoolBalanceResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -55,4 +57,18 @@ func (r *bridgeRpcService) CrossChainTransfer(sourceChainId, destChainId, amount
 	}
 	crossChainTransfer, err := r.bRpcService.CrossChainTransfer(ctx, crossChainReq)
 	return crossChainTransfer, err
+}
+
+func (r *bridgeRpcService) UpdateFundingPoolBalance(sourceChainId, destChainId, amount,
+	receiveAddress, tokenAddress, hash string) (*pb.UpdateFundingPoolBalanceResponse, error) {
+	ctx := context.Background()
+	updateFundingPoolReq := &pb.UpdateFundingPoolBalanceRequest{
+		SourceChainId:  sourceChainId,
+		DestChainId:    destChainId,
+		Amount:         amount,
+		ReceiveAddress: receiveAddress,
+		TokenAddress:   tokenAddress,
+	}
+	poolBalanceResponse, err := r.bRpcService.UpdateFundingPoolBalance(ctx, updateFundingPoolReq)
+	return poolBalanceResponse, err
 }

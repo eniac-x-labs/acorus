@@ -43,6 +43,7 @@ type DB struct {
 	BridgeClaim         relayer.BridgeClaimDB
 	BridgeFinalize      relayer.BridgeFinalizeDB
 	BridgeBlockListener relayer.BridgeBlockListenerDB
+	BridgeFundingPoolDB relayer.BridgeFundingPoolUpdateDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -102,6 +103,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		BridgeClaim:         relayer.NewBridgeClaimDB(gorm),
 		BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
 		BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
+		BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
 	}
 	return db, nil
 }
@@ -128,6 +130,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			BridgeClaim:         relayer.NewBridgeClaimDB(gorm),
 			BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
 			BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
+			BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
 		}
 		return fn(txDB)
 	})

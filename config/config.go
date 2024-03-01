@@ -24,6 +24,7 @@ type RPC struct {
 	StartBlock         uint64   `yaml:"start_block"`
 	HeaderBufferSize   uint64   `yaml:"header_buffer_size"`
 	L1EventUnpackBlock uint64   `yaml:"l1_event_unpack_block"`
+	PoolContract       string   `yaml:"pool_contract"`
 	Contracts          []string `yaml:"contracts"`
 	EventContracts     []string `yaml:"event_contracts"`
 }

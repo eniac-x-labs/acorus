@@ -402,3 +402,21 @@ create table if not exists bridge_block_listener
     created      INTEGER CHECK (created > 0),
     updated      INTEGER CHECK (updated > 0)
 );
+
+create table if not exists bridge_funding_pool_update
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash      varchar,
+    source_chain_id varchar,
+    dest_chain_id   varchar,
+    receive_address varchar,
+    amount          varchar,
+    token_address   varchar,
+    layer_type int,
+    on_send         boolean          default false
+);
+
+CREATE INDEX IF NOT EXISTS bridge_funding_pool_update_tx_hash ON bridge_funding_pool_update (tx_hash);
+CREATE INDEX IF NOT EXISTS bridge_funding_pool_update_receive_address ON bridge_funding_pool_update (receive_address);
+
+
