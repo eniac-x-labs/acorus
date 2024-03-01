@@ -115,7 +115,6 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 
 			l1ToL2s2[i].L1TransactionHash = portalDeposit.Event.TransactionHash
 			l1ToL2s2[i].FromAddress = initiatedBridge.FromAddress
-			l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
 			l1ToL2s2[i].ETHAmount = initiatedBridge.ETHAmount
 			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
 			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
@@ -160,7 +159,6 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l1ToL2s2[i].L1TransactionHash = portalDeposit.Event.TransactionHash
 			l1ToL2s2[i].FromAddress = initiatedBridge.FromAddress
 			l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
-			l1ToL2s2[i].ETHAmount = initiatedBridge.ETHAmount
 			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
 			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
