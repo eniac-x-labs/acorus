@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	common3 "github.com/cornerstone-labs/acorus/common"
 	"log"
 	"math/big"
 	"net"
@@ -151,6 +152,7 @@ func (as *Acorus) Stopped() bool {
 }
 
 func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error {
+	common3.ConfigInfo = cfg
 	if err := as.initRPCClients(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to start RPC clients: %w", err)
 	}

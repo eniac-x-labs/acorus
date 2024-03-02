@@ -41,6 +41,9 @@ type OpEventProcessor struct {
 }
 
 func NewBridgeProcessor(db *database.DB, l1StartHeight *big.Int, l2StartHeight *big.Int, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*OpEventProcessor, error) {
+
+	common3.InitAddress()
+
 	latestL1L2InitL1Header, err := db.L1ToL2.L1LatestBlockHeader(strconv.FormatUint(global_const.OpChinId, 10))
 	if err != nil {
 		return nil, err
@@ -71,6 +74,7 @@ func NewBridgeProcessor(db *database.DB, l1StartHeight *big.Int, l2StartHeight *
 		return nil, err
 	}
 	resCtx, resCancel := context.WithCancel(context.Background())
+
 	return &OpEventProcessor{
 		db:                   db,
 		resourceCtx:          resCtx,

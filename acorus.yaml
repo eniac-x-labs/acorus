@@ -13,12 +13,16 @@ rpcs:
     chain_id: 1
     start_block: 19288980
     header_buffer_size: 500
+    is_mainnet: false
+    pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
     contracts:
     event_contracts:
 
   - rpc_url: 'https://opt-mainnet.g.alchemy.com/v2/nQqoZG4FLEPRfVQMi8ySD5QfV9EjGXUk'
     chain_id: 10
     start_block: 116462371
+    is_mainnet: false
+    pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
     header_buffer_size: 50
     contracts:
     event_contracts:
