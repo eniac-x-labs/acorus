@@ -83,26 +83,26 @@ func (db bridgeFundingPoolUpdateDB) StoreBridgeFundingPool(bridgeFundingPoolUpda
 func (db bridgeFundingPoolUpdateDB) L1GetCanStoreTransactions(chainId, receiveAddress string) ([]worker.L1ToL2, error) {
 	l1TableName := "l1_to_l2_" + chainId
 	l1_get_can_store_sql := `
-			SELECT * from ? a where not EXISTS (
-			SELECT 1 from bridge_funding_pool_update b where a.l1_transaction_hash=b.tx_hash and b.receive_address = ? and a.layer_type=1
-		) and a.status=?
+			SELECT * from "%s" a where not EXISTS (
+			SELECT 1 from bridge_funding_pool_update b where a.l1_transaction_hash=b.tx_hash and b.receive_address =? and b.layer_type=1
+		) and a.status=? and a.to_address=?
 	`
-	l1_get_can_store_sql = fmt.Sprintf(l1_get_can_store_sql, l1TableName, receiveAddress, common3.L1ToL2Claimed, receiveAddress)
+	l1_get_can_store_sql = fmt.Sprintf(l1_get_can_store_sql, l1TableName)
 	var l1ToL2s []worker.L1ToL2
-	result := db.gorm.Raw(l1_get_can_store_sql).Find(&l1ToL2s)
+	result := db.gorm.Raw(l1_get_can_store_sql, receiveAddress, common3.L1ToL2Claimed, receiveAddress).Find(&l1ToL2s)
 	return l1ToL2s, result.Error
 }
 
 func (db bridgeFundingPoolUpdateDB) L2GetCanStoreTransactions(chainId, receiveAddress string) ([]worker.L2ToL1, error) {
 	l1TableName := "l2_to_l1_" + chainId
 	l2_get_can_store_sql := `
-			SELECT * from ? a where not EXISTS (
-			SELECT 1 from bridge_funding_pool_update b where a.l2_transaction_hash=b.tx_hash and b.receive_address = ? and a.layer_type=2
+			SELECT * from "%s" a where not EXISTS (
+			SELECT 1 from bridge_funding_pool_update b where a.l2_transaction_hash=b.tx_hash and b.receive_address = ? and b.layer_type=2
 		) and a.status=? and a.to_address=?
 	`
-	l2_get_can_store_sql = fmt.Sprintf(l2_get_can_store_sql, l1TableName, receiveAddress, common3.L2ToL1Claimed, receiveAddress)
+	l2_get_can_store_sql = fmt.Sprintf(l2_get_can_store_sql, l1TableName)
 	var l2ToL1s []worker.L2ToL1
-	result := db.gorm.Raw(l2_get_can_store_sql).Find(&l2ToL1s)
+	result := db.gorm.Raw(l2_get_can_store_sql, receiveAddress, common3.L2ToL1Claimed, receiveAddress).Find(&l2ToL1s)
 	return l2ToL1s, result.Error
 }
 func (db bridgeFundingPoolUpdateDB) UpdateCrossStatus(txHash string) error {

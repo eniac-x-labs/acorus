@@ -20,6 +20,7 @@ type Database struct {
 
 type RPC struct {
 	RpcUrl             string   `yaml:"rpc_url"`
+	IsMainnet          bool     `yaml:"is_mainnet"`
 	ChainId            uint64   `yaml:"chain_id"`
 	StartBlock         uint64   `yaml:"start_block"`
 	HeaderBufferSize   uint64   `yaml:"header_buffer_size"`
