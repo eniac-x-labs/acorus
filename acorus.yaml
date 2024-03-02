@@ -8,6 +8,7 @@ metrics:
   host: 0.0.0.0
   port: 8081
 
+
 rpcs:
   - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/-EK96JwUb8C_l_EfZqaLumlZG6PV8SDq'
     chain_id: 1
