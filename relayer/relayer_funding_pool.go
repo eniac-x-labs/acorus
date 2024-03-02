@@ -21,13 +21,13 @@ type RelayerFundingPool struct {
 	resourceCtx      context.Context
 	resourceCancel   context.CancelFunc
 	tasks            tasks.Group
-	rpcS             []config.RPC
+	rpcS             []*config.RPC
 }
 
 func NewRelayerFundingPool(
 	db *database.DB,
 	bridgeRpcService bridge.BridgeRpcService,
-	rpcS []config.RPC,
+	rpcS []*config.RPC,
 	shutdown context.CancelCauseFunc) (*RelayerFundingPool, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &RelayerFundingPool{

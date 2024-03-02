@@ -42,6 +42,7 @@ message UpdateFundingPoolBalanceRequest {
   string receive_address = 3;
   string amount = 4;
   string token_address = 5;
+  string source_hash = 6;
 }
 
 message UpdateFundingPoolBalanceResponse {
