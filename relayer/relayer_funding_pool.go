@@ -7,9 +7,9 @@ import (
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
+	common4 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
-	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"strconv"
 	"strings"
@@ -96,7 +96,6 @@ func (rfp *RelayerFundingPool) ScanL1NeedFundBalance() error {
 }
 
 func (rfp *RelayerFundingPool) scanL1NeedFundBalanceByChainId(chainId, toAddress string) error {
-	nilAddress := common.Address{}
 	if err := rfp.db.Transaction(func(tx *database.DB) error {
 		// get all l1 need fund balance
 		needFundBalances, err := rfp.db.BridgeFundingPoolDB.L1GetCanStoreTransactions(chainId, strings.ToLower(toAddress))
@@ -119,7 +118,7 @@ func (rfp *RelayerFundingPool) scanL1NeedFundBalanceByChainId(chainId, toAddress
 				} else {
 					bridgeFundingPool.SourceChainId = "11155111"
 				}
-				if l1ToL2.L2TokenAddress == nilAddress {
+				if l1ToL2.AssetType == common4.ERC20 {
 					bridgeFundingPool.TokenAddress = l1ToL2.L1TokenAddress.String()
 					bridgeFundingPool.Amount = l1ToL2.TokenAmounts
 				} else {
