@@ -15,10 +15,10 @@ var (
 	LegacyStateCommitmentChain      = common.HexToAddress("0x0000000000000000000000000000000000000000")
 	LegacyCanonicalTransactionChain = common.HexToAddress("0x0000000000000000000000000000000000000000")
 
-	OptimismPortalProxy         = getOptimismPortalProxy()
-	L1CrossDomainMessengerProxy = getL1CrossDomainMessengerProxy()
-	L1StandardBridgeProxy       = getL1StandardBridgeProxy()
-	L2OutputOracleProxy         = getL2OutputOracleProxy()
+	OptimismPortalProxy         = common.Address{}
+	L1CrossDomainMessengerProxy = common.Address{}
+	L1StandardBridgeProxy       = common.Address{}
+	L2OutputOracleProxy         = common.Address{}
 
 	L2ToL1MessagePasser    = common.HexToAddress("0x4200000000000000000000000000000000000016")
 	L2CrossDomainMessenger = common.HexToAddress("0x4200000000000000000000000000000000000007")
@@ -38,34 +38,44 @@ func InitAddress() {
 			break
 		}
 	}
+	getOptimismPortalProxy()
+	getL1CrossDomainMessengerProxy()
+	getL1StandardBridgeProxy()
+	getL2OutputOracleProxy()
 }
 
-func getOptimismPortalProxy() common.Address {
+func getOptimismPortalProxy() {
 	if IsMainnet {
-		return common.HexToAddress("0xbEb5Fc579115071764c7423A4f12eDde41f106Ed")
+		OptimismPortalProxy = common.HexToAddress("0xbEb5Fc579115071764c7423A4f12eDde41f106Ed")
+	} else {
+		OptimismPortalProxy = common.HexToAddress("0x16Fc5058F25648194471939df75CF27A2fdC48BC")
 	}
-	return common.HexToAddress("0x16Fc5058F25648194471939df75CF27A2fdC48BC")
 }
 
-func getL1CrossDomainMessengerProxy() common.Address {
+func getL1CrossDomainMessengerProxy() {
 	if IsMainnet {
-		return common.HexToAddress("0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1")
+		L1CrossDomainMessengerProxy = common.HexToAddress("0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1")
+	} else {
+		L1CrossDomainMessengerProxy = common.HexToAddress("0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef")
+
 	}
-	return common.HexToAddress("0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef")
 }
 
-func getL1StandardBridgeProxy() common.Address {
+func getL1StandardBridgeProxy() {
 	if IsMainnet {
-		return common.HexToAddress("0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1")
+		L1StandardBridgeProxy = common.HexToAddress("0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1")
+	} else {
+		L1StandardBridgeProxy = common.HexToAddress("0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1")
+
 	}
-	return common.HexToAddress("0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1")
 }
 
-func getL2OutputOracleProxy() common.Address {
+func getL2OutputOracleProxy() {
 	if IsMainnet {
-		common.HexToAddress("0xdfe97868233d1aa22e815a266982f2cf17685a27")
+		L2OutputOracleProxy = common.HexToAddress("0xdfe97868233d1aa22e815a266982f2cf17685a27")
+	} else {
+		L2OutputOracleProxy = common.HexToAddress("0x90E9c4f8a994a250F6aEfd61CAFb4F2e895D458F")
 	}
-	return common.HexToAddress("0x90E9c4f8a994a250F6aEfd61CAFb4F2e895D458F")
 }
 
 type DepositTx struct {
