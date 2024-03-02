@@ -102,10 +102,10 @@ rpcs:
 #  db_name: "acorus"
 
 master_db:
-  db_host: "18.138.87.198"
+  db_host: "120.77.251.247"
   db_port: 5432
   db_user: "postgres"
-  db_password: "hdqXAuq9ukdrOrqRMqNF"
+  db_password: "galamini"
   db_name: "acorus"
 
 slave_db:

@@ -68,6 +68,7 @@ func (r *bridgeRpcService) UpdateFundingPoolBalance(sourceChainId, destChainId, 
 		Amount:         amount,
 		ReceiveAddress: receiveAddress,
 		TokenAddress:   tokenAddress,
+		SourceHash:     hash,
 	}
 	poolBalanceResponse, err := r.bRpcService.UpdateFundingPoolBalance(ctx, updateFundingPoolReq)
 	return poolBalanceResponse, err
