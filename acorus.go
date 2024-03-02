@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"log"
 	"math/big"
 	"net"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	chi "github.com/go-chi/chi/v5"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,6 +25,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
 	"github.com/cornerstone-labs/acorus/relayer"
+	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
