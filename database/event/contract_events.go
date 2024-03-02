@@ -66,7 +66,7 @@ type ContractEventsView interface {
 
 type ContractEventsDB interface {
 	ContractEventsView
-
+	CleanContractEvents(chainId string) error
 	StoreChainContractEvents(string, []ChainContractEvent) error
 }
 
@@ -145,4 +145,9 @@ func (db *contractEventsDB) ContractEventsWithFilter(chainId string, filter Cont
 		return nil, err
 	}
 	return eventList, nil
+}
+
+func (db *contractEventsDB) CleanContractEvents(chainId string) error {
+	result := db.gorm.Exec("DELETE FROM contract_events_" + chainId)
+	return result.Error
 }

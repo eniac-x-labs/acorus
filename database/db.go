@@ -47,7 +47,7 @@ type DB struct {
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
-	dsn := fmt.Sprintf("host=%s dbname=%s sslmode=disable", dbConfig.DbHost, dbConfig.DbName)
+	dsn := fmt.Sprintf("host=%s dbname=%s ", dbConfig.DbHost, dbConfig.DbName)
 	if dbConfig.DbPort != 0 {
 		dsn += fmt.Sprintf(" port=%d", dbConfig.DbPort)
 	}
@@ -71,6 +71,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        500,
 	}
+
 	retryStrategy := &retry.ExponentialStrategy{Min: 1000, Max: 20_000, MaxJitter: 250}
 	gorm, err := retry.Do[*gorm.DB](context.Background(), 10, retryStrategy, func() (*gorm.DB, error) {
 		gorm, err := gorm.Open(postgres.Open(dsn), &gormConfig)
