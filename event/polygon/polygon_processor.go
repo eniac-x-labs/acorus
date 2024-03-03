@@ -35,10 +35,13 @@ type PolygonEventProcessor struct {
 	l1StartHeight   *big.Int
 	l2StartHeight   *big.Int
 	epoch           uint64
+	l1ChainId       string
+	l2ChainId       string
 }
 
 func NewBridgeProcessor(db *database.DB,
-	l2cfg *config.RPC, shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64) (*PolygonEventProcessor, error) {
+	l2cfg *config.RPC, shutdown context.CancelCauseFunc,
+	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*PolygonEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	l1PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L1PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
@@ -60,6 +63,8 @@ func NewBridgeProcessor(db *database.DB,
 		L2PolygonBridge: l2PolygonBridge,
 		loopInterval:    loopInterval,
 		epoch:           epoch,
+		l1ChainId:       l1ChainId,
+		l2ChainId:       l2ChainId,
 	}, nil
 }
 
@@ -109,10 +114,8 @@ func (pp *PolygonEventProcessor) ClosetUnpack() error {
 }
 
 func (pp *PolygonEventProcessor) onL1Data() error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	if pp.l1StartHeight == nil {
-		lastBlockHeard, err := pp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := pp.db.L1ToL2.L1LatestBlockHeader(pp.l2ChainId, pp.l1ChainId)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err

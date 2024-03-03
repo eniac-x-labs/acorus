@@ -60,7 +60,8 @@ type CrossDomainMessengerRelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
-func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerSentMessageEvent, error) {
+func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chainId string,
+	db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerSentMessageEvent, error) {
 	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
 	if err != nil {
 		return nil, err

@@ -33,11 +33,13 @@ type LineaEventProcessor struct {
 	l1StartHeight  *big.Int
 	l2StartHeight  *big.Int
 	epoch          uint64
+	l1ChainId      string
+	l2ChainId      string
 }
 
 func NewBridgeProcessor(db *database.DB,
 	cfg *config.RPC, shutdown context.CancelCauseFunc,
-	loopInterval time.Duration, epoch uint64) (*LineaEventProcessor, error) {
+	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*LineaEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &LineaEventProcessor{
 		db:             db,
@@ -49,6 +51,8 @@ func NewBridgeProcessor(db *database.DB,
 		}},
 		loopInterval: loopInterval,
 		epoch:        epoch,
+		l1ChainId:    l1ChainId,
+		l2ChainId:    l2ChainId,
 	}, nil
 }
 
@@ -98,10 +102,8 @@ func (lp *LineaEventProcessor) ClosetUnpack() error {
 }
 
 func (lp *LineaEventProcessor) onL1Data() error {
-	chainId := lp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	if lp.l1StartHeight == nil {
-		lastBlockHeard, err := lp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := lp.db.L1ToL2.L1LatestBlockHeader(lp.l2ChainId, lp.l1ChainId)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err

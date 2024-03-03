@@ -25,7 +25,8 @@ type L2ToL1MessagePasserMessagePassed struct {
 	Timestamp      uint64
 }
 
-func L2ToL1MessagePasserMessagePassedEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]L2ToL1MessagePasserMessagePassed, error) {
+func L2ToL1MessagePasserMessagePassedEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]L2ToL1MessagePasserMessagePassed, error) {
 	l2ToL1MessagePasserAbi, err := bindings.L2ToL1MessagePasserMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -33,7 +34,7 @@ func L2ToL1MessagePasserMessagePassedEvents(contractAddress common.Address, db *
 
 	messagePassedAbi := l2ToL1MessagePasserAbi.Events["MessagePassed"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: messagePassedAbi.ID}
-	messagePassedEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	messagePassedEvents, err := db.ContractEvents.ContractEventsWithFilter(l2ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

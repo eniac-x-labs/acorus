@@ -34,11 +34,13 @@ type ScrollEventProcessor struct {
 	l1StartHeight  *big.Int
 	l2StartHeight  *big.Int
 	epoch          uint64
+	l1ChainId      string
+	l2ChainId      string
 }
 
 func NewBridgeProcessor(db *database.DB,
 	cfg *config.RPC, shutdown context.CancelCauseFunc,
-	loopInterval time.Duration, epoch uint64) (*ScrollEventProcessor, error) {
+	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*ScrollEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &ScrollEventProcessor{
 		db:             db,
@@ -50,6 +52,8 @@ func NewBridgeProcessor(db *database.DB,
 		}},
 		loopInterval: loopInterval,
 		epoch:        epoch,
+		l1ChainId:    l1ChainId,
+		l2ChainId:    l2ChainId,
 	}, nil
 }
 
@@ -101,10 +105,8 @@ func (sp *ScrollEventProcessor) ClosetUnpack() error {
 }
 
 func (sp *ScrollEventProcessor) onL1Data() error {
-	chainId := sp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	if sp.l1StartHeight == nil {
-		lastBlockHeard, err := sp.db.L1ToL2.L1LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := sp.db.L1ToL2.L1LatestBlockHeader(sp.l2ChainId, sp.l1ChainId)
 		if err != nil {
 			log.Println("l1 failed to get last block heard", "err", err)
 			return err

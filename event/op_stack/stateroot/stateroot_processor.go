@@ -1,24 +1,21 @@
 package stateroot
 
 import (
-	"github.com/cornerstone-labs/acorus/common/global_const"
+	"github.com/cornerstone-labs/acorus/database"
 	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
+	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 	"log"
 	"math/big"
-	"strconv"
-
-	"github.com/cornerstone-labs/acorus/database"
-	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
-func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, chainId string, fromHeight, toHeight *big.Int) error {
 	sccEvents, err := contracts.LegacySCCBatchAppendedEvent(common3.LegacyStateCommitmentChain, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
 	if len(sccEvents) > 0 {
 		log.Println("detected legacy scc state batch appended event", "size", len(sccEvents))
-		if err := db.StateRoots.StoreBatchStateRoots(strconv.FormatUint(global_const.OpChinId, 10), sccEvents); err != nil {
+		if err := db.StateRoots.StoreBatchStateRoots(chainId, sccEvents); err != nil {
 			return err
 		}
 	}
@@ -26,15 +23,16 @@ func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, fromHeight, toHeig
 
 }
 
-func L2OutputEvent(db *database.DB, fromHeight, toHeight *big.Int) error {
+func L2OutputEvent(db *database.DB, fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	log.Println("L2OutputEvent", "fromHeight", fromHeight, "toHeight", toHeight)
-	l2OutputProposedEvents, err := contracts.L2OutputProposedEvent(common3.L2OutputOracleProxy, db, fromHeight, toHeight)
+	l2OutputProposedEvents, err := contracts.L2OutputProposedEvent(common3.L2OutputOracleProxy, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
 	if len(l2OutputProposedEvents) > 0 {
 		log.Println("detected l2output proposed event", "size", len(l2OutputProposedEvents))
-		if err := db.StateRoots.StoreBatchStateRoots(strconv.FormatUint(global_const.OpChinId, 10), l2OutputProposedEvents); err != nil {
+		if err := db.StateRoots.StoreBatchStateRoots(l2ChainId, l2OutputProposedEvents); err != nil {
 			log.Println("Store batch state roots fail")
 			return err
 		}

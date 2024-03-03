@@ -39,7 +39,7 @@ type WithdrawProvenDB interface {
 }
 
 type WithdrawProvenView interface {
-	WithdrawProvenL1BlockHeader(string) (*common2.BlockHeader, error)
+	WithdrawProvenL1BlockHeader(l1ChainId, chainId string) (*common2.BlockHeader, error)
 	WithdrawProvenUnRelatedList(string) ([]WithdrawProven, error)
 }
 
@@ -51,8 +51,8 @@ func NewWithdrawProvenDB(db *gorm.DB) WithdrawProvenDB {
 	return &withdrawProvenDB{gorm: db}
 }
 
-func (w withdrawProvenDB) WithdrawProvenL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
-	l1Query := w.gorm.Table("block_headers_1").Where("number = (?)", w.gorm.Table("withdraw_proven_"+chainId).Select("MAX(block_number)"))
+func (w withdrawProvenDB) WithdrawProvenL1BlockHeader(l1ChainId, chainId string) (*common2.BlockHeader, error) {
+	l1Query := w.gorm.Table("block_headers_"+l1ChainId).Where("number = (?)", w.gorm.Table("withdraw_proven_"+chainId).Select("MAX(block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

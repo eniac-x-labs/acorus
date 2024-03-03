@@ -60,7 +60,7 @@ type L2ToL1DB interface {
 
 type L2ToL1View interface {
 	L2ToL1List(string, string, int, int, string) ([]L2ToL1, int64)
-	L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L1LatestBlockHeader(l2chainId, destChainId string) (*common2.BlockHeader, error)
 	L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2ToL1TransactionWithdrawal(string, common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
@@ -367,8 +367,21 @@ func (l2l1 l2ToL1DB) L2ToL1TransactionWithdrawal(chainId string, withdrawalHash 
 	return &l2ToL1Withdrawal, nil
 }
 
-func (l2l1 l2ToL1DB) L1LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {
-	return l2l1.latestBlockHeaderWithChainId(chainId, "1")
+func (l2l1 l2ToL1DB) L1LatestBlockHeader(l2chainId, destChainId string) (*common2.BlockHeader, error) {
+	tableName := fmt.Sprintf("l2_to_l1_%s", l2chainId)
+	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", destChainId)
+	l2Query := l2l1.gorm.Table(blockHeaderSTableName).Where("number = (?)", l2l1.gorm.Table(tableName).Select("MAX(l2_block_number)"))
+	var l2Header common2.BlockHeader
+	result := l2Query.Take(&l2Header)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l2Header, nil
+	return l2l1.latestBlockHeaderWithChainId(l2chainId, destChainId)
+
 }
 
 func (l2l1 l2ToL1DB) L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error) {

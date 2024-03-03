@@ -2,13 +2,8 @@ package bridge
 
 import (
 	"fmt"
-	"log"
-	"math/big"
-	"strconv"
-
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
-	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
 	common4 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
@@ -17,11 +12,14 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/common"
+	"log"
+	"math/big"
 )
 
-func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
+	l1ChainId, l2ChainId string) error {
 	// (1) OptimismPortal
-	optimismPortalTxDeposits, err := contracts.OptimismPortalTransactionDepositEvents(common3.OptimismPortalProxy, "1", db, fromHeight, toHeight)
+	optimismPortalTxDeposits, err := contracts.OptimismPortalTransactionDepositEvents(common3.OptimismPortalProxy, l1ChainId, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -34,7 +32,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	for i := range optimismPortalTxDeposits {
 		depositTx := optimismPortalTxDeposits[i]
 		portalDeposits[logKey{depositTx.Event.BlockHash, depositTx.Event.LogIndex}] = &depositTx
-		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash("1", depositTx.Event.BlockHash)
+		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, depositTx.Event.BlockHash)
 		if err != nil {
 			log.Println("can not get l1 blockNumber", "blockHash", depositTx.Event.BlockHash)
 			return err
@@ -57,13 +55,13 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 	}
 	if len(l1ToL2s) > 0 {
-		if err := db.L1ToL2.StoreL1ToL2Transactions("10", l1ToL2s); err != nil {
+		if err := db.L1ToL2.StoreL1ToL2Transactions(l2ChainId, l1ToL2s); err != nil {
 			return err
 		}
 	}
 
 	// (2) L1CrossDomainMessenger
-	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy, "1", db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy, l1ChainId, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -80,13 +78,13 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		l1ToL2c2[i].MessageHash = sentMessage.MessageHash
 	}
 	if len(l1ToL2c2) > 0 {
-		if err := db.L1ToL2.UpdateMessageHash("10", l1ToL2c2); err != nil {
+		if err := db.L1ToL2.UpdateMessageHash(l2ChainId, l1ToL2c2); err != nil {
 			return err
 		}
 	}
 
 	// (3) L1StandardBridge
-	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("1", common3.L1StandardBridgeProxy, db, fromHeight, toHeight)
+	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents(l1ChainId, common3.L1StandardBridgeProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -121,28 +119,6 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
 			l1ToL2s2[i].AssetType = common4.ETH
 
-		} else if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["MNTBridgeInitiated"].ID {
-			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 6}]
-			if !ok {
-				log.Println("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
-				return fmt.Errorf("expected TransactionDeposit following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
-			}
-			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 7}]
-			if !ok {
-				log.Println("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
-				return fmt.Errorf("expected SentMessage following TransactionDeposit event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
-			}
-			initiatedBridge.CrossDomainMessageHash = &sentMessage.MessageHash
-			bridgedTokens[initiatedBridge.LocalTokenAddress]++
-			l1ToL2s2[i].L1TransactionHash = portalDeposit.Event.TransactionHash
-			l1ToL2s2[i].FromAddress = initiatedBridge.FromAddress
-			l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
-			l1ToL2s2[i].ETHAmount = initiatedBridge.ETHAmount
-			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
-			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
-			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
-			l1ToL2s2[i].AssetType = common4.ETH
-
 		} else if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["ERC20BridgeInitiated"].ID {
 			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
@@ -167,7 +143,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 	}
 	if len(l1ToL2s2) > 0 {
-		if err := db.L1ToL2.UpdateTokenPairAndAddress("10", l1ToL2s2); err != nil {
+		if err := db.L1ToL2.UpdateTokenPairAndAddress(l2ChainId, l1ToL2s2); err != nil {
 			return err
 		}
 	}
@@ -175,8 +151,10 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 }
 
 // L1ProcessProvenBridgeEvents Optimism portal proven withdrawals
-func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
-	provenWithdrawals, err := contracts.OptimismPortalWithdrawalProvenEvents(common3.OptimismPortalProxy, db, fromHeight, toHeight)
+func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
+	l1ChainId, l2ChainId string) error {
+	provenWithdrawals, err := contracts.OptimismPortalWithdrawalProvenEvents(common3.OptimismPortalProxy, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -185,7 +163,7 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int)
 	for i := range provenWithdrawals {
 		blockNumber := bigint.One
 		proven := provenWithdrawals[i]
-		proveL1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash("1", proven.Event.BlockHash)
+		proveL1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, proven.Event.BlockHash)
 		if err != nil {
 			return err
 		}
@@ -206,7 +184,7 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int)
 		}
 	}
 	if len(withdrawProvenList) > 0 {
-		if err := db.WithdrawProven.StoreWithdrawProven(strconv.FormatUint(global_const.OpChinId, 10), withdrawProvenList); err != nil {
+		if err := db.WithdrawProven.StoreWithdrawProven(l2ChainId, withdrawProvenList); err != nil {
 			return err
 		}
 	}
@@ -214,8 +192,10 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int)
 }
 
 // L1ProcessFinalizedBridgeEvents OptimismPortal (finalized withdrawals) and L1CrossDomainMessenger
-func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
-	finalizedWithdrawals, err := contracts.OptimismPortalWithdrawalFinalizedEvents(common3.OptimismPortalProxy, db, fromHeight, toHeight)
+func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
+	l1ChainId, l2ChainId string) error {
+	finalizedWithdrawals, err := contracts.OptimismPortalWithdrawalFinalizedEvents(common3.OptimismPortalProxy, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -224,7 +204,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	for i := range finalizedWithdrawals {
 		finalized := finalizedWithdrawals[i]
 		blockNumber := bigint.One
-		finalizedBlockNumber, err := db.L1ToL2.GetBlockNumberFromHash("1", finalized.Event.BlockHash)
+		finalizedBlockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, finalized.Event.BlockHash)
 		if err != nil {
 			return err
 		}
@@ -245,12 +225,13 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 	}
 	if len(withdrawFinalizedList) > 0 {
-		if err := db.WithdrawFinalized.StoreWithdrawFinalized(strconv.FormatUint(global_const.OpChinId, 10), withdrawFinalizedList); err != nil {
+		if err := db.WithdrawFinalized.StoreWithdrawFinalized(l2ChainId, withdrawFinalizedList); err != nil {
 			return err
 		}
 	}
 
-	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("1", common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents(l1ChainId, common3.L1CrossDomainMessengerProxy,
+		db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -268,12 +249,13 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		log.Println("withdrawFinalizedListc2[i].MessageHash", withdrawFinalizedListc2[i].MessageHash)
 	}
 	if len(withdrawFinalizedListc2) > 0 {
-		if err := db.WithdrawFinalized.UpdateMsgHashFinalizedInfo(strconv.FormatUint(global_const.OpChinId, 10), withdrawFinalizedListc2); err != nil {
+		if err := db.WithdrawFinalized.UpdateMsgHashFinalizedInfo(l2ChainId, withdrawFinalizedListc2); err != nil {
 			return err
 		}
 	}
 	//  L1StandardBridge
-	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("1", common3.L1StandardBridgeProxy, db, fromHeight, toHeight)
+	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents(l1ChainId, common3.L1StandardBridgeProxy,
+		db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -291,7 +273,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		finalizedTokens[finalizedBridge.LocalTokenAddress]++
 	}
 	if len(finalizedBridges) > 0 {
-		if err := db.WithdrawFinalized.UpdateWithdrawFinalizedInfo(strconv.FormatUint(global_const.OpChinId, 10), withdrawFinalizedBridgeList); err != nil {
+		if err := db.WithdrawFinalized.UpdateWithdrawFinalizedInfo(l2ChainId, withdrawFinalizedBridgeList); err != nil {
 			return err
 		}
 	}

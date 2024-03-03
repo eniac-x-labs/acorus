@@ -36,7 +36,7 @@ type StateRootDB interface {
 }
 
 type StateRootView interface {
-	StateRootL1BlockHeader(chainId string) (*common2.BlockHeader, error)
+	StateRootL1BlockHeader(chainId, l1ChainId string) (*common2.BlockHeader, error)
 	StateRootList(string, int, int, string) ([]StateRoot, int64)
 	GetLatestStateRootL2BlockNumber(chainId string) (uint64, error)
 	UpdateSafeStatus(chainId string, safeBlockNumber *big.Int) error
@@ -115,8 +115,8 @@ func NewStateRootDB(db *gorm.DB) StateRootDB {
 	return &stateRootDB{gorm: db}
 }
 
-func (s stateRootDB) StateRootL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
-	l1Query := s.gorm.Table("block_headers_1").Where("number = (?)", s.gorm.Table("state_root_"+chainId).Select("MAX(l1_block_number)"))
+func (s stateRootDB) StateRootL1BlockHeader(chainId, l1ChainId string) (*common2.BlockHeader, error) {
+	l1Query := s.gorm.Table("block_headers_"+l1ChainId).Where("number = (?)", s.gorm.Table("state_root_"+chainId).Select("MAX(l1_block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

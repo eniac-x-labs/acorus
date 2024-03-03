@@ -13,14 +13,15 @@ import (
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
-func L2OutputProposedEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]worker.StateRoot, error) {
+func L2OutputProposedEvent(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]worker.StateRoot, error) {
 	l2OutputAbi, err := bindings.L2OutputOracleMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
 	outputProposedEventAbi := l2OutputAbi.Events["OutputProposed"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: outputProposedEventAbi.ID}
-	outputProposedEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	outputProposedEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func L2OutputProposedEvent(contractAddress common.Address, db *database.DB, from
 		if err != nil {
 			return nil, err
 		}
-		l1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash("1", outputProposedEvents[i].BlockHash)
+		l1BlockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, outputProposedEvents[i].BlockHash)
 		if err != nil {
 			return nil, err
 		}

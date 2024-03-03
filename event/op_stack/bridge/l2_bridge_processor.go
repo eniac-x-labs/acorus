@@ -2,17 +2,14 @@ package bridge
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
-	"strconv"
-
-	"github.com/ethereum/go-ethereum/common"
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	common4 "github.com/cornerstone-labs/acorus/database/common"
 
-	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
@@ -20,9 +17,10 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
-func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	// (1) L2ToL1MessagePasser
-	l2ToL1MPMessagesPassed, err := contracts.L2ToL1MessagePasserMessagePassedEvents(common3.L2ToL1MessagePasser, db, fromHeight, toHeight)
+	l2ToL1MPMessagesPassed, err := contracts.L2ToL1MessagePasserMessagePassedEvents(common3.L2ToL1MessagePasser, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -34,7 +32,7 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	for i := range l2ToL1MPMessagesPassed {
 		messagePassed := l2ToL1MPMessagesPassed[i]
 		messagesPassed[logKey{messagePassed.Event.BlockHash, messagePassed.Event.LogIndex}] = &messagePassed
-		blockNumber, err := db.L2ToL1.GetBlockNumberFromHash("10", messagePassed.Event.BlockHash)
+		blockNumber, err := db.L2ToL1.GetBlockNumberFromHash(l2ChainId, messagePassed.Event.BlockHash)
 		if err != nil {
 			log.Println("can not get l2 blockNumber", "blockHash", messagePassed.Event.BlockHash)
 			return err
@@ -60,13 +58,14 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		}
 	}
 	if len(messagesPassed) > 0 {
-		if err := db.L2ToL1.StoreL2ToL1Transactions("10", l2ToL1s); err != nil {
+		if err := db.L2ToL1.StoreL2ToL1Transactions(l2ChainId, l2ToL1s); err != nil {
 			return err
 		}
 	}
 
 	// (2) L2CrossDomainMessenger
-	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, "10", db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger,
+		l2ChainId, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -83,13 +82,14 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		l2ToL1Cds[i].MessageHash = sentMessage.MessageHash
 	}
 	if len(crossDomainSentMessages) > 0 {
-		if err := db.L2ToL1.UpdateMessageHash("10", l2ToL1Cds); err != nil {
+		if err := db.L2ToL1.UpdateMessageHash(l2ChainId, l2ToL1Cds); err != nil {
 			return err
 		}
 	}
 
 	// (3) L2StandardBridge
-	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents("10", common3.L2StandardBridge, db, fromHeight, toHeight)
+	initiatedBridges, err := contracts.StandardBridgeInitiatedEvents(l2ChainId, common3.L2StandardBridge,
+		db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -153,17 +153,19 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	}
 
 	if len(l2ToL1s2) > 0 {
-		if err := db.L2ToL1.UpdateTokenPairsAndAddress("10", l2ToL1s2); err != nil {
+		if err := db.L2ToL1.UpdateTokenPairsAndAddress(l2ChainId, l2ToL1s2); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight,
+	toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	log.Println("L2ProcessFinalizedBridgeEvents", "fromHeight", fromHeight, "toHeight", toHeight)
 	// (1) L2CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents("10", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents(l2ChainId,
+		common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -174,7 +176,7 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	for i := range crossDomainRelayedMessages {
 		relayed := crossDomainRelayedMessages[i]
 		relayedMessages[logKey{BlockHash: relayed.Event.BlockHash, LogIndex: relayed.Event.LogIndex}] = &relayed
-		message, err := db.L1ToL2.L1ToL2Transaction(strconv.FormatUint(global_const.OpChinId, 10), relayed.MessageHash)
+		message, err := db.L1ToL2.L1ToL2Transaction(l2ChainId, relayed.MessageHash)
 		if err != nil {
 			return err
 		} else if message == nil {
@@ -187,7 +189,8 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	}
 
 	// (2) L2StandardBridge
-	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents("10", common3.L2StandardBridge, db, fromHeight, toHeight)
+	finalizedBridges, err := contracts.StandardBridgeFinalizedEvents(l2ChainId, common3.L2StandardBridge,
+		db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -202,10 +205,11 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		relayedMessage, ok := relayedMessages[logKey{finalizedBridge.Event.BlockHash, finalizedBridge.Event.LogIndex + 1}]
 		if !ok {
 			log.Println("expected RelayedMessage following BridgeFinalized event", "tx_hash", finalizedBridge.Event.TransactionHash.String())
-			return fmt.Errorf("expected RelayedMessage following BridgeFinalized event. tx_hash = %s", finalizedBridge.Event.TransactionHash.String())
+			//return fmt.Errorf("expected RelayedMessage following BridgeFinalized event. tx_hash = %s", finalizedBridge.Event.TransactionHash.String())
+			continue
 		}
 		blockNumber := bigint.One
-		relayL2BlockNumber, err := db.L2ToL1.GetBlockNumberFromHash(strconv.FormatUint(global_const.OpChinId, 10), relayedMessage.Event.BlockHash)
+		relayL2BlockNumber, err := db.L2ToL1.GetBlockNumberFromHash(l2ChainId, relayedMessage.Event.BlockHash)
 		if err != nil {
 			return err
 		}
@@ -226,7 +230,7 @@ func L2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		finalizedTokens[finalizedBridge.LocalTokenAddress]++
 	}
 	if len(relayMessageList) > 0 {
-		err = db.RelayMessage.StoreRelayMessage(strconv.FormatUint(global_const.OpChinId, 10), relayMessageList)
+		err = db.RelayMessage.StoreRelayMessage(l2ChainId, relayMessageList)
 		if err != nil {
 			return err
 		}
