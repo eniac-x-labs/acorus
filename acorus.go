@@ -224,6 +224,7 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 		}
 		rpcItem := cfg.RPCs[i]
 		chainId := rpcItem.ChainId
+		isMainnet := rpcItem.IsMainnet
 		l1ChainIdStr := strconv.FormatUint(rpcItem.L1ChainId, 10)
 		l2ChainIdStr := strconv.FormatUint(chainId, 10)
 		var processor event2.IEventProcessor
@@ -259,6 +260,7 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 				epoch,
 				l1ChainIdStr,
 				l2ChainIdStr,
+				isMainnet,
 			); err != nil {
 				return err
 			}

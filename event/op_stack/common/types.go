@@ -1,8 +1,6 @@
 package common
 
 import (
-	common3 "github.com/cornerstone-labs/acorus/common"
-	"github.com/cornerstone-labs/acorus/common/global_const"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -29,15 +27,8 @@ var (
 	IsMainnet                   = true
 )
 
-func InitAddress() {
-	rpcs := common3.ConfigInfo.RPCs
-	for i := 0; i < len(rpcs); i++ {
-		chainId := rpcs[i].ChainId
-		if chainId == global_const.OpChinId {
-			IsMainnet = rpcs[i].IsMainnet
-			break
-		}
-	}
+func InitAddress(isMainNet bool) {
+	IsMainnet = isMainNet
 	getOptimismPortalProxy()
 	getL1CrossDomainMessengerProxy()
 	getL1StandardBridgeProxy()
