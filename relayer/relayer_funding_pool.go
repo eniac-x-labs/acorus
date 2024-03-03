@@ -86,7 +86,8 @@ func (rfp *RelayerFundingPool) ScanL1NeedFundBalance() error {
 		rpc := rfp.rpcS[i]
 		chainId := rpc.ChainId
 		l1ChainId := rpc.L1ChainId
-		if chainId == 1 {
+		if chainId == global_const.EthereumChainId ||
+			chainId == global_const.EthereumSepoliaChainId {
 			continue
 		}
 		poolContract := rpc.L2PoolContract
@@ -150,7 +151,8 @@ func (rfp *RelayerFundingPool) ScanL2NeedFundBalance() error {
 		rpc := rfp.rpcS[i]
 		chainId := rpc.ChainId
 		l1ChainId := rpc.L1ChainId
-		if chainId == 1 {
+		if chainId == global_const.EthereumChainId ||
+			chainId == global_const.EthereumSepoliaChainId {
 			continue
 		}
 		poolContract := rpc.L1PoolContract
