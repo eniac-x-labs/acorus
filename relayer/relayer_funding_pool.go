@@ -23,7 +23,6 @@ type RelayerFundingPool struct {
 	resourceCancel   context.CancelFunc
 	tasks            tasks.Group
 	rpcS             []*config.RPC
-	isMainnet        bool
 }
 
 func NewRelayerFundingPool(
@@ -32,20 +31,12 @@ func NewRelayerFundingPool(
 	rpcS []*config.RPC,
 	shutdown context.CancelCauseFunc) (*RelayerFundingPool, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
-	isMainnet := true
-	for i := 0; i < len(rpcS); i++ {
-		if rpcS[i].ChainId == global_const.EthereumChainId {
-			isMainnet = rpcS[i].IsMainnet
-			break
-		}
-	}
 	return &RelayerFundingPool{
 		db:               db,
 		bridgeRpcService: bridgeRpcService,
 		resourceCancel:   resCancel,
 		resourceCtx:      resCtx,
 		rpcS:             rpcS,
-		isMainnet:        isMainnet,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
@@ -53,11 +44,24 @@ func NewRelayerFundingPool(
 }
 
 func (rfp *RelayerFundingPool) Start() error {
-	tickerScan := time.NewTicker(5 * time.Second)
-	// start rundingPool worker
+	l1TickerScan := time.NewTicker(5 * time.Second)
+	// start rundingPoolL1 worker
 	rfp.tasks.Go(func() error {
-		for range tickerScan.C {
+		for range l1TickerScan.C {
 			err := rfp.ScanL1NeedFundBalance()
+			if err != nil {
+				log.Println(" shutting down ScanL1NeedFundBalance ", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
+
+	l2TickerScan := time.NewTicker(5 * time.Second)
+	// start rundingPoolL2 worker
+	rfp.tasks.Go(func() error {
+		for range l2TickerScan.C {
+			err := rfp.ScanL2NeedFundBalance()
 			if err != nil {
 				log.Println(" shutting down ScanL1NeedFundBalance ", "err", err)
 				continue
@@ -81,12 +85,17 @@ func (rfp *RelayerFundingPool) ScanL1NeedFundBalance() error {
 	for i := 0; i < len(rfp.rpcS); i++ {
 		rpc := rfp.rpcS[i]
 		chainId := rpc.ChainId
+		l1ChainId := rpc.L1ChainId
 		if chainId == 1 {
 			continue
 		}
-		poolContract := rpc.PoolContract
-		chainIdStr := strconv.FormatUint(chainId, 10)
-		err := rfp.scanL1NeedFundBalanceByChainId(chainIdStr, poolContract)
+		poolContract := rpc.L2PoolContract
+		if poolContract == "" {
+			continue
+		}
+		l2ChainIdStr := strconv.FormatUint(chainId, 10)
+		l1ChainIdStr := strconv.FormatUint(l1ChainId, 10)
+		err := rfp.scanL1NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, poolContract)
 		if err != nil {
 			log.Println(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
 			return err
@@ -95,10 +104,10 @@ func (rfp *RelayerFundingPool) ScanL1NeedFundBalance() error {
 	return nil
 }
 
-func (rfp *RelayerFundingPool) scanL1NeedFundBalanceByChainId(chainId, toAddress string) error {
+func (rfp *RelayerFundingPool) scanL1NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, toAddress string) error {
 	if err := rfp.db.Transaction(func(tx *database.DB) error {
 		// get all l1 need fund balance
-		needFundBalances, err := rfp.db.BridgeFundingPoolDB.L1GetCanStoreTransactions(chainId, strings.ToLower(toAddress))
+		needFundBalances, err := rfp.db.BridgeFundingPoolDB.L1GetCanStoreTransactions(l2ChainIdStr, strings.ToLower(toAddress))
 		if err != nil {
 			return err
 		}
@@ -110,19 +119,81 @@ func (rfp *RelayerFundingPool) scanL1NeedFundBalanceByChainId(chainId, toAddress
 				bridgeFundingPool := relayer.BridgeFundingPoolUpdate{
 					LayerType:      global_const.LayerTypeOne,
 					TxHash:         l1ToL2.L1TransactionHash.String(),
-					DestChainId:    chainId,
+					DestChainId:    l2ChainIdStr,
 					ReceiveAddress: l1ToL2.ToAddress.String(),
 				}
-				if rfp.isMainnet {
-					bridgeFundingPool.SourceChainId = "1"
-				} else {
-					bridgeFundingPool.SourceChainId = "11155111"
-				}
+				bridgeFundingPool.SourceChainId = l1ChainIdStr
+
 				if l1ToL2.AssetType == common4.ERC20 {
 					bridgeFundingPool.TokenAddress = l1ToL2.L1TokenAddress.String()
 					bridgeFundingPool.Amount = l1ToL2.TokenAmounts
 				} else {
+					bridgeFundingPool.TokenAddress = global_const.EthAddress
 					bridgeFundingPool.Amount = l1ToL2.ETHAmount.String()
+				}
+				needStoreList = append(needStoreList, bridgeFundingPool)
+			}
+			err = rfp.db.BridgeFundingPoolDB.StoreBridgeFundingPools(needStoreList)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (rfp *RelayerFundingPool) ScanL2NeedFundBalance() error {
+	for i := 0; i < len(rfp.rpcS); i++ {
+		rpc := rfp.rpcS[i]
+		chainId := rpc.ChainId
+		l1ChainId := rpc.L1ChainId
+		if chainId == 1 {
+			continue
+		}
+		poolContract := rpc.L1PoolContract
+		if poolContract == "" {
+			continue
+		}
+		l2ChainIdStr := strconv.FormatUint(chainId, 10)
+		l1ChainIdStr := strconv.FormatUint(l1ChainId, 10)
+		err := rfp.scanL2NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, poolContract)
+		if err != nil {
+			log.Println(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (rfp *RelayerFundingPool) scanL2NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, toAddress string) error {
+	if err := rfp.db.Transaction(func(tx *database.DB) error {
+		// get all l2 need fund balance
+		needFundBalances, err := rfp.db.BridgeFundingPoolDB.L2GetCanStoreTransactions(l2ChainIdStr, strings.ToLower(toAddress))
+		if err != nil {
+			return err
+		}
+
+		if len(needFundBalances) > 0 {
+			var needStoreList []relayer.BridgeFundingPoolUpdate
+			for i := 0; i < len(needFundBalances); i++ {
+				l2ToL1 := needFundBalances[i]
+				bridgeFundingPool := relayer.BridgeFundingPoolUpdate{
+					LayerType:      global_const.LayerTypeTwo,
+					TxHash:         l2ToL1.L2TransactionHash.String(),
+					DestChainId:    l1ChainIdStr,
+					ReceiveAddress: l2ToL1.ToAddress.String(),
+				}
+				bridgeFundingPool.SourceChainId = l2ChainIdStr
+
+				if l2ToL1.AssetType == common4.ERC20 {
+					bridgeFundingPool.TokenAddress = l2ToL1.L1TokenAddress.String()
+					bridgeFundingPool.Amount = l2ToL1.TokenAmounts
+				} else {
+					bridgeFundingPool.TokenAddress = global_const.EthAddress
+					bridgeFundingPool.Amount = l2ToL1.ETHAmount.String()
 				}
 				needStoreList = append(needStoreList, bridgeFundingPool)
 			}

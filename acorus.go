@@ -223,24 +223,31 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			as.Worker = make(map[uint64]worker2.IWorkerProcessor)
 		}
 		rpcItem := cfg.RPCs[i]
+		chainId := rpcItem.ChainId
+		l1ChainIdStr := strconv.FormatUint(rpcItem.L1ChainId, 10)
+		l2ChainIdStr := strconv.FormatUint(chainId, 10)
 		var processor event2.IEventProcessor
 		var worker worker2.IWorkerProcessor
 		var err error
-		if rpcItem.ChainId == global_const.EthereumChainId {
+		if chainId == global_const.EthereumChainId ||
+			chainId == global_const.EthereumSepoliaChainId {
 			l1StartBlockNumber = big.NewInt(int64(rpcItem.StartBlock))
 		}
-		if rpcItem.ChainId == global_const.ScrollChainId {
-			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
+		if chainId == global_const.ScrollChainId {
+			processor, err = scroll.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
+				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
 				return err
 			}
-		} else if rpcItem.ChainId == global_const.PolygonChainId {
-			processor, err = polygon.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
+		} else if chainId == global_const.PolygonChainId {
+			processor, err = polygon.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
+				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
 				return err
 			}
-		} else if rpcItem.ChainId == global_const.OpChinId {
-			if worker, err = op_stack2.NewWorkerProcessor(as.DB, strconv.FormatUint(cfg.RPCs[i].ChainId, 10), as.shutdown); err != nil {
+		} else if chainId == global_const.OpChinId ||
+			chainId == global_const.OpTestChinId {
+			if worker, err = op_stack2.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
 				return err
 			}
 			if processor, err = op_stack.NewBridgeProcessor(
@@ -250,20 +257,23 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 				as.shutdown,
 				loopInterval,
 				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
 			); err != nil {
 				return err
 			}
-		} else if rpcItem.ChainId == global_const.LineaChainId {
-			processor, err = linea.NewBridgeProcessor(as.DB, rpcItem, as.shutdown, loopInterval, epoch)
+		} else if chainId == global_const.LineaChainId {
+			processor, err = linea.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
+				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
 				return err
 			}
 		}
 		if processor != nil {
-			as.Processor[rpcItem.ChainId] = processor
+			as.Processor[chainId] = processor
 		}
 		if worker != nil {
-			as.Worker[rpcItem.ChainId] = worker
+			as.Worker[chainId] = worker
 		}
 	}
 	return nil

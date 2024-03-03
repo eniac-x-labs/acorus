@@ -40,7 +40,7 @@ type WithdrawFinalizedDB interface {
 }
 
 type WithdrawFinalizedView interface {
-	WithdrawFinalizedL1BlockHeader(chainId string) (*common2.BlockHeader, error)
+	WithdrawFinalizedL1BlockHeader(l1chainId, chainId string) (*common2.BlockHeader, error)
 	WithdrawFinalizedUnRelatedList(chainId string) ([]WithdrawFinalized, error)
 }
 
@@ -52,8 +52,8 @@ func NewWithdrawFinalizedDB(db *gorm.DB) WithdrawFinalizedDB {
 	return &withdrawFinalizedDB{gorm: db}
 }
 
-func (w withdrawFinalizedDB) WithdrawFinalizedL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
-	l1Query := w.gorm.Table("block_headers_1").Where("number = (?)", w.gorm.Table("withdraw_finalized_"+chainId).Select("MAX(block_number)"))
+func (w withdrawFinalizedDB) WithdrawFinalizedL1BlockHeader(l1chainId, chainId string) (*common2.BlockHeader, error) {
+	l1Query := w.gorm.Table("block_headers_"+l1chainId).Where("number = (?)", w.gorm.Table("withdraw_finalized_"+chainId).Select("MAX(block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

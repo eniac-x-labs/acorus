@@ -96,7 +96,8 @@ func OptimismPortalTransactionDepositEvents(contractAddress common.Address, chai
 	return optimismPortalTxDeposits, nil
 }
 
-func OptimismPortalWithdrawalProvenEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]OptimismPortalWithdrawalProvenEvent, error) {
+func OptimismPortalWithdrawalProvenEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]OptimismPortalWithdrawalProvenEvent, error) {
 	optimismPortalAbi, err := bindings.OptimismPortalMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -104,7 +105,7 @@ func OptimismPortalWithdrawalProvenEvents(contractAddress common.Address, db *da
 
 	withdrawalProvenEventAbi := optimismPortalAbi.Events["WithdrawalProven"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: withdrawalProvenEventAbi.ID}
-	withdrawalProvenEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	withdrawalProvenEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,8 @@ func OptimismPortalWithdrawalProvenEvents(contractAddress common.Address, db *da
 	return provenWithdrawals, nil
 }
 
-func OptimismPortalWithdrawalFinalizedEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]OptimismPortalWithdrawalFinalizedEvent, error) {
+func OptimismPortalWithdrawalFinalizedEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]OptimismPortalWithdrawalFinalizedEvent, error) {
 	optimismPortalAbi, err := bindings.OptimismPortalMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -134,7 +136,7 @@ func OptimismPortalWithdrawalFinalizedEvents(contractAddress common.Address, db 
 
 	withdrawalFinalizedEventAbi := optimismPortalAbi.Events["WithdrawalFinalized"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: withdrawalFinalizedEventAbi.ID}
-	withdrawalFinalizedEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	withdrawalFinalizedEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

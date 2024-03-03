@@ -8,6 +8,7 @@ const (
 	GormInfoFmt         = "%s\n[%.3fms] [rows:%v] %s"
 	ZeroAddress         = "0x0000000000000000000000000000000000000000"
 	WEthAddress         = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+	EthAddress          = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 	SepoliaWETH         = ""
 	LogTimeFormat       = "2006-01-02"
 	LayerTypeOne        = 1
@@ -19,10 +20,13 @@ const (
 	BridgeOperaInitType     = 1
 	BridgeOperaFinalizeType = 2
 
-	ScrollChainId   uint64 = 534352
-	PolygonChainId  uint64 = 1101
-	EthereumChainId uint64 = 1
-	OpChinId        uint64 = 10
-	LineaChainId    uint64 = 59144
-	BlocksLimit            = 10000
+	ScrollChainId          uint64 = 534352
+	PolygonChainId         uint64 = 1101
+	EthereumChainId        uint64 = 1
+	EthereumSepoliaChainId uint64 = 11155111
+
+	OpChinId     uint64 = 10
+	OpTestChinId uint64 = 11155420
+	LineaChainId uint64 = 59144
+	BlocksLimit         = 10000
 )

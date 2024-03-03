@@ -16,9 +16,11 @@ import (
 	contracts2 "github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 )
 
-func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight,
+	toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	// (1) CanonicalTransactionChain
-	ctcTxDepositEvents, err := contracts2.LegacyCTCDepositEvents(common3.LegacyCanonicalTransactionChain, db, fromHeight, toHeight)
+	ctcTxDepositEvents, err := contracts2.LegacyCTCDepositEvents(common3.LegacyCanonicalTransactionChain, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -32,7 +34,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 	for i := range ctcTxDepositEvents {
 		depositTx := ctcTxDepositEvents[i]
 		mintedWEI = new(big.Int).Add(mintedWEI, depositTx.ETHAmount)
-		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash("10", depositTx.Event.BlockHash)
+		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l2ChainId, depositTx.Event.BlockHash)
 		if err != nil {
 			log.Error("can not get l1 blockNumber", "blockHash", depositTx.Event.BlockHash)
 			return err
@@ -53,13 +55,14 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		}
 	}
 	if len(ctcTxDepositEvents) > 0 {
-		if err := db.L1ToL2.StoreL1ToL2Transactions("10", l1ToL2s); err != nil {
+		if err := db.L1ToL2.StoreL1ToL2Transactions(l2ChainId, l1ToL2s); err != nil {
 			return err
 		}
 	}
 
 	// (2) L1CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy, "1", db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L1CrossDomainMessengerProxy,
+		l1ChainId, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -76,13 +79,14 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		l1ToL2c2[i].MessageHash = sentMessage.MessageHash
 	}
 	if len(crossDomainSentMessages) > 0 {
-		if err := db.L1ToL2.UpdateTokenPairAndAddress("10", l1ToL2c2); err != nil {
+		if err := db.L1ToL2.UpdateTokenPairAndAddress(l2ChainId, l1ToL2c2); err != nil {
 			return err
 		}
 	}
 
 	// (3) L1StandardBridge
-	initiatedBridges, err := contracts2.L1StandardBridgeLegacyDepositInitiatedEvents(common3.L1StandardBridgeProxy, db, fromHeight, toHeight)
+	initiatedBridges, err := contracts2.L1StandardBridgeLegacyDepositInitiatedEvents(common3.L1StandardBridgeProxy, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -115,16 +119,16 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
 	}
 	if len(initiatedBridges) > 0 {
-		if err := db.L1ToL2.UpdateTokenPairAndAddress("10", l1ToL2s2); err != nil {
+		if err := db.L1ToL2.UpdateTokenPairAndAddress(l2ChainId, l1ToL2s2); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, "10", db, fromHeight, toHeight)
+	crossDomainSentMessages, err := contracts2.CrossDomainMessengerSentMessageEvents(common3.L2CrossDomainMessenger, l2ChainId, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -143,7 +147,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		// To ensure consistency in the schema, we duplicate this as the "root" transaction withdrawal. The storage key in the message
 		// passer contract is sha3(calldata + sender). The sender always being the L2CrossDomainMessenger pre-bedrock.
 		withdrawalHash := crypto.Keccak256Hash(append(sentMessage.MessageCalldata, common3.L2CrossDomainMessenger[:]...))
-		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash("10", sentMessage.Event.BlockHash)
+		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l2ChainId, sentMessage.Event.BlockHash)
 		if err != nil {
 			log.Error("can not get l1 blockNumber", "blockHash", sentMessage.Event.BlockHash)
 			return err
@@ -165,13 +169,14 @@ func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		}
 	}
 	if len(crossDomainSentMessages) > 0 {
-		if err := db.L2ToL1.StoreL2ToL1Transactions("10", l2ToL1Cs); err != nil {
+		if err := db.L2ToL1.StoreL2ToL1Transactions(l2ChainId, l2ToL1Cs); err != nil {
 			return err
 		}
 	}
 
 	// (2) L2StandardBridge
-	initiatedBridges, err := contracts2.L2StandardBridgeLegacyWithdrawalInitiatedEvents(common3.L2StandardBridge, db, fromHeight, toHeight)
+	initiatedBridges, err := contracts2.L2StandardBridgeLegacyWithdrawalInitiatedEvents(common3.L2StandardBridge, db,
+		fromHeight, toHeight, l1ChainId, l2ChainId)
 	if err != nil {
 		return err
 	}
@@ -203,15 +208,16 @@ func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		l2ToL1Bs[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
 	}
 	if len(initiatedBridges) > 0 {
-		if err := db.L2ToL1.UpdateTokenPairsAndAddress("10", l2ToL1Bs); err != nil {
+		if err := db.L2ToL1.UpdateTokenPairsAndAddress(l2ChainId, l2ToL1Bs); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("1", common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
+func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
+	l1ChainId, l2ChainId string) error {
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents(l1ChainId, common3.L1CrossDomainMessengerProxy, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -227,7 +233,7 @@ func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		l2ToL1Finalized[i].L1FinalizeTxHash = relayedMessage.Event.TransactionHash
 	}
 	if len(crossDomainRelayedMessages) > 0 {
-		if err = db.L2ToL1.MarkL2ToL1TransactionWithdrawalFinalized("10", l2ToL1Finalized); err != nil {
+		if err = db.L2ToL1.MarkL2ToL1TransactionWithdrawalFinalized(l2ChainId, l2ToL1Finalized); err != nil {
 			return err
 		}
 	}
@@ -235,9 +241,10 @@ func LegacyL1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight 
 	return nil
 }
 
-func LegacyL2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int) error {
+func LegacyL2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight,
+	toHeight *big.Int, l1ChainId, l2ChainId string) error {
 	// (1) L2CrossDomainMessenger
-	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents("10", common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
+	crossDomainRelayedMessages, err := contracts2.CrossDomainMessengerRelayedMessageEvents(l2ChainId, common3.L2CrossDomainMessenger, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
@@ -252,7 +259,7 @@ func LegacyL2ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight 
 		L1ToL2Fz[i].L2TransactionHash = relayedMessage.Event.TransactionHash
 	}
 	if len(crossDomainRelayedMessages) > 0 {
-		if err := db.L1ToL2.UpdateMessageHash("10", L1ToL2Fz); err != nil {
+		if err := db.L1ToL2.UpdateMessageHash(l2ChainId, L1ToL2Fz); err != nil {
 			log.Error("failed to relay cross domain message", "err", err)
 			return err
 		}

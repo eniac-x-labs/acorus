@@ -26,7 +26,8 @@ type LegacyCTCDepositEvent struct {
 	GasLimit    *big.Int
 }
 
-func LegacyCTCDepositEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]LegacyCTCDepositEvent, error) {
+func LegacyCTCDepositEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]LegacyCTCDepositEvent, error) {
 	ctcAbi, err := legacy_bindings.CanonicalTransactionChainMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -34,7 +35,7 @@ func LegacyCTCDepositEvents(contractAddress common.Address, db *database.DB, fro
 
 	transactionEnqueuedEventAbi := ctcAbi.Events["TransactionEnqueued"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: transactionEnqueuedEventAbi.ID}
-	events, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	events, err := db.ContractEvents.ContractEventsWithFilter(l2ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

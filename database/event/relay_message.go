@@ -38,7 +38,7 @@ type RelayMessageDB interface {
 }
 
 type RelayMessageView interface {
-	RelayMessageL1BlockHeader(string) (*common2.BlockHeader, error)
+	RelayMessageL1BlockHeader(l1ChainId, chainId string) (*common2.BlockHeader, error)
 	RelayMessageUnRelatedList(string) ([]RelayMessage, error)
 }
 
@@ -50,8 +50,8 @@ func NewRelayMessageDB(db *gorm.DB) RelayMessageDB {
 	return &relayMessageDB{gorm: db}
 }
 
-func (rm relayMessageDB) RelayMessageL1BlockHeader(chainId string) (*common2.BlockHeader, error) {
-	l1Query := rm.gorm.Table("block_headers_1").Where("number = (?)", rm.gorm.Table("relay_message").Select("MAX(block_number)"))
+func (rm relayMessageDB) RelayMessageL1BlockHeader(l1ChainId, chainId string) (*common2.BlockHeader, error) {
+	l1Query := rm.gorm.Table("block_headers_"+l1ChainId).Where("number = (?)", rm.gorm.Table("relay_message_"+chainId).Select("MAX(block_number)"))
 	var l1Header common2.BlockHeader
 	result := l1Query.Take(&l1Header)
 	if result.Error != nil {

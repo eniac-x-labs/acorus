@@ -26,7 +26,8 @@ type LegacyBridgeEvent struct {
 	Timestamp              uint64
 }
 
-func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]LegacyBridgeEvent, error) {
+func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]LegacyBridgeEvent, error) {
 	// The L1StandardBridge ABI contains the legacy events
 	l1StandardBridgeAbi, err := bindings2.L1StandardBridgeMetaData.GetAbi()
 	if err != nil {
@@ -39,17 +40,17 @@ func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address
 
 	// Grab both ETH & ERC20 Events
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: ethDepositEventAbi.ID}
-	ethDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	ethDepositEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
 	contractEventFilter.EventSignature = erc20DepositEventAbi.ID
-	erc20DepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	erc20DepositEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
 	contractEventFilter.EventSignature = mntDepositEventAbi.ID
-	mntDepositEvents, err := db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromHeight, toHeight)
+	mntDepositEvents, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,8 @@ func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address
 	return deposits, nil
 }
 
-func L2StandardBridgeLegacyWithdrawalInitiatedEvents(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]LegacyBridgeEvent, error) {
+func L2StandardBridgeLegacyWithdrawalInitiatedEvents(contractAddress common.Address, db *database.DB,
+	fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) ([]LegacyBridgeEvent, error) {
 	l2StandardBridgeAbi, err := bindings2.L2StandardBridgeMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -100,7 +102,7 @@ func L2StandardBridgeLegacyWithdrawalInitiatedEvents(contractAddress common.Addr
 
 	withdrawalInitiatedEventAbi := l2StandardBridgeAbi.Events["WithdrawalInitiated"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: withdrawalInitiatedEventAbi.ID}
-	withdrawalEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	withdrawalEvents, err := db.ContractEvents.ContractEventsWithFilter(l2ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}
