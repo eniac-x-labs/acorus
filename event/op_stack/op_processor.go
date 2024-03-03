@@ -41,9 +41,10 @@ type OpEventProcessor struct {
 }
 
 func NewBridgeProcessor(db *database.DB, l1StartHeight *big.Int, l2StartHeight *big.Int,
-	shutdown context.CancelCauseFunc, loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*OpEventProcessor, error) {
+	shutdown context.CancelCauseFunc, loopInterval time.Duration,
+	epoch uint64, l1ChainId, l2ChainId string, isMainnet bool) (*OpEventProcessor, error) {
 
-	common3.InitAddress()
+	common3.InitAddress(isMainnet)
 
 	latestL1L2InitL1Header, err := db.L1ToL2.L1LatestBlockHeader(l2ChainId, l1ChainId)
 	if err != nil {
