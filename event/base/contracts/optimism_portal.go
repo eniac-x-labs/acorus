@@ -44,7 +44,8 @@ type OptimismPortalProvenWithdrawal struct {
 	L2OutputIndex *big.Int
 }
 
-func OptimismPortalTransactionDepositEvents(contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int) ([]OptimismPortalTransactionDepositEvent, error) {
+func OptimismPortalTransactionDepositEvents(contractAddress common.Address, chainId string,
+	db *database.DB, fromHeight, toHeight *big.Int) ([]OptimismPortalTransactionDepositEvent, error) {
 	optimismPortalAbi, err := bindings.OptimismPortalMetaData.GetAbi()
 	if err != nil {
 		return nil, err

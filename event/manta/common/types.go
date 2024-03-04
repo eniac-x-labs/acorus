@@ -37,35 +37,35 @@ func InitAddress(isMainNet bool) {
 
 func getOptimismPortalProxy() {
 	if IsMainnet {
-		OptimismPortalProxy = common.HexToAddress("0x49048044D57e1C92A77f79988d21Fa8fAF74E97e")
+		OptimismPortalProxy = common.HexToAddress("0x9168765EE952de7C6f8fC6FaD5Ec209B960b7622")
 	} else {
-		OptimismPortalProxy = common.HexToAddress("0x49f53e41452C74589E85cA1677426Ba426459e85")
+		OptimismPortalProxy = common.HexToAddress("0x7FD7eEA37c53ABf356cc80e71144D62CD8aF27d3")
 	}
 }
 
 func getL1CrossDomainMessengerProxy() {
 	if IsMainnet {
-		L1CrossDomainMessengerProxy = common.HexToAddress("0x866E82a600A1414e583f7F13623F1aC5d58b0Afa")
+		L1CrossDomainMessengerProxy = common.HexToAddress("0x635ba609680c55C3bDd0B3627b4c5dB21b13c310")
 	} else {
-		L1CrossDomainMessengerProxy = common.HexToAddress("0xC34855F4De64F1840e5686e64278da901e261f20")
+		L1CrossDomainMessengerProxy = common.HexToAddress("0x7Ad11bB9216BC9Dc4CBd488D7618CbFD433d1E75")
 
 	}
 }
 
 func getL1StandardBridgeProxy() {
 	if IsMainnet {
-		L1StandardBridgeProxy = common.HexToAddress("0x3154Cf16ccdb4C6d922629664174b904d80F2C35")
+		L1StandardBridgeProxy = common.HexToAddress("0x3B95bC951EE0f553ba487327278cAc44f29715E5")
 	} else {
-		L1StandardBridgeProxy = common.HexToAddress("0xfd0Bf71F60660E2f608ed56e1659C450eB113120")
+		L1StandardBridgeProxy = common.HexToAddress("0x4638aC6b5727a8b9586D3eba5B44Be4b74ED41Fc")
 
 	}
 }
 
 func getL2OutputOracleProxy() {
 	if IsMainnet {
-		L2OutputOracleProxy = common.HexToAddress("0x56315b90c40730925ec5485cf004d835058518A0")
+		L2OutputOracleProxy = common.HexToAddress("0x30c789674ad3B458886BBC9abf42EEe19EA05C1D")
 	} else {
-		L2OutputOracleProxy = common.HexToAddress("0x84457ca9D0163FbC4bbfe4Dfbb20ba46e48DF254")
+		L2OutputOracleProxy = common.HexToAddress("0x8553D4d201ef97F2b76A28F5E543701b25e55B1b")
 	}
 }
 

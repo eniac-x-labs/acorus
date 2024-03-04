@@ -5,6 +5,10 @@ import (
 	"errors"
 	"fmt"
 	common3 "github.com/cornerstone-labs/acorus/common"
+	"github.com/cornerstone-labs/acorus/event/base"
+	"github.com/cornerstone-labs/acorus/event/manta"
+	"github.com/cornerstone-labs/acorus/worker/base_worker"
+	"github.com/cornerstone-labs/acorus/worker/manta_worker"
 	"log"
 	"math/big"
 	"net"
@@ -75,9 +79,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
 		log.Println("starting Sync", "chainId", as.chainIdList[i])
 		realChainId := as.chainIdList[i]
-		if err := as.Synchronizer[realChainId].Start(); err != nil {
-			return fmt.Errorf("failed to start L1 Sync: %w", err)
-		}
+		//if err := as.Synchronizer[realChainId].Start(); err != nil {
+		//	return fmt.Errorf("failed to start L1 Sync: %w", err)
+		//}
 		processor := as.Processor[realChainId]
 		if processor != nil {
 			if err := processor.StartUnpack(); err != nil {
@@ -268,6 +272,41 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			processor, err = linea.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
 				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
+				return err
+			}
+		} else if chainId == global_const.BaseChainId ||
+			chainId == global_const.BaseSepoliaChainId {
+			if worker, err = base_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = base.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
+				return err
+			}
+		} else if chainId == global_const.MantaChainId {
+			if worker, err = manta_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = manta.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
 				return err
 			}
 		}

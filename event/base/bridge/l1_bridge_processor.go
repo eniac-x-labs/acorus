@@ -49,7 +49,8 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			Status:                common2.L1ToL2Pending,
 			L1TokenAddress:        common.Address{},
 			L2TokenAddress:        common.Address{},
-			ETHAmount:             depositTx.DepositTx.Value,
+			ETHAmount:             depositTx.ETHAmount,
+			TokenAmounts:          depositTx.ERC20Amount.String(),
 			GasLimit:              depositTx.GasLimit,
 			Timestamp:             int64(depositTx.Event.Timestamp),
 		}

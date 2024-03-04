@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"encoding/json"
 	"fmt"
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
@@ -49,7 +50,8 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			Status:                common2.L1ToL2Pending,
 			L1TokenAddress:        common.Address{},
 			L2TokenAddress:        common.Address{},
-			ETHAmount:             depositTx.DepositTx.Value,
+			ETHAmount:             depositTx.ETHAmount,
+			TokenAmounts:          depositTx.ERC20Amount.String(),
 			GasLimit:              depositTx.GasLimit,
 			Timestamp:             int64(depositTx.Event.Timestamp),
 		}
@@ -68,6 +70,9 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if len(crossDomainSentMessages) > 0 {
 		log.Println("detected sent messages", "size", len(crossDomainSentMessages))
 	}
+
+	marshal, _ := json.Marshal(crossDomainSentMessages)
+	log.Println(string(marshal))
 
 	sentMessages := make(map[logKey]*contracts.CrossDomainMessengerSentMessageEvent, len(crossDomainSentMessages))
 	l1ToL2c2 := make([]worker.L1ToL2, len(crossDomainSentMessages))
