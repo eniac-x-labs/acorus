@@ -22,6 +22,7 @@ const (
 
 	ScrollChainId          uint64 = 534352
 	PolygonChainId         uint64 = 1101
+	PolygonSepoliaChainId  uint64 = 1442
 	EthereumChainId        uint64 = 1
 	EthereumSepoliaChainId uint64 = 11155111
 	BaseChainId            uint64 = 8453

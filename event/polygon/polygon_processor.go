@@ -19,7 +19,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/event/polygon/abi"
 	"github.com/cornerstone-labs/acorus/event/polygon/bridge"
 	"github.com/cornerstone-labs/acorus/event/polygon/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -33,7 +32,6 @@ type PolygonEventProcessor struct {
 	tasks            tasks.Group
 	polygonBridge    *polygonzkevmbridge.Polygonzkevmbridge
 	oldpolygonBridge *oldpolygonzkevmbridge.Oldpolygonzkevmbridge
-	L2PolygonBridge  *abi.Polygonzkevmbridge
 	loopInterval     time.Duration
 	l1StartHeight    *big.Int
 	l2StartHeight    *big.Int
@@ -76,15 +74,15 @@ func NewBridgeProcessor(db *database.DB,
 func (pp *PolygonEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(pp.loopInterval)
 	tickerEventOn2 := time.NewTicker(pp.loopInterval)
-	tickerEventRel := time.NewTicker(pp.loopInterval)
+	//tickerEventRel := time.NewTicker(pp.loopInterval)
 	log.Println("starting polygon_worker bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
-			err := pp.onL1Data()
-			if err != nil {
-				log.Println("no more l1 etl updates. shutting down l1 task")
-				continue
-			}
+			//err := pp.onL1Data()
+			//if err != nil {
+			//	log.Println("fail no more l1 etl updates. shutting down l1 task")
+			//	continue
+			//}
 		}
 		return nil
 	})
@@ -93,23 +91,23 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := pp.onL2Data()
 			if err != nil {
-				log.Println("no more l2 etl updates. shutting down l2 task")
+				log.Println("fail no more l2 etl updates. shutting down l2 task")
 				continue
 			}
 		}
 		return nil
 	})
-	// start relation worker
-	pp.tasks.Go(func() error {
-		for range tickerEventRel.C {
-			err := pp.relationL1L2()
-			if err != nil {
-				log.Println("shutting down relation task")
-				continue
-			}
-		}
-		return nil
-	})
+	//// start relation worker
+	//pp.tasks.Go(func() error {
+	//	for range tickerEventRel.C {
+	//		err := pp.relationL1L2()
+	//		if err != nil {
+	//			log.Println("shutting down relation task")
+	//			continue
+	//		}
+	//	}
+	//	return nil
+	//})
 	return nil
 }
 
@@ -140,7 +138,7 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 	fromL1Height := pp.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(pp.epoch)))
 
-	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(strconv.FormatUint(global_const.EthereumChainId, 10))
+	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(pp.l1ChainId)
 	if err != nil {
 		pp.l1StartHeight = new(big.Int).Sub(pp.l1StartHeight, bigint.One)
 
@@ -176,10 +174,8 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 }
 
 func (pp *PolygonEventProcessor) onL2Data() error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
 	if pp.l2StartHeight == nil {
-		lastBlockHeard, err := pp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
+		lastBlockHeard, err := pp.db.L2ToL1.L2LatestBlockHeader(pp.l2ChainId)
 		if err != nil {
 			log.Println("l2 failed to get last block heard", "err", err)
 			return err
@@ -201,7 +197,7 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 	}
 	fromL2Height := pp.l2StartHeight
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(pp.epoch)))
-	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(chainIdStr)
+	chainLatestBlockHeader, err := pp.db.Blocks.ChainLatestBlockHeader(pp.l2ChainId)
 	if err != nil {
 		pp.l2StartHeight = new(big.Int).Sub(pp.l2StartHeight, bigint.One)
 		return err
@@ -274,31 +270,34 @@ func (pp *PolygonEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int
 }
 
 func (pp *PolygonEventProcessor) l1EventUnpack(event event.ContractEvent) error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+	l2chainId := pp.l2ChainId
+	l1ChainId := pp.l1ChainId
 	switch event.EventSignature.String() {
-	case utils.DepositEventSignatureHash.String():
-		err := bridge.L1Deposit(chainIdStr, pp.polygonBridge, event, pp.db)
+	case utils.WithdrawEventSignatureHash.String():
+		err := bridge.L1Deposit(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
 	case utils.OldClaimEventSignatureHash.String():
-		err := bridge.L1WithdrawClaimedOld(chainIdStr, pp.oldpolygonBridge, event, pp.db)
+		err := bridge.L1ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
 		return err
 	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L1WithdrawClaimed(chainIdStr, pp.polygonBridge, event, pp.db)
+		err := bridge.L1Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
 	}
 	return nil
 }
 
 func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+	l2chainId := pp.l2ChainId
+	l1ChainId := pp.l1ChainId
 	switch event.EventSignature.String() {
 	case utils.DepositEventSignatureHash.String():
-		err := bridge.L2Withdraw(chainIdStr, pp.L2PolygonBridge, event, pp.db)
+		err := bridge.L2Withdraw(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
 	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L2WithdrawClaimed(chainIdStr, pp.L2PolygonBridge, event, pp.db)
+		err := bridge.L2Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	case utils.OldClaimEventSignatureHash.String():
+		err := bridge.L2ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
 		return err
 	}
 	return nil

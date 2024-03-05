@@ -4,11 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	common3 "github.com/cornerstone-labs/acorus/common"
-	"github.com/cornerstone-labs/acorus/event/base"
-	"github.com/cornerstone-labs/acorus/event/manta"
-	"github.com/cornerstone-labs/acorus/worker/base_worker"
-	"github.com/cornerstone-labs/acorus/worker/manta_worker"
+	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
+
 	"log"
 	"math/big"
 	"net"
@@ -21,11 +18,14 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
+	common3 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	event2 "github.com/cornerstone-labs/acorus/event"
+	"github.com/cornerstone-labs/acorus/event/base"
 	"github.com/cornerstone-labs/acorus/event/linea"
+	"github.com/cornerstone-labs/acorus/event/manta"
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
@@ -35,6 +35,8 @@ import (
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	worker2 "github.com/cornerstone-labs/acorus/worker"
+	"github.com/cornerstone-labs/acorus/worker/base_worker"
+	"github.com/cornerstone-labs/acorus/worker/manta_worker"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
 )
 
@@ -94,9 +96,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to start worker: %w", err)
 			}
 		}
-		relayer := as.Relayer[realChainId]
-		if relayer != nil {
-			if err := relayer.Start(); err != nil {
+		relayerRunner := as.Relayer[realChainId]
+		if relayerRunner != nil {
+			if err := relayerRunner.Start(); err != nil {
 				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
@@ -244,7 +246,11 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			if err != nil {
 				return err
 			}
-		} else if chainId == global_const.PolygonChainId {
+		} else if chainId == global_const.PolygonChainId ||
+			chainId == global_const.PolygonSepoliaChainId {
+			if worker, err = polygon_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
 			processor, err = polygon.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
 				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
@@ -356,7 +362,8 @@ func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
 		var rlworker *relayer.RelayerListener
 		var err error
 		log.Println("Init Relayer success", "chainId", chainIdStr)
-		if chainIdStr == "1" || chainIdStr == "11155111" {
+		if chainIdStr == "1" || chainIdStr == "11155111" ||
+			chainIdStr == "5" {
 			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
 				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 1, as.shutdown, loopInterval, epoch)
 			if err != nil {
