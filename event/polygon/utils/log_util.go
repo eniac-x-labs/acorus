@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"math/big"
 
 	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -35,4 +37,17 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 		}
 	}
 	return eventInfo, nil
+}
+
+func DecodeGlobalIndex(globalIndex *big.Int) (bool, *big.Int, *big.Int, error) {
+	const lengthGlobalIndexInBytes = 32
+	var buf [32]byte
+	gIBytes := globalIndex.FillBytes(buf[:])
+	if len(gIBytes) != lengthGlobalIndexInBytes {
+		return false, big.NewInt(0), big.NewInt(0), fmt.Errorf("invalid globaIndex length. Should be 32. Current length: %d", len(gIBytes))
+	}
+	mainnetFlag := big.NewInt(0).SetBytes([]byte{gIBytes[23]}).Uint64() == 1
+	rollupIndex := big.NewInt(0).SetBytes(gIBytes[24:28])
+	localRootIndex := big.NewInt(0).SetBytes(gIBytes[29:32])
+	return mainnetFlag, rollupIndex, localRootIndex, nil
 }

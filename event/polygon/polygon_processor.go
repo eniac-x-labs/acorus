@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
+	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"log"
@@ -24,33 +26,36 @@ import (
 )
 
 type PolygonEventProcessor struct {
-	db              *database.DB
-	cfgRpc          *config.RPC
-	resourceCtx     context.Context
-	resourceCancel  context.CancelFunc
-	tasks           tasks.Group
-	L1PolygonBridge *abi.Polygonzkevmbridge
-	L2PolygonBridge *abi.Polygonzkevmbridge
-	loopInterval    time.Duration
-	l1StartHeight   *big.Int
-	l2StartHeight   *big.Int
-	epoch           uint64
-	l1ChainId       string
-	l2ChainId       string
+	db               *database.DB
+	cfgRpc           *config.RPC
+	resourceCtx      context.Context
+	resourceCancel   context.CancelFunc
+	tasks            tasks.Group
+	polygonBridge    *polygonzkevmbridge.Polygonzkevmbridge
+	oldpolygonBridge *oldpolygonzkevmbridge.Oldpolygonzkevmbridge
+	L2PolygonBridge  *abi.Polygonzkevmbridge
+	loopInterval     time.Duration
+	l1StartHeight    *big.Int
+	l2StartHeight    *big.Int
+	epoch            uint64
+	l1ChainId        string
+	l2ChainId        string
 }
 
 func NewBridgeProcessor(db *database.DB,
 	l2cfg *config.RPC, shutdown context.CancelCauseFunc,
 	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*PolygonEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
-	l1PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L1PolygonZKEVMBridgeAddr, nil)
+
+	polygonBridge, err := polygonzkevmbridge.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
 		return nil, err
 	}
-	l2PolygonBridge, err := abi.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
+	oldpolygonBridge, err := oldpolygonzkevmbridge.NewOldpolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	return &PolygonEventProcessor{
 		db:             db,
 		cfgRpc:         l2cfg,
@@ -59,12 +64,12 @@ func NewBridgeProcessor(db *database.DB,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
-		L1PolygonBridge: l1PolygonBridge,
-		L2PolygonBridge: l2PolygonBridge,
-		loopInterval:    loopInterval,
-		epoch:           epoch,
-		l1ChainId:       l1ChainId,
-		l2ChainId:       l2ChainId,
+		polygonBridge:    polygonBridge,
+		oldpolygonBridge: oldpolygonBridge,
+		loopInterval:     loopInterval,
+		epoch:            epoch,
+		l1ChainId:        l1ChainId,
+		l2ChainId:        l2ChainId,
 	}, nil
 }
 
@@ -231,7 +236,7 @@ func (pp *PolygonEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int
 	l1Contracts := pp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
-		events, err := pp.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
+		events, err := pp.db.ContractEvents.ContractEventsWithFilter(pp.l1ChainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
@@ -248,12 +253,11 @@ func (pp *PolygonEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int
 }
 
 func (pp *PolygonEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+	l2chainIdStr := pp.l2ChainId
 	l2Contracts := pp.cfgRpc.EventContracts
 	for _, l2contract := range l2Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
-		events, err := pp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		events, err := pp.db.ContractEvents.ContractEventsWithFilter(l2chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
@@ -274,10 +278,13 @@ func (pp *PolygonEventProcessor) l1EventUnpack(event event.ContractEvent) error 
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
 	case utils.DepositEventSignatureHash.String():
-		err := bridge.L1Deposit(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		err := bridge.L1Deposit(chainIdStr, pp.polygonBridge, event, pp.db)
+		return err
+	case utils.OldClaimEventSignatureHash.String():
+		err := bridge.L1WithdrawClaimedOld(chainIdStr, pp.oldpolygonBridge, event, pp.db)
 		return err
 	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L1WithdrawClaimed(chainIdStr, pp.L1PolygonBridge, event, pp.db)
+		err := bridge.L1WithdrawClaimed(chainIdStr, pp.polygonBridge, event, pp.db)
 		return err
 	}
 	return nil
@@ -287,7 +294,7 @@ func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error 
 	chainId := pp.cfgRpc.ChainId
 	chainIdStr := strconv.Itoa(int(chainId))
 	switch event.EventSignature.String() {
-	case utils.WithdrawEventSignatureHash.String():
+	case utils.DepositEventSignatureHash.String():
 		err := bridge.L2Withdraw(chainIdStr, pp.L2PolygonBridge, event, pp.db)
 		return err
 	case utils.ClaimEventSignatureHash.String():
