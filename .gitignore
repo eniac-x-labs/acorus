@@ -5,3 +5,4 @@ docker-compose.dev.yml
 acorus.exe
 acorus.yaml
 logs
+./acorus.yaml

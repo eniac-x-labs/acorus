@@ -3,6 +3,7 @@ package synchronizer
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/common/bigint"
 	"log"
 	"math/big"
 	"strconv"
@@ -53,7 +54,7 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 		fromHeader = latestHeader.RLPHeader.Header()
 	} else if cfg.StartHeight.BitLen() > 0 {
 		log.Println("no indexed state starting from supplied L1 height;", "height =", cfg.StartHeight.String())
-		header, err := client.BlockHeaderByNumber(cfg.StartHeight)
+		header, err := client.BlockHeaderByNumber(new(big.Int).Sub(cfg.StartHeight, bigint.One))
 		if err != nil {
 			log.Println("Fetch block header by number fail", "err", err)
 			return nil, fmt.Errorf("could not fetch starting block header: %w", err)

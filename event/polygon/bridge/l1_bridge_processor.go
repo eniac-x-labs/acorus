@@ -37,6 +37,8 @@ func L1Deposit(l1ChainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(eventInfo.Timestamp),
 		MessageHash:       common.BigToHash(big.NewInt(int64(d.DepositCount))),
+		ETHAmount:         big.NewInt(0),
+		TokenAmounts:      "0",
 	}
 	// is erc20
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
@@ -77,12 +79,14 @@ func L1ClaimedOld(l1chainId, l2chainId string, polygonBridge *oldpolygonzkevmbri
 	index := c.Index
 	indexBig := new(big.Int).SetUint64(uint64(index))
 
-	relayMessage := event.RelayMessage{
-		BlockNumber:          big.NewInt(int64(rlpLog.BlockNumber)),
-		RelayTransactionHash: rlpLog.TxHash,
-		MessageHash:          common.BigToHash(indexBig),
-		Related:              false,
-		Timestamp:            eventInfo.Timestamp,
+	withDrawMessage := event.WithdrawFinalized{
+		BlockNumber:              big.NewInt(int64(rlpLog.BlockNumber)),
+		FinalizedTransactionHash: rlpLog.TxHash,
+		MessageHash:              common.BigToHash(indexBig),
+		Related:                  false,
+		Timestamp:                eventInfo.Timestamp,
+		ERC20Amount:              big.NewInt(0),
+		ETHAmount:                big.NewInt(0),
 	}
 	// is erc20
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
@@ -91,14 +95,14 @@ func L1ClaimedOld(l1chainId, l2chainId string, polygonBridge *oldpolygonzkevmbri
 		return err
 	}
 	if transferEvent != nil {
-		relayMessage.L1TokenAddress = transferEvent.ContractAddress
-		relayMessage.ERC20Amount = c.Amount
+		withDrawMessage.L1TokenAddress = transferEvent.ContractAddress
+		withDrawMessage.ERC20Amount = c.Amount
 	} else {
-		relayMessage.ETHAmount = c.Amount
+		withDrawMessage.ETHAmount = c.Amount
 	}
-	relayMessageList := make([]event.RelayMessage, 0)
-	relayMessageList = append(relayMessageList, relayMessage)
-	err = db.RelayMessage.StoreRelayMessage(l2chainId, relayMessageList)
+	withdrawMessageList := make([]event.WithdrawFinalized, 0)
+	withdrawMessageList = append(withdrawMessageList, withDrawMessage)
+	err = db.WithdrawFinalized.StoreWithdrawFinalized(l2chainId, withdrawMessageList)
 	return err
 }
 
@@ -116,12 +120,14 @@ func L1Claimed(l1chainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 		return decodeErr
 	}
 
-	relayMessage := event.RelayMessage{
-		BlockNumber:          big.NewInt(int64(rlpLog.BlockNumber)),
-		RelayTransactionHash: rlpLog.TxHash,
-		MessageHash:          common.BigToHash(localRootIndex),
-		Related:              false,
-		Timestamp:            eventInfo.Timestamp,
+	withDrawMessage := event.WithdrawFinalized{
+		BlockNumber:              big.NewInt(int64(rlpLog.BlockNumber)),
+		FinalizedTransactionHash: rlpLog.TxHash,
+		MessageHash:              common.BigToHash(localRootIndex),
+		Related:                  false,
+		Timestamp:                eventInfo.Timestamp,
+		ERC20Amount:              big.NewInt(0),
+		ETHAmount:                big.NewInt(0),
 	}
 	// is erc20
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
@@ -130,13 +136,13 @@ func L1Claimed(l1chainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 		return err
 	}
 	if transferEvent != nil {
-		relayMessage.L1TokenAddress = transferEvent.ContractAddress
-		relayMessage.ERC20Amount = c.Amount
+		withDrawMessage.L1TokenAddress = transferEvent.ContractAddress
+		withDrawMessage.ERC20Amount = c.Amount
 	} else {
-		relayMessage.ETHAmount = c.Amount
+		withDrawMessage.ETHAmount = c.Amount
 	}
-	relayMessageList := make([]event.RelayMessage, 0)
-	relayMessageList = append(relayMessageList, relayMessage)
-	err = db.RelayMessage.StoreRelayMessage(l2chainId, relayMessageList)
+	withdrawMessageList := make([]event.WithdrawFinalized, 0)
+	withdrawMessageList = append(withdrawMessageList, withDrawMessage)
+	err = db.WithdrawFinalized.StoreWithdrawFinalized(l2chainId, withdrawMessageList)
 	return err
 }

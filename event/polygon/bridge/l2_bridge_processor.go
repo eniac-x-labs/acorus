@@ -40,6 +40,8 @@ func L2Withdraw(l1ChainId, l2chainId string,
 		ClaimedIndex:      int64(w.DepositCount),
 		MsgNonce:          big.NewInt(0),
 		GasLimit:          big.NewInt(0),
+		ETHAmount:         big.NewInt(0),
+		TokenAmounts:      "0",
 	}
 
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
@@ -91,6 +93,8 @@ func L2Claimed(l1ChainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 		MessageHash:          common.BigToHash(localRootIndex),
 		Related:              false,
 		Timestamp:            eventInfo.Timestamp,
+		ERC20Amount:          big.NewInt(0),
+		ETHAmount:            big.NewInt(0),
 	}
 	// is erc20
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
@@ -125,6 +129,8 @@ func L2ClaimedOld(l1ChainId, l2chainId string, polygonBridge *oldpolygonzkevmbri
 		MessageHash:          common.BigToHash(indexBig),
 		Related:              false,
 		Timestamp:            eventInfo.Timestamp,
+		ERC20Amount:          big.NewInt(0),
+		ETHAmount:            big.NewInt(0),
 	}
 	// is erc20
 	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}

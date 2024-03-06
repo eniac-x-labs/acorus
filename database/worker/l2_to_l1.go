@@ -63,6 +63,7 @@ type L2ToL1View interface {
 	L1LatestBlockHeader(l2chainId, destChainId string) (*common2.BlockHeader, error)
 	L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2ToL1TransactionWithdrawal(string, common.Hash) (*L2ToL1, error)
+	L2ToL1TransactionMsgHash(string, common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
 	L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
@@ -357,7 +358,27 @@ func (l2l1 l2ToL1DB) GetBlockNumberFromHash(chainId string, blockHash common.Has
 
 func (l2l1 l2ToL1DB) L2ToL1TransactionWithdrawal(chainId string, withdrawalHash common.Hash) (*L2ToL1, error) {
 	var l2ToL1Withdrawal L2ToL1
+	nilHash := common.Hash{}
+	if withdrawalHash.String() == nilHash.String() {
+		return nil, nil
+	}
 	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawalHash}).Take(&l2ToL1Withdrawal)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l2ToL1Withdrawal, nil
+}
+
+func (l2l1 l2ToL1DB) L2ToL1TransactionMsgHash(chainId string, messageHash common.Hash) (*L2ToL1, error) {
+	var l2ToL1Withdrawal L2ToL1
+	nilHash := common.Hash{}
+	if messageHash.String() == nilHash.String() {
+		return nil, nil
+	}
+	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1Withdrawal)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil

@@ -34,11 +34,11 @@ func (b *WorkerProcessor) WorkerStart() error {
 	tickerRunMarked := time.NewTicker(time.Second * 5)
 	b.tasks.Go(func() error {
 		for range tickerRunMarked.C {
-			//err := b.marked()
-			//if err != nil {
-			//	log.Println("marked ", "err", err)
-			//	continue
-			//}
+			err := b.marked()
+			if err != nil {
+				log.Println("marked ", "err", err)
+				continue
+			}
 		}
 		return nil
 	})
@@ -50,9 +50,9 @@ func (b *WorkerProcessor) marked() error {
 	if err := b.markedL1ToL2Finalized(); err != nil {
 		errors.Join(errs, err)
 	}
-	//if err := b.markedL2ToL1Finalized(); err != nil {
-	//	errors.Join(errs, err)
-	//}
+	if err := b.markedL2ToL1Finalized(); err != nil {
+		errors.Join(errs, err)
+	}
 	return errs
 }
 
@@ -110,11 +110,10 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 	for i := range withdrawList {
 		finalizedTxn := withdrawList[i]
 		l2l1Tx := worker.L2ToL1{
-			WithdrawTransactionHash: finalizedTxn.WithdrawHash,
-			L1FinalizeTxHash:        finalizedTxn.FinalizedTransactionHash,
-			L1BlockNumber:           finalizedTxn.BlockNumber,
+			L1FinalizeTxHash: finalizedTxn.FinalizedTransactionHash,
+			L1BlockNumber:    finalizedTxn.BlockNumber,
 		}
-		withdrawTx, _ := b.db.L2ToL1.L2ToL1TransactionWithdrawal(b.chainId, finalizedTxn.WithdrawHash)
+		withdrawTx, _ := b.db.L2ToL1.L2ToL1TransactionMsgHash(b.chainId, finalizedTxn.MessageHash)
 		if withdrawTx != nil {
 			if withdrawTx.Version != 0 {
 				withdrawL2ToL1List = append(withdrawL2ToL1List, l2l1Tx)

@@ -78,11 +78,11 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 	log.Println("starting polygon_worker bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
-			//err := pp.onL1Data()
-			//if err != nil {
-			//	log.Println("fail no more l1 etl updates. shutting down l1 task")
-			//	continue
-			//}
+			err := pp.onL1Data()
+			if err != nil {
+				log.Println("fail no more l1 etl updates. shutting down l1 task")
+				continue
+			}
 		}
 		return nil
 	})
@@ -97,17 +97,6 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 		}
 		return nil
 	})
-	//// start relation worker
-	//pp.tasks.Go(func() error {
-	//	for range tickerEventRel.C {
-	//		err := pp.relationL1L2()
-	//		if err != nil {
-	//			log.Println("shutting down relation task")
-	//			continue
-	//		}
-	//	}
-	//	return nil
-	//})
 	return nil
 }
 
