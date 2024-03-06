@@ -84,12 +84,12 @@ func (as *Acorus) Start(ctx context.Context) error {
 		//if err := as.Synchronizer[realChainId].Start(); err != nil {
 		//	return fmt.Errorf("failed to start L1 Sync: %w", err)
 		//}
-		//processor := as.Processor[realChainId]
-		//if processor != nil {
-		//	if err := processor.StartUnpack(); err != nil {
-		//		return fmt.Errorf("failed to start event: %w", err)
-		//	}
-		//}
+		processor := as.Processor[realChainId]
+		if processor != nil {
+			if err := processor.StartUnpack(); err != nil {
+				return fmt.Errorf("failed to start event: %w", err)
+			}
+		}
 		worker := as.Worker[realChainId]
 		if worker != nil {
 			if err := worker.WorkerStart(); err != nil {

@@ -13,7 +13,7 @@ metrics:
 rpcs:
   - rpc_url: 'https://rpc.ankr.com/eth_goerli/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
     chain_id: 5
-    start_block: 10490032
+    start_block: 10488803
     header_buffer_size: 20
     is_mainnet: false
     pool_contract: ""
@@ -50,9 +50,9 @@ rpcs:
 
   - rpc_url: "https://polygonzkevm-testnet.g.alchemy.com/v2/dmeCZ-Yf1YjIrgExOXbfrTF_Z_51GyBx"
     chain_id: 1442
-    start_block: 3948615
+    start_block: 3947759
     l1_chain_id: 5
-    l1_event_unpack_block: 10490032
+    l1_event_unpack_block: 10488803
     header_buffer_size: 50
     contracts:
       - "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7"

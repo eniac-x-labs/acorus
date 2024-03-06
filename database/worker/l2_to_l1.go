@@ -55,6 +55,8 @@ type L2ToL1DB interface {
 	MarkL2ToL1TransactionWithdrawalProvenV0(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalized(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, l2L1List []L2ToL1) error
+	MarkL2ToL1TransactionMsgHashFinalized(chainId string, l2L1List []L2ToL1) error
+	MarkL2ToL1TransactionMsgHashFinalizedV0(chainId string, l2L1List []L2ToL1) error
 	UpdateL2ToL1ClaimedStatus(chainId string, l1L2 L2ToL1) error
 }
 
@@ -275,6 +277,63 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, 
 		log.Info("mark transaction v0 finalized",
 			"L1BlockNumber", l2L1List[i].L1BlockNumber, "L1FinalizeTxHash", l2L1List[i].L1FinalizeTxHash,
 			"WithdrawTransactionHash", l2L1List[i].WithdrawTransactionHash)
+		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
+		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
+		l2ToL1.Status = common3.L2ToL1Claimed // relayed
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(&l2ToL1).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (l2l1 l2ToL1DB) MarkL2ToL1TransactionMsgHashFinalized(chainId string, l2L1List []L2ToL1) error {
+	for i := 0; i < len(l2L1List); i++ {
+		var l2ToL1 = L2ToL1{}
+		messageHash := l2L1List[i].MessageHash
+		nilHash := common.Hash{}
+		if messageHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
+		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
+		l2ToL1.Status = common3.L2ToL1Claimed // relayed
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (l2l1 l2ToL1DB) MarkL2ToL1TransactionMsgHashFinalizedV0(chainId string, l2L1List []L2ToL1) error {
+	for i := 0; i < len(l2L1List); i++ {
+		var l2ToL1 = L2ToL1{}
+		if l2L1List[i].L1BlockNumber.Uint64() <= 0 {
+			continue
+		}
+		messageHash := l2L1List[i].MessageHash
+		nilHash := common.Hash{}
+		if messageHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+		log.Info("mark transaction v0 finalized",
+			"L1BlockNumber", l2L1List[i].L1BlockNumber, "L1FinalizeTxHash", l2L1List[i].L1FinalizeTxHash,
+			"MessageHash", l2L1List[i].WithdrawTransactionHash)
 		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
 		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
 		l2ToL1.Status = common3.L2ToL1Claimed // relayed

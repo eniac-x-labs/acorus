@@ -112,6 +112,7 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 		l2l1Tx := worker.L2ToL1{
 			L1FinalizeTxHash: finalizedTxn.FinalizedTransactionHash,
 			L1BlockNumber:    finalizedTxn.BlockNumber,
+			MessageHash:      finalizedTxn.MessageHash,
 		}
 		withdrawTx, _ := b.db.L2ToL1.L2ToL1TransactionMsgHash(b.chainId, finalizedTxn.MessageHash)
 		if withdrawTx != nil {
@@ -127,7 +128,7 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 	}
 	if err := b.db.Transaction(func(tx *database.DB) error {
 		if len(withdrawL2ToL1List) > 0 {
-			if err := b.db.L2ToL1.MarkL2ToL1TransactionWithdrawalFinalized(b.chainId, withdrawL2ToL1List); err != nil {
+			if err := b.db.L2ToL1.MarkL2ToL1TransactionMsgHashFinalized(b.chainId, withdrawL2ToL1List); err != nil {
 				log.Println("Marked l2 to l1 transaction withdraw finalized fail", "err", err)
 				return err
 			}
@@ -138,7 +139,7 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 			log.Println("marked finalized transaction success", "withdraw size", len(withdrawList), "marked size", len(needMarkWithdrawList))
 		}
 		if len(withdrawL2ToL1ListV0) > 0 {
-			if err := b.db.L2ToL1.MarkL2ToL1TransactionWithdrawalFinalizedV0(b.chainId, withdrawL2ToL1ListV0); err != nil {
+			if err := b.db.L2ToL1.MarkL2ToL1TransactionMsgHashFinalizedV0(b.chainId, withdrawL2ToL1ListV0); err != nil {
 				log.Println("Marked l2 to l1 transaction withdraw proven fail", "err", err)
 				return err
 			}

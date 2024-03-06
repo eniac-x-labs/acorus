@@ -82,6 +82,7 @@ func L1ClaimedOld(l1chainId, l2chainId string, polygonBridge *oldpolygonzkevmbri
 	withDrawMessage := event.WithdrawFinalized{
 		BlockNumber:              big.NewInt(int64(rlpLog.BlockNumber)),
 		FinalizedTransactionHash: rlpLog.TxHash,
+		WithdrawHash:             rlpLog.TxHash,
 		MessageHash:              common.BigToHash(indexBig),
 		Related:                  false,
 		Timestamp:                eventInfo.Timestamp,
@@ -123,6 +124,7 @@ func L1Claimed(l1chainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 	withDrawMessage := event.WithdrawFinalized{
 		BlockNumber:              big.NewInt(int64(rlpLog.BlockNumber)),
 		FinalizedTransactionHash: rlpLog.TxHash,
+		WithdrawHash:             rlpLog.TxHash,
 		MessageHash:              common.BigToHash(localRootIndex),
 		Related:                  false,
 		Timestamp:                eventInfo.Timestamp,
