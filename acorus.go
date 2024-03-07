@@ -81,9 +81,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
 		log.Info("starting Sync", "chainId", as.chainIdList[i])
 		realChainId := as.chainIdList[i]
-		//if err := as.Synchronizer[realChainId].Start(); err != nil {
-		//	return fmt.Errorf("failed to start L1 Sync: %w", err)
-		//}
+		if err := as.Synchronizer[realChainId].Start(); err != nil {
+			return fmt.Errorf("failed to start L1 Sync: %w", err)
+		}
 		processor := as.Processor[realChainId]
 		if processor != nil {
 			if err := processor.StartUnpack(); err != nil {

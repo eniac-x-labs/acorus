@@ -100,7 +100,7 @@ func (syncer *Synchronizer) Start() error {
 				}
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
-					log.Error("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number)
+					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number)
 				}
 			}
 			err := syncer.processBatch(syncer.headers)
