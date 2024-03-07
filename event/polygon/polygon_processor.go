@@ -8,7 +8,7 @@ import (
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database/worker"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"time"
@@ -75,12 +75,12 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(pp.loopInterval)
 	tickerEventOn2 := time.NewTicker(pp.loopInterval)
 	//tickerEventRel := time.NewTicker(pp.loopInterval)
-	log.Println("starting polygon_worker bridge processor...")
+	log.Info("starting polygon_worker bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := pp.onL1Data()
 			if err != nil {
-				log.Println("fail no more l1 etl updates. shutting down l1 task")
+				log.Error("fail no more l1 etl updates. shutting down l1 task")
 				continue
 			}
 		}
@@ -91,7 +91,7 @@ func (pp *PolygonEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := pp.onL2Data()
 			if err != nil {
-				log.Println("fail no more l2 etl updates. shutting down l2 task")
+				log.Error("fail no more l2 etl updates. shutting down l2 task")
 				continue
 			}
 		}
@@ -109,7 +109,7 @@ func (pp *PolygonEventProcessor) onL1Data() error {
 	if pp.l1StartHeight == nil {
 		lastBlockHeard, err := pp.db.L1ToL2.L1LatestBlockHeader(pp.l2ChainId, pp.l1ChainId)
 		if err != nil {
-			log.Println("l1 failed to get last block heard", "err", err)
+			log.Error("l1 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -166,7 +166,7 @@ func (pp *PolygonEventProcessor) onL2Data() error {
 	if pp.l2StartHeight == nil {
 		lastBlockHeard, err := pp.db.L2ToL1.L2LatestBlockHeader(pp.l2ChainId)
 		if err != nil {
-			log.Println("l2 failed to get last block heard", "err", err)
+			log.Error("l2 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -223,13 +223,13 @@ func (pp *PolygonEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
 		events, err := pp.db.ContractEvents.ContractEventsWithFilter(pp.l1ChainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := pp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -244,13 +244,13 @@ func (pp *PolygonEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
 		events, err := pp.db.ContractEvents.ContractEventsWithFilter(l2chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := pp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -326,14 +326,14 @@ func (pp *PolygonEventProcessor) relationL1L2() error {
 			if len(l1ToL2s) > 0 {
 				saveErr := pp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
 				if saveErr != nil {
-					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}
 			if len(l2ToL1s) > 0 {
 				saveErr := pp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
 				if saveErr != nil {
-					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}

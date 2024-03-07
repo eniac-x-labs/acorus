@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"context"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,7 +25,7 @@ type bridgeRpcService struct {
 func NewBridgeRpcService(rpcUrl string) (BridgeRpcService, error) {
 	conn, err := grpc.Dial(rpcUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Println("did not connect: ", err)
+		log.Error("did not connect: ", err)
 		return nil, err
 	}
 	bridgeServiceClient := pb.NewBridgeServiceClient(conn)

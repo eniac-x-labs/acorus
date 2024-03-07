@@ -3,7 +3,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -93,13 +92,6 @@ func (f *HeaderTraversal) NextHeaders(maxSize uint64) ([]types.Header, error) {
 	numHeaders := len(headers)
 	if numHeaders == 0 {
 		return nil, nil
-	} else if f.lastTraversedHeader != nil && headers[0].ParentHash != f.lastTraversedHeader.Hash() {
-		// The indexer's state is in an irrecoverable state relative to the provider. This
-		// should never happen since the indexer is dealing with only finalized blocks.
-		log.Println(f.lastTraversedHeader.Number)
-		log.Println(headers[0].Number)
-		log.Println(len(headers))
-		return nil, ErrHeaderTraversalAndProviderMismatchedState
 	}
 
 	f.lastTraversedHeader = &headers[numHeaders-1]

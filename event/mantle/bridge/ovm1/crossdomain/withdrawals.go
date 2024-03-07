@@ -6,7 +6,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/predeploys"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 )
 

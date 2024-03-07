@@ -1,8 +1,8 @@
 package event
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 
 	"github.com/google/uuid"
@@ -172,7 +172,7 @@ func (w withdrawFinalizedDB) WithdrawFinalizedUnRelatedList(chainId string) ([]W
 	var unRelatedFinalizedList []WithdrawFinalized
 	err := w.gorm.Table("withdraw_finalized_"+chainId).Where("related = ?", false).Find(&unRelatedFinalizedList).Error
 	if err != nil {
-		log.Println("get unrelated withdraw finalized fail", "err", err)
+		log.Error("get unrelated withdraw finalized fail", "err", err)
 	}
 	return unRelatedFinalizedList, nil
 }

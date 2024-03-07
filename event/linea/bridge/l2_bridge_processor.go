@@ -6,7 +6,7 @@ import (
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database/relation"
 
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +26,7 @@ func L2SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 	callDataFuncName := abi.L2MessageCallDataFuncName
 	decodeLog, decodeErr := utils.DecodeLog(eventABI, callDataABI, "MessageSent", callDataFuncName, rlpLog)
 	if decodeErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", decodeErr)
+		log.Error("Failed to unpack SentMessage event", "err", decodeErr)
 		return decodeErr
 	}
 	ethAmount := decodeLog["_value"].(*big.Int)
@@ -73,7 +73,7 @@ func L2ClaimedMessageEvent(chainId string, event event.ContractEvent, db *databa
 	decodeLog, unpackErr := utils.DecodeLog(abi.L2MessageEventABI, nil,
 		"MessageClaimed", "", rlpLog)
 	if unpackErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
+		log.Error("Failed to unpack SentMessage event", "err", unpackErr)
 		return unpackErr
 	}
 	fmt.Println(decodeLog)

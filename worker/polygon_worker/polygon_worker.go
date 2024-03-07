@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"time"
 
 	"github.com/cornerstone-labs/acorus/common/tasks"
@@ -36,7 +36,7 @@ func (b *WorkerProcessor) WorkerStart() error {
 		for range tickerRunMarked.C {
 			err := b.marked()
 			if err != nil {
-				log.Println("marked ", "err", err)
+				log.Error("marked ", "err", err)
 				continue
 			}
 		}
@@ -57,7 +57,7 @@ func (b *WorkerProcessor) marked() error {
 }
 
 func (b *WorkerProcessor) markedL1ToL2Finalized() error {
-	log.Println("start marked l1 to l2 finalized")
+	log.Info("start marked l1 to l2 finalized")
 	finalizedList, err := b.db.RelayMessage.RelayMessageUnRelatedList(b.chainId)
 	if err != nil {
 		return err
@@ -80,14 +80,14 @@ func (b *WorkerProcessor) markedL1ToL2Finalized() error {
 	if err := b.db.Transaction(func(tx *database.DB) error {
 		if len(depositL2ToL1List) > 0 {
 			if err := b.db.L1ToL2.MarkL1ToL2TransactionDepositFinalized(b.chainId, depositL2ToL1List); err != nil {
-				log.Println("Marked l2 to l1 transaction withdraw proven fail", "err", err)
+				log.Error("Marked l2 to l1 transaction withdraw proven fail", "err", err)
 				return err
 			}
 			if err := b.db.RelayMessage.MarkedRelayMessageRelated(b.chainId, needMarkDepositList); err != nil {
-				log.Println("Marked withdraw proven related fail", "err", err)
+				log.Error("Marked withdraw proven related fail", "err", err)
 				return err
 			}
-			log.Println("marked deposit transaction success", "deposit size", len(depositL2ToL1List), "marked size", len(needMarkDepositList))
+			log.Info("marked deposit transaction success", "deposit size", len(depositL2ToL1List), "marked size", len(needMarkDepositList))
 		}
 		return nil
 	}); err != nil {
@@ -97,10 +97,10 @@ func (b *WorkerProcessor) markedL1ToL2Finalized() error {
 }
 
 func (b *WorkerProcessor) markedL2ToL1Finalized() error {
-	log.Println("start marked l2 to l1 finalized")
+	log.Info("start marked l2 to l1 finalized")
 	withdrawList, err := b.db.WithdrawFinalized.WithdrawFinalizedUnRelatedList(b.chainId)
 	if err != nil {
-		log.Println("fetch withdraw finalized un-related list fail", "err", err)
+		log.Error("fetch withdraw finalized un-related list fail", "err", err)
 		return err
 	}
 	var withdrawL2ToL1List []worker.L2ToL1
@@ -129,25 +129,25 @@ func (b *WorkerProcessor) markedL2ToL1Finalized() error {
 	if err := b.db.Transaction(func(tx *database.DB) error {
 		if len(withdrawL2ToL1List) > 0 {
 			if err := b.db.L2ToL1.MarkL2ToL1TransactionMsgHashFinalized(b.chainId, withdrawL2ToL1List); err != nil {
-				log.Println("Marked l2 to l1 transaction withdraw finalized fail", "err", err)
+				log.Error("Marked l2 to l1 transaction withdraw finalized fail", "err", err)
 				return err
 			}
 			if err := b.db.WithdrawFinalized.MarkedWithdrawFinalizedRelated(b.chainId, needMarkWithdrawList); err != nil {
-				log.Println("Marked withdraw finalized related fail", "err", err)
+				log.Error("Marked withdraw finalized related fail", "err", err)
 				return err
 			}
-			log.Println("marked finalized transaction success", "withdraw size", len(withdrawList), "marked size", len(needMarkWithdrawList))
+			log.Info("marked finalized transaction success", "withdraw size", len(withdrawList), "marked size", len(needMarkWithdrawList))
 		}
 		if len(withdrawL2ToL1ListV0) > 0 {
 			if err := b.db.L2ToL1.MarkL2ToL1TransactionMsgHashFinalizedV0(b.chainId, withdrawL2ToL1ListV0); err != nil {
-				log.Println("Marked l2 to l1 transaction withdraw proven fail", "err", err)
+				log.Error("Marked l2 to l1 transaction withdraw proven fail", "err", err)
 				return err
 			}
 			if err := b.db.WithdrawFinalized.MarkedWithdrawFinalizedRelated(b.chainId, needMarkWithdrawListV0); err != nil {
-				log.Println("Marked withdraw proven related fail", "err", err)
+				log.Error("Marked withdraw proven related fail", "err", err)
 				return err
 			}
-			log.Println("marked proven v0 transaction success", "withdraw size", len(withdrawL2ToL1ListV0), "marked size", len(needMarkWithdrawList))
+			log.Info("marked proven v0 transaction success", "withdraw size", len(withdrawL2ToL1ListV0), "marked size", len(needMarkWithdrawList))
 		}
 		return nil
 	}); err != nil {

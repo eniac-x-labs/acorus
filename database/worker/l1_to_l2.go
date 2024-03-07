@@ -3,8 +3,8 @@ package worker
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 	"strings"
 
@@ -105,13 +105,13 @@ func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSi
 	if address != "0x00" {
 		err := l1l2.gorm.Table("l1_to_l2_"+chainId).Select("l2_block_number").Where("from_address = ?", address).Or(" to_address = ?", address).Count(&totalRecord).Error
 		if err != nil {
-			log.Println("get l1 to l2 by address count fail")
+			log.Error("get l1 to l2 by address count fail")
 		}
 		queryStateRoot.Where("from_address = ?", address).Or(" to_address = ?", address).Offset((page - 1) * pageSize).Limit(pageSize)
 	} else {
 		err := l1l2.gorm.Table("l1_to_l2_" + chainId).Select("l2_block_number").Count(&totalRecord).Error
 		if err != nil {
-			log.Println("get l1 to l2 no address count fail ")
+			log.Error("get l1 to l2 no address count fail ")
 		}
 		queryStateRoot.Offset((page - 1) * pageSize).Limit(pageSize)
 	}
@@ -122,7 +122,7 @@ func (l1l2 l1ToL2DB) L1ToL2List(chainId string, address string, page int, pageSi
 	}
 	qErr := queryStateRoot.Find(&l1ToL2List).Error
 	if qErr != nil {
-		log.Println("get l1 to l2 list fail", "err", qErr)
+		log.Error("get l1 to l2 list fail", "err", qErr)
 	}
 	return l1ToL2List, totalRecord
 }
@@ -185,7 +185,7 @@ func (l1l2 l1ToL2DB) MarkL1ToL2TransactionDepositFinalized(chainId string, L1l2L
 			}
 			return result.Error
 		}
-		log.Println("mark transaction finalized", "L2BlockNumber", L1l2List[i].L2BlockNumber, "L2TransactionHash", L1l2List[i].L2TransactionHash)
+		log.Info("mark transaction finalized", "L2BlockNumber", L1l2List[i].L2BlockNumber, "L2TransactionHash", L1l2List[i].L2TransactionHash)
 		l1ToL2.L2BlockNumber = L1l2List[i].L2BlockNumber
 		l1ToL2.L2TransactionHash = L1l2List[i].L2TransactionHash
 		l1ToL2.Status = common3.L1ToL2Claimed // relayed

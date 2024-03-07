@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"strconv"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -34,20 +34,20 @@ var (
 )
 
 func runIndexer(ctx *cli.Context, shutdown context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-	log.Printf("running indexer...")
+	log.Info("running indexer...")
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
-		log.Fatalf("failed to load config", "err", err)
+		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
 	return acorus.NewAcorus(ctx.Context, cfg, shutdown)
 }
 
 func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-	log.Printf("running api...")
+	log.Info("running api...")
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
-		log.Fatalf("failed to load config", "err", err)
+		log.Error("failed to load config", "err", err)
 		return nil, err
 	}
 	return service.NewApi(ctx.Context, cfg)
@@ -55,15 +55,15 @@ func runApi(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, erro
 
 func runMigrations(ctx *cli.Context) error {
 	ctx.Context = opio.CancelOnInterrupt(ctx.Context)
-	log.Printf("running migrations...")
+	log.Info("running migrations...")
 	cfg, err := config.New(ctx.String(ConfigFlag.Name))
 	if err != nil {
-		log.Fatalf("failed to load config", "err", err)
+		log.Error("failed to load config", "err", err)
 		return err
 	}
 	db, err := database.NewDB(ctx.Context, cfg.MasterDb)
 	if err != nil {
-		log.Fatalf("failed to connect to database", "err", err)
+		log.Error("failed to connect to database", "err", err)
 		return err
 	}
 	defer func(db *database.DB) {
@@ -77,10 +77,10 @@ func runMigrations(ctx *cli.Context) error {
 		return err
 	}
 	for i := range cfg.RPCs {
-		log.Printf("create chain table by chainId", "chainId", cfg.RPCs[i].ChainId)
+		log.Info("create chain table by chainId", "chainId", cfg.RPCs[i].ChainId)
 		create_table.CreateTableFromTemplate(strconv.Itoa(int(cfg.RPCs[i].ChainId)), db)
 	}
-	log.Printf("running migrations and create table from template success")
+	log.Info("running migrations and create table from template success")
 	return nil
 }
 

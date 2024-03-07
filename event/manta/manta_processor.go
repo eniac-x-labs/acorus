@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	common3 "github.com/cornerstone-labs/acorus/event/manta/common"
+	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 	"time"
 
@@ -109,7 +109,7 @@ func (ep *MantaEventProcessor) StartUnpack() error {
 		for range tickerEventOn1.C {
 			err := ep.onL1Data()
 			if err != nil {
-				log.Println("failed to process L1 data", "err", err)
+				log.Error("failed to process L1 data", "err", err)
 				continue
 			}
 		}
@@ -120,7 +120,7 @@ func (ep *MantaEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := ep.onL2Data()
 			if err != nil {
-				log.Println("failed to process L2 data", "err", err)
+				log.Error("failed to process L2 data", "err", err)
 				continue
 			}
 		}
@@ -343,7 +343,7 @@ func (ep *MantaEventProcessor) processFinalizedL2Events() error {
 	}
 	l2BlockHeader, err := ep.db.L1ToL2.L2LatestBlockHeader(ep.l2ChainId)
 	if err != nil {
-		log.Println("get latest l2 block header fail", "err", err)
+		log.Error("get latest l2 block header fail", "err", err)
 		return err
 	}
 	if l2BlockHeader != nil {

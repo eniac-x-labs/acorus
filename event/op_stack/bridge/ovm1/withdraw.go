@@ -1,7 +1,7 @@
 package ovm1
 
 import (
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"

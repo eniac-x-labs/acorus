@@ -12,7 +12,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/linea/abi"
 	"github.com/cornerstone-labs/acorus/event/linea/utils"
 	"github.com/ethereum/go-ethereum/common"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 )
 
@@ -24,7 +24,7 @@ func L1SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 	callDataFuncName := abi.L1MessageCallDataFuncName
 	decodeLog, decodeErr := utils.DecodeLog(eventABI, callDataABI, "MessageSent", callDataFuncName, rlpLog)
 	if decodeErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", decodeErr)
+		log.Error("Failed to unpack SentMessage event", "err", decodeErr)
 		return decodeErr
 	}
 	fmt.Println(decodeLog)
@@ -76,7 +76,7 @@ func L1ClaimedMessageEvent(chainId string, event event.ContractEvent, db *databa
 	decodeLog, unpackErr := utils.DecodeLog(abi.L1MessageEventABI, nil,
 		"MessageClaimed", "", rlpLog)
 	if unpackErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
+		log.Error("Failed to unpack SentMessage event", "err", unpackErr)
 		return unpackErr
 	}
 	messageHash := decodeLog["_messageHash"].(common.Hash)

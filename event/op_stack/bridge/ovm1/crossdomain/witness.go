@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"os"
 	"strings"
 

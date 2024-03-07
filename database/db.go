@@ -3,23 +3,21 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/database/relation"
-	"github.com/cornerstone-labs/acorus/database/relayer"
-	"github.com/pkg/errors"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"os"
-	"path/filepath"
-	"time"
-
-	"github.com/cornerstone-labs/acorus/common/logs"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	"github.com/cornerstone-labs/acorus/database/relation"
+	"github.com/cornerstone-labs/acorus/database/relayer"
+	"github.com/cornerstone-labs/acorus/database/utils"
 	_ "github.com/cornerstone-labs/acorus/database/utils/serializers"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/pkg/errors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"os"
+	"path/filepath"
 )
 
 type DB struct {
@@ -47,6 +45,8 @@ type DB struct {
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
+	log := log.New("module", "db")
+
 	dsn := fmt.Sprintf("host=%s dbname=%s ", dbConfig.DbHost, dbConfig.DbName)
 	if dbConfig.DbPort != 0 {
 		dsn += fmt.Sprintf(" port=%d", dbConfig.DbPort)
@@ -57,17 +57,9 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 	if dbConfig.DbPassword != "" {
 		dsn += fmt.Sprintf(" password=%s", dbConfig.DbPassword)
 	}
-	DbLogger := logger.New(
-		logs.New(), // io writer
-		logger.Config{
-			SlowThreshold:             time.Second, // Slow SQL threshold
-			LogLevel:                  logger.Info, // Log level(这里记得根据需求改一下)
-			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
-			Colorful:                  false,       // Disable color
-		},
-	)
+
 	gormConfig := gorm.Config{
-		Logger:                 DbLogger,
+		Logger:                 utils.NewLogger(log),
 		SkipDefaultTransaction: true,
 		CreateBatchSize:        500,
 	}

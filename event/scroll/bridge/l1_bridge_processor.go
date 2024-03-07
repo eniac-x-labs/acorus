@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"encoding/json"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -267,7 +267,7 @@ func L1SentMessageEvent(chainId string, event event.ContractEvent, db *database.
 	sentMessageEvent := abi.L1SentMessageEvent{}
 	unpackErr := utils.UnpackLog(abi.L1ScrollMessengerABI, &sentMessageEvent, "SentMessage", *rlpLog)
 	if unpackErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
+		log.Error("Failed to unpack SentMessage event", "err", unpackErr)
 		return unpackErr
 	}
 

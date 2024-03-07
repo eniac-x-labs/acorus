@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
@@ -14,7 +14,7 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 	// unpack event's data
 	unpackErr := contactAbi.UnpackIntoMap(eventInfo, eventName, rlpLog.Data)
 	if unpackErr != nil {
-		log.Println("Failed to unpack ClaimEvent", "err", unpackErr)
+		log.Error("Failed to unpack ClaimEvent", "err", unpackErr)
 		return nil, unpackErr
 	}
 	// unpack topic's data
@@ -32,7 +32,7 @@ func DecodeLog(contactAbi *eth_abi.ABI, eventName string, rlpLog types.Log) (map
 	if len(topicInputs) > 0 {
 		unpackErr := eth_abi.ParseTopicsIntoMap(eventInfo, topicInputs, chainTopics)
 		if unpackErr != nil {
-			log.Println(unpackErr)
+			log.Error("ParseTopicsIntoMap unpack err ", "err", unpackErr)
 			return nil, unpackErr
 		}
 	}

@@ -1,7 +1,7 @@
 package ovm1
 
 import (
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -18,6 +18,6 @@ func CalcTransaction(legacyWithdrawal *crossdomain.LegacyWithdrawal, l1Crossdoma
 	if err != nil {
 		return common.Hash{}, err
 	}
-	log.Println("withdraw hash", hash)
+	log.Info("withdraw hash", hash)
 	return hash, nil
 }

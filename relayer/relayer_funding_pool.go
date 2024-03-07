@@ -10,7 +10,7 @@ import (
 	common4 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +50,7 @@ func (rfp *RelayerFundingPool) Start() error {
 		for range l1TickerScan.C {
 			err := rfp.ScanL1NeedFundBalance()
 			if err != nil {
-				log.Println(" shutting down ScanL1NeedFundBalance ", "err", err)
+				log.Error(" shutting down ScanL1NeedFundBalance ", "err", err)
 				continue
 			}
 		}
@@ -63,7 +63,7 @@ func (rfp *RelayerFundingPool) Start() error {
 		for range l2TickerScan.C {
 			err := rfp.ScanL2NeedFundBalance()
 			if err != nil {
-				log.Println(" shutting down ScanL1NeedFundBalance ", "err", err)
+				log.Error(" shutting down ScanL1NeedFundBalance ", "err", err)
 				continue
 			}
 		}
@@ -98,7 +98,7 @@ func (rfp *RelayerFundingPool) ScanL1NeedFundBalance() error {
 		l1ChainIdStr := strconv.FormatUint(l1ChainId, 10)
 		err := rfp.scanL1NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, poolContract)
 		if err != nil {
-			log.Println(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
+			log.Error(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
 			return err
 		}
 	}
@@ -163,7 +163,7 @@ func (rfp *RelayerFundingPool) ScanL2NeedFundBalance() error {
 		l1ChainIdStr := strconv.FormatUint(l1ChainId, 10)
 		err := rfp.scanL2NeedFundBalanceByChainId(l1ChainIdStr, l2ChainIdStr, poolContract)
 		if err != nil {
-			log.Println(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
+			log.Error(" shutting down scanL1NeedFundBalanceByChainId ", "err", err)
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func (rfp *RelayerFundingPool) scanL2NeedFundBalanceByChainId(l1ChainIdStr, l2Ch
 }
 
 func (rfp *RelayerFundingPool) FundingPoolCross() {
-	log.Println("FundingPoolCross, start")
+	log.Info("FundingPoolCross, start")
 	list := rfp.db.BridgeFundingPoolDB.BridgeFundingPoolNoSendList()
 	if len(list) > 0 {
 		for _, v := range list {
@@ -225,10 +225,10 @@ func (rfp *RelayerFundingPool) FundingPoolCross() {
 			updateFundingPool, err := rfp.bridgeRpcService.UpdateFundingPoolBalance(sourceChainId, destChainId, amount,
 				receiveAddress, tokenAddress, txHash)
 			if err != nil {
-				log.Println("FundingPoolCross", "error", err)
+				log.Error("FundingPoolCross", "error", err)
 				continue
 			}
-			log.Println("FundingPoolCross", "Update", updateFundingPool.Success)
+			log.Info("FundingPoolCross", "Update", updateFundingPool.Success)
 			if updateFundingPool.Success {
 				rfp.db.BridgeFundingPoolDB.UpdateCrossStatus(txHash)
 			}

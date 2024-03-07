@@ -12,7 +12,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack/contracts"
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/common"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 )
 
@@ -24,7 +24,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		return err
 	}
 	if len(optimismPortalTxDeposits) > 0 {
-		log.Println("detected transaction deposits", "size", len(optimismPortalTxDeposits))
+		log.Info("detected transaction deposits", "size", len(optimismPortalTxDeposits))
 	}
 
 	portalDeposits := make(map[logKey]*contracts.OptimismPortalTransactionDepositEvent, len(optimismPortalTxDeposits))
@@ -34,7 +34,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		portalDeposits[logKey{depositTx.Event.BlockHash, depositTx.Event.LogIndex}] = &depositTx
 		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, depositTx.Event.BlockHash)
 		if err != nil {
-			log.Println("can not get l1 blockNumber", "blockHash", depositTx.Event.BlockHash)
+			log.Error("can not get l1 blockNumber", "blockHash", depositTx.Event.BlockHash)
 			return err
 		}
 		l1ToL2s[i] = worker.L1ToL2{
@@ -67,7 +67,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		return err
 	}
 	if len(crossDomainSentMessages) > 0 {
-		log.Println("detected sent messages", "size", len(crossDomainSentMessages))
+		log.Info("detected sent messages", "size", len(crossDomainSentMessages))
 	}
 
 	sentMessages := make(map[logKey]*contracts.CrossDomainMessengerSentMessageEvent, len(crossDomainSentMessages))
@@ -90,7 +90,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		return err
 	}
 	if len(initiatedBridges) > 0 {
-		log.Println("detected bridge deposits", "size", len(initiatedBridges))
+		log.Info("detected bridge deposits", "size", len(initiatedBridges))
 	}
 
 	bridgedTokens := make(map[common.Address]int)
@@ -101,12 +101,12 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["ETHBridgeInitiated"].ID {
 			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
-				log.Println("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Error("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected TransactionDeposit following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 2}]
 			if !ok {
-				log.Println("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Error("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected SentMessage following TransactionDeposit event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 			initiatedBridge.CrossDomainMessageHash = &sentMessage.MessageHash
@@ -123,12 +123,12 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		} else if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["ERC20BridgeInitiated"].ID {
 			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
-				log.Println("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Error("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected TransactionDeposit following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 2}]
 			if !ok {
-				log.Println("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Error("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected SentMessage following TransactionDeposit event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 			initiatedBridge.CrossDomainMessageHash = &sentMessage.MessageHash
@@ -159,7 +159,7 @@ func L1ProcessProvenBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
 	if err != nil {
 		return err
 	}
-	log.Println("detected proven withdrawals", "size", len(provenWithdrawals))
+	log.Info("detected proven withdrawals", "size", len(provenWithdrawals))
 	withdrawProvenList := make([]event.WithdrawProven, len(provenWithdrawals))
 	for i := range provenWithdrawals {
 		blockNumber := bigint.One
@@ -200,7 +200,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if err != nil {
 		return err
 	}
-	log.Println("detected finalized withdrawals", "size", len(finalizedWithdrawals))
+	log.Info("detected finalized withdrawals", "size", len(finalizedWithdrawals))
 	withdrawFinalizedList := make([]event.WithdrawFinalized, len(finalizedWithdrawals))
 	for i := range finalizedWithdrawals {
 		finalized := finalizedWithdrawals[i]
@@ -234,9 +234,10 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	crossDomainRelayedMessages, err := contracts.CrossDomainMessengerRelayedMessageEvents(l1ChainId, common3.L1CrossDomainMessengerProxy,
 		db, fromHeight, toHeight)
 	if err != nil {
+		log.Error("CrossDomainMessengerRelayedMessageEvents err", "err", err)
 		return err
 	}
-	log.Println("detected relayed messages", "size", len(crossDomainRelayedMessages))
+	log.Info("detected relayed messages", "size", len(crossDomainRelayedMessages))
 	relayedMessages := make(map[logKey]*contracts.CrossDomainMessengerRelayedMessageEvent, len(crossDomainRelayedMessages))
 
 	withdrawFinalizedListc2 := make([]event.WithdrawFinalized, len(crossDomainRelayedMessages))
@@ -247,7 +248,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		relayedMessages[logKey{BlockHash: relayed.Event.BlockHash, LogIndex: relayed.Event.LogIndex}] = &relayed
 		withdrawFinalizedListc2[i].MessageHash = relayed.MessageHash
 		withdrawFinalizedListc2[i].FinalizedTransactionHash = relayed.Event.TransactionHash
-		log.Println("withdrawFinalizedListc2[i].MessageHash", withdrawFinalizedListc2[i].MessageHash)
+		log.Info("withdrawFinalizedListc2[i].MessageHash", withdrawFinalizedListc2[i].MessageHash)
 	}
 	if len(withdrawFinalizedListc2) > 0 {
 		if err := db.WithdrawFinalized.UpdateMsgHashFinalizedInfo(l2ChainId, withdrawFinalizedListc2); err != nil {
@@ -260,7 +261,7 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if err != nil {
 		return err
 	}
-	log.Println("detected finalized bridge withdrawals", "size", len(finalizedBridges))
+	log.Info("detected finalized bridge withdrawals", "size", len(finalizedBridges))
 	withdrawFinalizedBridgeList := make([]event.WithdrawFinalized, len(crossDomainRelayedMessages))
 	finalizedTokens := make(map[common.Address]int)
 	for i := range finalizedBridges {
