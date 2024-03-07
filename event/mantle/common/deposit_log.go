@@ -82,7 +82,7 @@ func UnmarshalDepositLogEvent(ev *types.Log) (*DepositTx, error) {
 }
 
 func unmarshalDepositVersion0(dep *DepositTx, to common.Address, opaqueData []byte) error {
-	if len(opaqueData) < 32+32+8+1 {
+	if len(opaqueData) < 32+32+32+8+1 {
 		return fmt.Errorf("unexpected opaqueData length: %d", len(opaqueData))
 	}
 	offset := uint64(0)
@@ -97,6 +97,14 @@ func unmarshalDepositVersion0(dep *DepositTx, to common.Address, opaqueData []by
 
 	// uint256 value
 	dep.Value = new(big.Int).SetBytes(opaqueData[offset : offset+32])
+	offset += 32
+
+	//uint256 value for ethValue
+	dep.EthValue = new(big.Int).SetBytes(opaqueData[offset : offset+32])
+	// 0 mint is represented as nil to skip minting code
+	if dep.EthValue.Cmp(new(big.Int)) == 0 {
+		dep.EthValue = nil
+	}
 	offset += 32
 
 	// uint64 gas

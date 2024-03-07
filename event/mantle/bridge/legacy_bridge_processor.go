@@ -50,6 +50,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight,
 			L1TokenAddress:    common.Address{},
 			L2TokenAddress:    common.Address{},
 			ETHAmount:         depositTx.ETHAmount,
+			TokenAmounts:      depositTx.ERC20Amount.String(),
 			GasLimit:          depositTx.GasLimit,
 			Timestamp:         int64(depositTx.Event.Timestamp),
 		}
@@ -117,6 +118,7 @@ func LegacyL1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight,
 		l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
 		l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 		l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
+		l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
 	}
 	if len(initiatedBridges) > 0 {
 		if err := db.L1ToL2.UpdateTokenPairAndAddress(l2ChainId, l1ToL2s2); err != nil {
@@ -161,6 +163,7 @@ func LegacyL2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight 
 			L1FinalizeTxHash:        common.Hash{},
 			Status:                  0,
 			ETHAmount:               sentMessage.ETHAmount,
+			TokenAmounts:            sentMessage.ERC20Amount.String(),
 			GasLimit:                sentMessage.GasLimit,
 			TimeLeft:                new(big.Int).SetUint64(0),
 			L1TokenAddress:          common.Address{},

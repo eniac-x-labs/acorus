@@ -22,6 +22,7 @@ var (
 	L2CrossDomainMessenger = common.HexToAddress("0x4200000000000000000000000000000000000007")
 	L2StandardBridge       = common.HexToAddress("0x4200000000000000000000000000000000000010")
 
+	MNTWithdrawEventSignature   = "0x74bbfec0d26a17c2367408038090a9a4e1cd1671129dc8fdf57f146a499fe3d5"
 	ETHWithdrawEventSignature   = "0x2849b43074093a05396b6f2a937dee8565b15a48a7b3d4bffb732a5017380af5"
 	ERC20WithdrawEventSignature = "0x7ff126db8024424bbfd9826e8ab82ff59136289ea440b04b39a0df1b03b9cabf"
 	IsMainnet                   = true

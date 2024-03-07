@@ -12,14 +12,14 @@ import (
 	legacy_bindings "github.com/ethereum-optimism/optimism/op-bindings/legacy-bindings"
 )
 
-func LegacySCCBatchAppendedEvent(contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]worker.StateRoot, error) {
+func LegacySCCBatchAppendedEvent(chainId string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]worker.StateRoot, error) {
 	sccAbi, err := legacy_bindings.StateCommitmentChainMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
 	stateBatchAppendedEventAbi := sccAbi.Events["StateBatchAppended"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: stateBatchAppendedEventAbi.ID}
-	stateBatchAppendedEvents, err := db.ContractEvents.ContractEventsWithFilter("10", contractEventFilter, fromHeight, toHeight)
+	stateBatchAppendedEvents, err := db.ContractEvents.ContractEventsWithFilter(chainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

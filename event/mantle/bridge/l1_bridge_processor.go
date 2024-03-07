@@ -2,6 +2,10 @@ package bridge
 
 import (
 	"fmt"
+
+	"log"
+	"math/big"
+
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/database"
@@ -10,10 +14,8 @@ import (
 	"github.com/cornerstone-labs/acorus/database/worker"
 	common3 "github.com/cornerstone-labs/acorus/event/mantle/common"
 	"github.com/cornerstone-labs/acorus/event/mantle/contracts"
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/common"
-	"log"
-	"math/big"
 )
 
 func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int,
@@ -27,11 +29,15 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		log.Println("detected transaction deposits", "size", len(optimismPortalTxDeposits))
 	}
 
+	mintedGWEI := bigint.Zero
 	portalDeposits := make(map[logKey]*contracts.OptimismPortalTransactionDepositEvent, len(optimismPortalTxDeposits))
 	l1ToL2s := make([]worker.L1ToL2, len(optimismPortalTxDeposits))
 	for i := range optimismPortalTxDeposits {
 		depositTx := optimismPortalTxDeposits[i]
 		portalDeposits[logKey{depositTx.Event.BlockHash, depositTx.Event.LogIndex}] = &depositTx
+		if depositTx.DepositTx.EthValue != nil {
+			mintedGWEI = new(big.Int).Add(mintedGWEI, depositTx.DepositTx.EthValue)
+		}
 		blockNumber, err := db.L1ToL2.GetBlockNumberFromHash(l1ChainId, depositTx.Event.BlockHash)
 		if err != nil {
 			log.Println("can not get l1 blockNumber", "blockHash", depositTx.Event.BlockHash)
@@ -118,8 +124,30 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
 			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
+			l1ToL2s2[i].TokenAmounts = bigint.Zero.String()
 			l1ToL2s2[i].AssetType = common4.ETH
 
+		} else if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["MNTBridgeInitiated"].ID {
+			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 6}]
+			if !ok {
+				log.Println("expected TransactionDeposit following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				return fmt.Errorf("expected TransactionDeposit following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
+			}
+			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 7}]
+			if !ok {
+				log.Println("expected SentMessage following TransactionDeposit event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				return fmt.Errorf("expected SentMessage following TransactionDeposit event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
+			}
+			initiatedBridge.CrossDomainMessageHash = &sentMessage.MessageHash
+			bridgedTokens[initiatedBridge.LocalTokenAddress]++
+			l1ToL2s2[i].L1TransactionHash = portalDeposit.Event.TransactionHash
+			l1ToL2s2[i].FromAddress = initiatedBridge.FromAddress
+			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
+			l1ToL2s2[i].ETHAmount = bigint.Zero
+			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
+			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
+			l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
+			l1ToL2s2[i].AssetType = common4.ERC20
 		} else if initiatedBridge.Event.EventSignature == standardBridgeAbi.Events["ERC20BridgeInitiated"].ID {
 			portalDeposit, ok := portalDeposits[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
@@ -136,6 +164,7 @@ func L1ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l1ToL2s2[i].L1TransactionHash = portalDeposit.Event.TransactionHash
 			l1ToL2s2[i].FromAddress = initiatedBridge.FromAddress
 			l1ToL2s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
+			l1ToL2s2[i].ETHAmount = bigint.Zero
 			l1ToL2s2[i].ToAddress = initiatedBridge.ToAddress
 			l1ToL2s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 			l1ToL2s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
@@ -265,7 +294,6 @@ func L1ProcessFinalizedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	finalizedTokens := make(map[common.Address]int)
 	for i := range finalizedBridges {
 		finalizedBridge := finalizedBridges[i]
-
 		withdrawFinalizedBridgeList[i].L1TokenAddress = finalizedBridge.LocalTokenAddress
 		withdrawFinalizedBridgeList[i].L2TokenAddress = finalizedBridge.RemoteTokenAddress
 		withdrawFinalizedBridgeList[i].ETHAmount = finalizedBridge.ETHAmount

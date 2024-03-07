@@ -8,10 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
 // SentMessage represents an entry in the JSON file that is created by

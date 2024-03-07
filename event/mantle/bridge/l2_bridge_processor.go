@@ -2,19 +2,20 @@ package bridge
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
 
 	common2 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	common4 "github.com/cornerstone-labs/acorus/database/common"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	common3 "github.com/cornerstone-labs/acorus/event/mantle/common"
 	"github.com/cornerstone-labs/acorus/event/mantle/contracts"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/predeploys"
 )
 
 func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.Int, l1ChainId, l2ChainId string) error {
@@ -27,11 +28,15 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	if len(l2ToL1MPMessagesPassed) > 0 {
 		log.Println("detected transaction withdrawals", "size", len(l2ToL1MPMessagesPassed))
 	}
+	withdrawnWEI := bigint.Zero
 	messagesPassed := make(map[logKey]*contracts.L2ToL1MessagePasserMessagePassed, len(l2ToL1MPMessagesPassed))
 	l2ToL1s := make([]worker.L2ToL1, len(l2ToL1MPMessagesPassed))
 	for i := range l2ToL1MPMessagesPassed {
 		messagePassed := l2ToL1MPMessagesPassed[i]
 		messagesPassed[logKey{messagePassed.Event.BlockHash, messagePassed.Event.LogIndex}] = &messagePassed
+		if messagePassed.ETHAmount != nil {
+			withdrawnWEI = new(big.Int).Add(withdrawnWEI, messagePassed.ETHAmount)
+		}
 		blockNumber, err := db.L2ToL1.GetBlockNumberFromHash(l2ChainId, messagePassed.Event.BlockHash)
 		if err != nil {
 			log.Println("can not get l2 blockNumber", "blockHash", messagePassed.Event.BlockHash)
@@ -54,6 +59,7 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			TimeLeft:                new(big.Int).SetUint64(0),
 			L1TokenAddress:          common.Address{},
 			L2TokenAddress:          common.Address{},
+			Version:                 1,
 			Timestamp:               int64(messagePassed.Event.Timestamp),
 		}
 	}
@@ -79,7 +85,13 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		sentMessage := crossDomainSentMessages[i]
 		sentMessages[logKey{sentMessage.Event.BlockHash, sentMessage.Event.LogIndex}] = &sentMessage
 		l2ToL1Cds[i].L2TransactionHash = sentMessage.Event.TransactionHash
+		l2ToL1Cds[i].FromAddress = sentMessage.FromAddress
+		l2ToL1Cds[i].ToAddress = sentMessage.ToAddress
+		l2ToL1Cds[i].TokenAmounts = sentMessage.ERC20Amount.String()
+		l2ToL1Cds[i].ETHAmount = sentMessage.ETHAmount
 		l2ToL1Cds[i].MessageHash = sentMessage.MessageHash
+		l2ToL1Cds[i].GasLimit = sentMessage.GasLimit
+		l2ToL1Cds[i].Version = int64(sentMessage.Version)
 	}
 	if len(crossDomainSentMessages) > 0 {
 		if err := db.L2ToL1.UpdateMessageHash(l2ChainId, l2ToL1Cds); err != nil {
@@ -102,7 +114,7 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 	for i := range initiatedBridges {
 		initiatedBridge := initiatedBridges[i]
 		// extract the cross domain message hash & deposit source hash from the following events
-		if initiatedBridge.Event.EventSignature.String() == common3.ETHWithdrawEventSignature {
+		if initiatedBridge.Event.EventSignature.String() == predeploys.ETHWithdrawEventSignature {
 			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
 				log.Println("expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
@@ -125,7 +137,29 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l2ToL1s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 			l2ToL1s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
 			l2ToL1s2[i].AssetType = common4.ETH
-		} else if initiatedBridge.Event.EventSignature.String() == common3.ERC20WithdrawEventSignature {
+		} else if initiatedBridge.Event.EventSignature.String() == predeploys.MNTWithdrawEventSignature {
+			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
+			if !ok {
+				log.Println("expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				return fmt.Errorf("expected MessagePassed following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
+			}
+			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 2}]
+			if !ok {
+				log.Println("expected SentMessage following MessagePassed event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				return fmt.Errorf("expected SentMessage following MessagePassed event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
+			}
+
+			initiatedBridge.CrossDomainMessageHash = &sentMessage.MessageHash
+			bridgedTokens[initiatedBridge.LocalTokenAddress]++
+			l2ToL1s2[i].WithdrawTransactionHash = messagePassed.WithdrawalHash
+			l2ToL1s2[i].L2TransactionHash = initiatedBridge.Event.TransactionHash
+			l2ToL1s2[i].FromAddress = initiatedBridge.FromAddress
+			l2ToL1s2[i].ToAddress = initiatedBridge.ToAddress
+			l2ToL1s2[i].ETHAmount = initiatedBridge.ETHAmount
+			l2ToL1s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
+			l2ToL1s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
+			l2ToL1s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
+		} else if initiatedBridge.Event.EventSignature.String() == predeploys.ERC20WithdrawEventSignature {
 			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
 				log.Println("expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())

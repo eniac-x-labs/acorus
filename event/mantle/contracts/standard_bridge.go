@@ -9,8 +9,8 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/utils"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/predeploys"
 )
 
 type StandardBridgeInitiatedEvent struct {
@@ -51,8 +51,12 @@ func StandardBridgeInitiatedEvents(chainId string, contractAddress common.Addres
 	if err != nil {
 		return nil, err
 	}
+	mntBridgeInitiatedEvents, err := _standardBridgeInitiatedEvents[bindings.StandardBridgeMNTBridgeInitiated](contractAddress, chainId, db, fromHeight, toHeight)
+	if err != nil {
+		return nil, err
+	}
 
-	return append(ethBridgeInitiatedEvents, erc20BridgeInitiatedEvents...), nil
+	return append(append(ethBridgeInitiatedEvents, erc20BridgeInitiatedEvents...), mntBridgeInitiatedEvents...), nil
 }
 
 // StandardBridgeFinalizedEvents extracts all finalization bridge events from the contracts that follow the StandardBridge ABI. The
@@ -68,10 +72,15 @@ func StandardBridgeFinalizedEvents(chainSelector string, contractAddress common.
 		return nil, err
 	}
 
-	return append(ethBridgeFinalizedEvents, erc20BridgeFinalizedEvents...), nil
+	mntBridgeFinalizedEvents, err := _standardBridgeFinalizedEvents[bindings.StandardBridgeMNTBridgeFinalized](contractAddress, chainSelector, db, fromHeight, toHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(append(ethBridgeFinalizedEvents, erc20BridgeFinalizedEvents...), mntBridgeFinalizedEvents...), nil
 }
 
-func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBridgeInitiated | bindings.StandardBridgeERC20BridgeInitiated](
+func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBridgeInitiated | bindings.StandardBridgeERC20BridgeInitiated | bindings.StandardBridgeMNTBridgeInitiated](
 	contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int,
 ) ([]StandardBridgeInitiatedEvent, error) {
 	standardBridgeAbi, err := bindings.StandardBridgeMetaData.GetAbi()
@@ -86,6 +95,8 @@ func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBr
 		eventName = "ETHBridgeInitiated"
 	case bindings.StandardBridgeERC20BridgeInitiated:
 		eventName = "ERC20BridgeInitiated"
+	case bindings.StandardBridgeMNTBridgeInitiated:
+		eventName = "MNTBridgeInitiated"
 	default:
 		panic("should not be here")
 	}
@@ -117,6 +128,24 @@ func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBr
 				Data:               ethBridge.ExtraData,
 				Timestamp:          initiatedBridgeEvents[i].Timestamp,
 			}
+		case bindings.StandardBridgeMNTBridgeInitiated:
+			mntBridge := bindings.StandardBridgeMNTBridgeInitiated{Raw: *initiatedBridgeEvents[i].RLPLog}
+			err := UnpackLog(&mntBridge, initiatedBridgeEvents[i].RLPLog, eventName, standardBridgeAbi)
+			if err != nil {
+				return nil, err
+			}
+
+			standardBridgeInitiatedEvents[i] = StandardBridgeInitiatedEvent{
+				Event:              &initiatedBridgeEvents[i],
+				LocalTokenAddress:  predeploys.LegacyERC20MNTAddr,
+				RemoteTokenAddress: predeploys.LegacyERC20MNTAddr,
+				FromAddress:        mntBridge.From,
+				ToAddress:          mntBridge.To,
+				ETHAmount:          bigint.Zero,
+				ERC20Amount:        mntBridge.Amount,
+				Data:               mntBridge.ExtraData,
+				Timestamp:          initiatedBridgeEvents[i].Timestamp,
+			}
 		case bindings.StandardBridgeERC20BridgeInitiated:
 			erc20Bridge := bindings.StandardBridgeERC20BridgeInitiated{Raw: *initiatedBridgeEvents[i].RLPLog}
 			err := UnpackLog(&erc20Bridge, initiatedBridgeEvents[i].RLPLog, eventName, standardBridgeAbi)
@@ -139,7 +168,8 @@ func _standardBridgeInitiatedEvents[BridgeEventType bindings.StandardBridgeETHBr
 	return standardBridgeInitiatedEvents, nil
 }
 
-func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBridgeFinalized | bindings.StandardBridgeERC20BridgeFinalized](
+func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBridgeFinalized |
+	bindings.StandardBridgeERC20BridgeFinalized | bindings.StandardBridgeMNTBridgeFinalized](
 	contractAddress common.Address, chainId string, db *database.DB, fromHeight, toHeight *big.Int,
 ) ([]StandardBridgeFinalizedEvent, error) {
 	standardBridgeAbi, err := bindings.StandardBridgeMetaData.GetAbi()
@@ -154,6 +184,8 @@ func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBr
 		eventName = "ETHBridgeFinalized"
 	case bindings.StandardBridgeERC20BridgeFinalized:
 		eventName = "ERC20BridgeFinalized"
+	case bindings.StandardBridgeMNTBridgeFinalized:
+		eventName = "MNTBridgeFinalized"
 	default:
 		panic("should not be here")
 	}
@@ -178,8 +210,8 @@ func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBr
 
 			standardBridgeFinalizedEvents[i] = StandardBridgeFinalizedEvent{
 				Event:              &bridgeFinalizedEvents[i],
-				LocalTokenAddress:  common.Address{},
-				RemoteTokenAddress: common.Address{},
+				LocalTokenAddress:  predeploys.BVM_ETHAddr,
+				RemoteTokenAddress: predeploys.BVM_ETHAddr,
 				FromAddress:        ethBridge.From,
 				ToAddress:          ethBridge.To,
 				ETHAmount:          ethBridge.Amount,
@@ -187,7 +219,24 @@ func _standardBridgeFinalizedEvents[BridgeEventType bindings.StandardBridgeETHBr
 				Data:               ethBridge.ExtraData,
 				Timestamp:          bridgeFinalizedEvents[i].Timestamp,
 			}
+		case bindings.StandardBridgeMNTBridgeFinalized:
+			mntBridge := bindings.StandardBridgeMNTBridgeFinalized{Raw: *bridgeFinalizedEvents[i].RLPLog}
+			err := UnpackLog(&mntBridge, bridgeFinalizedEvents[i].RLPLog, eventName, standardBridgeAbi)
+			if err != nil {
+				return nil, err
+			}
 
+			standardBridgeFinalizedEvents[i] = StandardBridgeFinalizedEvent{
+				Event:              &bridgeFinalizedEvents[i],
+				LocalTokenAddress:  predeploys.LegacyERC20MNTAddr,
+				RemoteTokenAddress: predeploys.LegacyERC20MNTAddr,
+				FromAddress:        mntBridge.From,
+				ToAddress:          mntBridge.To,
+				ETHAmount:          bigint.Zero,
+				ERC20Amount:        mntBridge.Amount,
+				Data:               mntBridge.ExtraData,
+				Timestamp:          bridgeFinalizedEvents[i].Timestamp,
+			}
 		case bindings.StandardBridgeERC20BridgeFinalized:
 			erc20Bridge := bindings.StandardBridgeERC20BridgeFinalized{Raw: *bridgeFinalizedEvents[i].RLPLog}
 			err := UnpackLog(&erc20Bridge, bridgeFinalizedEvents[i].RLPLog, eventName, standardBridgeAbi)

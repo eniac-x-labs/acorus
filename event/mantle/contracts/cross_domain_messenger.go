@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"github.com/google/uuid"
 	"math/big"
 
@@ -11,8 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
 var (
@@ -100,7 +99,8 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chain
 		if i < numVersionZeroMessages && version != 0 {
 			return nil, fmt.Errorf("expected version zero nonce. nonce %d tx_hash %s", sentMessage.MessageNonce, sentMessage.Raw.TxHash)
 		}
-		value := big.NewInt(0)
+		mntValue := big.NewInt(0)
+		ethValue := big.NewInt(0)
 		hashVersion := 0
 		if version > 0 {
 			sentMessageExtension := bindings.CrossDomainMessengerSentMessageExtension1{Raw: *sentMessageExtensionEvents[i].RLPLog}
@@ -108,10 +108,11 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chain
 			if err != nil {
 				return nil, err
 			}
-			value = sentMessageExtension.Value
+			mntValue = sentMessageExtension.MntValue
+			ethValue = sentMessageExtension.EthValue
 			hashVersion = 1
 		}
-		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, value)
+		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, mntValue, ethValue)
 		if err != nil {
 			return nil, err
 		}
@@ -124,14 +125,46 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chain
 			GasLimit:             sentMessage.GasLimit,
 			FromAddress:          sentMessage.Sender,
 			ToAddress:            sentMessage.Target,
-			ETHAmount:            value,
+			ETHAmount:            ethValue,
 			Data:                 sentMessage.Message,
 			Timestamp:            sentMessageEvents[i].Timestamp,
 			HashVersion:          uint64(hashVersion),
-			ERC20Amount:          value,
+			ERC20Amount:          mntValue,
 		}
 	}
 	return crossDomainSentMessages, nil
+}
+
+func TransferMessageHashFromV0ToV1(db *database.DB) error {
+	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+	l2SendMsgList := db.L2SentMessageEvent.L2SentMessageList()
+	for i := range l2SendMsgList {
+		l2SendMsg := l2SendMsgList[i]
+		l2l1Transaction, err := db.L2ToL1.L2ToL1TransactionTxHash(l2SendMsg.TxHash)
+		if err != nil {
+			log.Error("get l2 to l1 by transaction hash fail", "err", err)
+			continue
+		}
+		mntValue := l2l1Transaction.ETHAmount
+		ethValue := l2l1Transaction.ERC20Amount
+		sentMessage := bindings.CrossDomainMessengerSentMessage{
+			Target:       l2SendMsg.Target,
+			Sender:       l2SendMsg.Sender,
+			Message:      []byte(l2SendMsg.Message),
+			MessageNonce: l2SendMsg.MessageNonce,
+			GasLimit:     l2SendMsg.GasLimit,
+		}
+		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, mntValue, ethValue)
+		if err != nil {
+			log.Error("create message call data fail", "err", err)
+			continue
+		}
+		fmt.Println("message call data hash===", crypto.Keccak256Hash(messageCalldata))
+	}
+	return nil
 }
 
 func CrossDomainMessengerRelayedMessageEvents(chainId string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerRelayedMessageEvent, error) {
@@ -172,7 +205,7 @@ func CrossDomainMessageCalldataV0(sentMsg *bindings.CrossDomainMessengerSentMess
 	return append(CrossDomainMessengerLegacyRelayMessageEncoding.ID, inputBytes...), nil
 }
 
-func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMessengerSentMessage, value *big.Int) ([]byte, error) {
+func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMessengerSentMessage, mntValue *big.Int, ethValue *big.Int) ([]byte, error) {
 	version, _ := DecodeVersionedNonce(sentMsg.MessageNonce)
 	switch version {
 	case 0:
@@ -182,7 +215,7 @@ func CrossDomainMessageCalldata(abi *abi.ABI, sentMsg *bindings.CrossDomainMesse
 		}
 		return append(CrossDomainMessengerLegacyRelayMessageEncoding.ID, inputBytes...), nil
 	case 1:
-		msgBytes, err := abi.Pack("relayMessage", sentMsg.MessageNonce, sentMsg.Sender, sentMsg.Target, value, sentMsg.GasLimit, sentMsg.Message)
+		msgBytes, err := abi.Pack("relayMessage", sentMsg.MessageNonce, sentMsg.Sender, sentMsg.Target, mntValue, ethValue, sentMsg.GasLimit, sentMsg.Message)
 		if err != nil {
 			return nil, err
 		}

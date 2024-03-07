@@ -3,14 +3,13 @@ package crossdomain
 import (
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
 var (
@@ -160,7 +159,8 @@ func (w *Withdrawal) WithdrawalTransaction() bindings.TypesWithdrawalTransaction
 		Nonce:    w.Nonce,
 		Sender:   *w.Sender,
 		Target:   *w.Target,
-		Value:    w.ETHValue,
+		EthValue: w.ETHValue,
+		MntValue: w.MNTValue,
 		GasLimit: w.GasLimit,
 		Data:     []byte(w.Data),
 	}

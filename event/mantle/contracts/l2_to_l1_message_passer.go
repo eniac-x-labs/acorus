@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -8,8 +9,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/utils"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
 type L2ToL1MessagePasserMessagePassed struct {
@@ -54,10 +53,10 @@ func L2ToL1MessagePasserMessagePassedEvents(contractAddress common.Address, db *
 			GasLimit:       messagePassed.GasLimit,
 			FromAddress:    messagePassed.Sender,
 			ToAddress:      messagePassed.Target,
-			ETHAmount:      messagePassed.Value,
+			ETHAmount:      messagePassed.EthValue,
 			Data:           messagePassed.Data,
 			Timestamp:      messagePassedEvents[i].Timestamp,
-			ERC20Amount:    messagePassed.Value,
+			ERC20Amount:    messagePassed.MntValue,
 		}
 	}
 

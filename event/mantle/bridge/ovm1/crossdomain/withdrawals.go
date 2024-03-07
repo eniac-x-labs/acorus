@@ -2,13 +2,12 @@ package crossdomain
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/predeploys"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"math/big"
-
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
-	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
 )
 
 // A PendingWithdrawal represents a withdrawal that has

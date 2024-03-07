@@ -9,7 +9,7 @@ import (
 )
 
 func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, chainId string, fromHeight, toHeight *big.Int) error {
-	sccEvents, err := contracts.LegacySCCBatchAppendedEvent(common3.LegacyStateCommitmentChain, db, fromHeight, toHeight)
+	sccEvents, err := contracts.LegacySCCBatchAppendedEvent(chainId, common3.LegacyStateCommitmentChain, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}

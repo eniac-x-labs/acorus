@@ -35,7 +35,7 @@ func LegacyCTCDepositEvents(contractAddress common.Address, db *database.DB,
 
 	transactionEnqueuedEventAbi := ctcAbi.Events["TransactionEnqueued"]
 	contractEventFilter := event.ContractEvent{ContractAddress: contractAddress, EventSignature: transactionEnqueuedEventAbi.ID}
-	events, err := db.ContractEvents.ContractEventsWithFilter(l2ChainId, contractEventFilter, fromHeight, toHeight)
+	events, err := db.ContractEvents.ContractEventsWithFilter(l1ChainId, contractEventFilter, fromHeight, toHeight)
 	if err != nil {
 		return nil, err
 	}

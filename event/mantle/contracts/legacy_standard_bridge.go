@@ -3,14 +3,13 @@ package contracts
 import (
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/utils"
-
-	bindings2 "github.com/ethereum-optimism/optimism/op-bindings/bindings"
-	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
+	bindings2 "github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 )
 
 type LegacyBridgeEvent struct {
@@ -83,6 +82,23 @@ func L1StandardBridgeLegacyDepositInitiatedEvents(contractAddress common.Address
 			Event:              &erc20DepositEvents[i],
 			LocalTokenAddress:  bridgeEvent.L1Token,
 			RemoteTokenAddress: bridgeEvent.L2Token,
+			FromAddress:        bridgeEvent.From,
+			ToAddress:          bridgeEvent.To,
+			ETHAmount:          bridgeEvent.Amount,
+			Data:               bridgeEvent.ExtraData,
+			Timestamp:          erc20DepositEvents[i].Timestamp,
+		}
+	}
+	for i := range mntDepositEvents {
+		bridgeEvent := bindings2.L1StandardBridgeMNTDepositInitiated{Raw: *mntDepositEvents[i].RLPLog}
+		err := UnpackLog(&bridgeEvent, &bridgeEvent.Raw, erc20DepositEventAbi.Name, l1StandardBridgeAbi)
+		if err != nil {
+			return nil, err
+		}
+		deposits[len(mntDepositEvents)+i] = LegacyBridgeEvent{
+			Event:              &mntDepositEvents[i],
+			LocalTokenAddress:  predeploys.LegacyERC20ETHAddr,
+			RemoteTokenAddress: predeploys.LegacyERC20ETHAddr,
 			FromAddress:        bridgeEvent.From,
 			ToAddress:          bridgeEvent.To,
 			ETHAmount:          bridgeEvent.Amount,

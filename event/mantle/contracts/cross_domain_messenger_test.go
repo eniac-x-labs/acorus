@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"math/big"
 	"testing"
 
@@ -9,8 +10,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 )
 
 func TestCrossDomainMessengerSentMessageEvents(t *testing.T) {

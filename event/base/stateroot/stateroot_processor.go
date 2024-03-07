@@ -8,14 +8,14 @@ import (
 	"math/big"
 )
 
-func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, chainId string, fromHeight, toHeight *big.Int) error {
-	sccEvents, err := contracts.LegacySCCBatchAppendedEvent(common3.LegacyStateCommitmentChain, db, fromHeight, toHeight)
+func LegacyL1ProcessSCCEvent(log log.Logger, db *database.DB, l1chainId, l2chainId string, fromHeight, toHeight *big.Int) error {
+	sccEvents, err := contracts.LegacySCCBatchAppendedEvent(l1chainId, common3.LegacyStateCommitmentChain, db, fromHeight, toHeight)
 	if err != nil {
 		return err
 	}
 	if len(sccEvents) > 0 {
 		log.Println("detected legacy scc state batch appended event", "size", len(sccEvents))
-		if err := db.StateRoots.StoreBatchStateRoots(chainId, sccEvents); err != nil {
+		if err := db.StateRoots.StoreBatchStateRoots(l1chainId, sccEvents); err != nil {
 			return err
 		}
 	}
