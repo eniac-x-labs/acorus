@@ -67,7 +67,7 @@ type L2ToL1View interface {
 	L2ToL1TransactionWithdrawal(string, common.Hash) (*L2ToL1, error)
 	L2ToL1TransactionMsgHash(string, common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
-	L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L1LatestFinalizedBlockHeader(l2chainId, l1chainId string) (*common2.BlockHeader, error)
 	L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
 }
 
@@ -470,7 +470,7 @@ func (l2l1 l2ToL1DB) L2LatestBlockHeader(chainId string) (*common2.BlockHeader, 
 
 func (l2l1 l2ToL1DB) latestBlockHeaderWithChainId(chainId, destChainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
-	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table(tableName).Select("MAX(timestamp)"))
+	l2Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table(tableName).Select("MAX(l2_block_number)"))
 	var l2Header common2.BlockHeader
 	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", destChainId)
 	result := l2Query.Table(blockHeaderSTableName).Take(&l2Header)
@@ -483,8 +483,8 @@ func (l2l1 l2ToL1DB) latestBlockHeaderWithChainId(chainId, destChainId string) (
 	return &l2Header, nil
 }
 
-func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
-	return l2l1.latestFinalizedBlockHeaderWithChainId(chainId, "1")
+func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(l2chainId, l1chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestFinalizedBlockHeaderWithChainId(l2chainId, l1chainId)
 }
 
 func (l2l1 l2ToL1DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
