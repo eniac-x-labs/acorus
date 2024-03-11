@@ -11,9 +11,17 @@ metrics:
 
 
 rpcs:
-  - rpc_url: 'https://rpc.ankr.com/eth_goerli/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
-    chain_id: 5
-    start_block: 10488803
+#  - rpc_url: 'https://rpc.ankr.com/eth_goerli/7b0caac2853c9795d0a005c5f7696acc7be9adc22ef8504a56a5aeff2ad9ce0a'
+#    chain_id: 5
+#    start_block: 10488803
+#    header_buffer_size: 20
+#    is_mainnet: false
+#    pool_contract: ""
+#    contracts:
+#    event_contracts:
+  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
+    chain_id: 11155111
+    start_block: 5461528
     header_buffer_size: 20
     is_mainnet: false
     pool_contract: ""
@@ -48,16 +56,16 @@ rpcs:
   #    contracts:
   #    event_contracts:
 
-  - rpc_url: "https://polygonzkevm-testnet.g.alchemy.com/v2/dmeCZ-Yf1YjIrgExOXbfrTF_Z_51GyBx"
-    chain_id: 1442
-    start_block: 3947759
-    l1_chain_id: 5
-    l1_event_unpack_block: 10488803
-    header_buffer_size: 50
-    contracts:
-      - "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7"
-    event_contracts:
-      - "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7"
+#  - rpc_url: "https://polygonzkevm-testnet.g.alchemy.com/v2/dmeCZ-Yf1YjIrgExOXbfrTF_Z_51GyBx"
+#    chain_id: 1442
+#    start_block: 3947759
+#    l1_chain_id: 5
+#    l1_event_unpack_block: 10488803
+#    header_buffer_size: 50
+#    contracts:
+#      - "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7"
+#    event_contracts:
+#      - "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7"
 
   #  - rpc_url: "https://polygonzkevm-mainnet.g.alchemy.com/v2/XJph3lRc3_xJN3kHX7Gy0PkvkPbJD_GD"
   #    chain_id: 1101
@@ -157,9 +165,10 @@ slave_db:
 bridge_grpc_url: "selaginella:8080"
 
 relayers:
-#  - chain_id: 1
-#    eventStartBlock: 19276424
-#    contracts:
+  - chain_id: 11155111
+    eventStartBlock: 5461528
+    contracts:
+      - "0x07226c87eED3709c6CbaF951f3d6F422dD68Eef7"
 #  - chain_id: 1101
 #    eventStartBlock: 10112576
 #    contracts:

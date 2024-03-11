@@ -96,19 +96,19 @@ func (as *Acorus) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to start worker: %w", err)
 			}
 		}
-		//relayerRunner := as.Relayer[realChainId]
-		//if relayerRunner != nil {
-		//	if err := relayerRunner.Start(); err != nil {
-		//		return fmt.Errorf("failed to start relayer: %w", err)
-		//	}
-		//}
+		relayerRunner := as.Relayer[realChainId]
+		if relayerRunner != nil {
+			if err := relayerRunner.Start(); err != nil {
+				return fmt.Errorf("failed to start relayer: %w", err)
+			}
+		}
 	}
-	//if err := as.relayerBridgeRelation.Start(); err != nil {
-	//	return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
-	//}
-	//if err := as.relayerFundingPoolTask.Start(); err != nil {
-	//	return fmt.Errorf("failed to start relayerFundingPool: %w", err)
-	//}
+	if err := as.relayerBridgeRelation.Start(); err != nil {
+		return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
+	}
+	if err := as.relayerFundingPoolTask.Start(); err != nil {
+		return fmt.Errorf("failed to start relayerFundingPool: %w", err)
+	}
 	return nil
 }
 
