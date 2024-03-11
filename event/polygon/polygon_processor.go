@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"strconv"
+	"time"
+
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/ethereum/go-ethereum/log"
-	"math/big"
-	"strconv"
-	"time"
 
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
@@ -74,7 +75,6 @@ func NewBridgeProcessor(db *database.DB,
 func (pp *PolygonEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(pp.loopInterval)
 	tickerEventOn2 := time.NewTicker(pp.loopInterval)
-	//tickerEventRel := time.NewTicker(pp.loopInterval)
 	log.Info("starting polygon_worker bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {

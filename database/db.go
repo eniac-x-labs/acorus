@@ -45,7 +45,7 @@ type DB struct {
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
-	log := log.New("module", "db")
+	log := log.New()
 
 	dsn := fmt.Sprintf("host=%s dbname=%s ", dbConfig.DbHost, dbConfig.DbName)
 	if dbConfig.DbPort != 0 {
