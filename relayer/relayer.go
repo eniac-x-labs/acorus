@@ -12,7 +12,7 @@ import (
 	"github.com/cornerstone-labs/acorus/relayer/bindings"
 	"github.com/cornerstone-labs/acorus/relayer/unpack"
 	"github.com/ethereum/go-ethereum/common"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"time"
 )
@@ -70,7 +70,7 @@ func (rl *RelayerListener) Start() error {
 			for range relayerEventOn1.C {
 				err := rl.onL1Data()
 				if err != nil {
-					log.Println("no more l1 etl updates. shutting down l1 task")
+					log.Error("no more l1 etl updates. shutting down l1 task")
 					continue
 				}
 			}
@@ -82,7 +82,7 @@ func (rl *RelayerListener) Start() error {
 			for range relayerEventOn2.C {
 				err := rl.onL2Data()
 				if err != nil {
-					log.Println("no more l1 etl updates. shutting down l1 task")
+					log.Error("no more l1 etl updates. shutting down l1 task")
 					continue
 				}
 			}
@@ -96,7 +96,7 @@ func (rl *RelayerListener) onL1Data() error {
 	if rl.l1StartHeight == nil {
 		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
 		if err != nil {
-			log.Println("l1 failed to get last block heard", "err", err)
+			log.Error("l1 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastListenBlock == nil {
@@ -142,7 +142,7 @@ func (rl *RelayerListener) onL1Data() error {
 		}
 		updateErr := rl.db.BridgeBlockListener.SaveOrUpdateLastBlockNumber(lastBlock)
 		if updateErr != nil {
-			log.Println("update last block err :", updateErr)
+			log.Error("update last block err :", updateErr)
 			return updateErr
 		}
 		return nil
@@ -158,7 +158,7 @@ func (rl *RelayerListener) onL2Data() error {
 	if rl.l2StartHeight == nil {
 		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
 		if err != nil {
-			log.Println("l2 failed to get last block heard", "err", err)
+			log.Error("l2 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastListenBlock == nil {
@@ -218,19 +218,19 @@ func (rl *RelayerListener) onL2Data() error {
 }
 
 func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	log.Println("relayer l1EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+	log.Info("relayer l1EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
 	l1Contracts := rl.l1Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
 		events, err := rl.db.ContractEvents.ContractEventsWithFilter(rl.chainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := rl.eventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -239,7 +239,7 @@ func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) erro
 }
 
 func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	log.Println("relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+	log.Info("relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
 
 	chainIdStr := rl.chainId
 	l2Contracts := rl.l2Contracts
@@ -247,13 +247,13 @@ func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) erro
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
 		events, err := rl.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := rl.eventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}

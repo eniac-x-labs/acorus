@@ -19,7 +19,7 @@ type Service interface {
 	GetBridgeRecords(params *models.QueryBRParams) (*models.BridgeResponse, error)
 
 	QueryDWParams(chainId string, address string, page string, pageSize string, order string) (*models.QueryDWParams, error)
-	QuerySRParams(address string, page string, pageSize string, order string) (*models.QuerySRParams, error)
+	QuerySRParams(address, page, pageSize, order, txType string) (*models.QuerySRParams, error)
 	QueryBRParams(address string, page string, pageSize string, order string) (*models.QueryBRParams, error)
 }
 
@@ -65,7 +65,7 @@ func (h HandlerSvc) GetWithdrawalList(params *models.QueryDWParams) (*models.Wit
 
 func (h HandlerSvc) GetStakingRecords(params *models.QuerySRParams) (*models.StakingResponse, error) {
 	addressToLower := strings.ToLower(params.Address)
-	l2L1List, total := h.stakingRecordView.GetStakingRecords(addressToLower, params.Page, params.PageSize, params.Order)
+	l2L1List, total := h.stakingRecordView.GetStakingRecords(addressToLower, params.Page, params.PageSize, params.Order, params.TxType)
 	return &models.StakingResponse{
 		Current: params.Page,
 		Size:    params.PageSize,
@@ -131,7 +131,7 @@ func (h HandlerSvc) QueryDWParams(chainId string, address string, page string, p
 	}, nil
 }
 
-func (h HandlerSvc) QuerySRParams(address string, page string, pageSize string, order string) (*models.QuerySRParams, error) {
+func (h HandlerSvc) QuerySRParams(address, page, pageSize, order, txType string) (*models.QuerySRParams, error) {
 	var paraAddress string
 	if address == "0x00" {
 		paraAddress = "0x00"
@@ -165,14 +165,20 @@ func (h HandlerSvc) QuerySRParams(address string, page string, pageSize string, 
 
 	err = h.v.ValidateOrder(order)
 	if err != nil {
-		log.Error("invalid query param", "pageSize", pageSize, "err", err)
+		log.Error("invalid query param", "order", order, "err", err)
 		return nil, err
+	}
+
+	txTypeVal, err := strconv.Atoi(txType)
+	if err != nil {
+		return nil, errors.New("txTypeVal must be an integer value")
 	}
 	return &models.QuerySRParams{
 		Address:  paraAddress,
 		Page:     pageVal,
 		PageSize: pageSizeVal,
 		Order:    order,
+		TxType:   txTypeVal,
 	}, nil
 }
 

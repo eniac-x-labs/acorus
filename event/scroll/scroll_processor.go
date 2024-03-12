@@ -7,7 +7,7 @@ import (
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"time"
 
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 
@@ -61,12 +61,12 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(sp.loopInterval)
 	tickerEventOn2 := time.NewTicker(sp.loopInterval)
 	tickerEventRel := time.NewTicker(sp.loopInterval)
-	log.Println("starting scroll_worker bridge processor...")
+	log.Info("starting scroll_worker bridge processor...")
 	sp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := sp.onL1Data()
 			if err != nil {
-				log.Println("no more l1 etl updates. shutting down l1 task")
+				log.Error("no more l1 etl updates. shutting down l1 task")
 				continue
 			}
 		}
@@ -77,7 +77,7 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := sp.onL2Data()
 			if err != nil {
-				log.Println("no more l2 etl updates. shutting down l2 task")
+				log.Error("no more l2 etl updates. shutting down l2 task")
 				continue
 			}
 		}
@@ -89,7 +89,7 @@ func (sp *ScrollEventProcessor) StartUnpack() error {
 		for range tickerEventRel.C {
 			err := sp.relationL1L2()
 			if err != nil {
-				log.Println("shutting down relation task")
+				log.Error("shutting down relation task")
 				continue
 			}
 		}
@@ -108,7 +108,7 @@ func (sp *ScrollEventProcessor) onL1Data() error {
 	if sp.l1StartHeight == nil {
 		lastBlockHeard, err := sp.db.L1ToL2.L1LatestBlockHeader(sp.l2ChainId, sp.l1ChainId)
 		if err != nil {
-			log.Println("l1 failed to get last block heard", "err", err)
+			log.Error("l1 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -165,7 +165,7 @@ func (sp *ScrollEventProcessor) onL2Data() error {
 	if sp.l2StartHeight == nil {
 		lastBlockHeard, err := sp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
 		if err != nil {
-			log.Println("l2 failed to get last block heard", "err", err)
+			log.Error("l2 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -221,15 +221,15 @@ func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int)
 	l1Contracts := sp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
-		events, err := sp.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
+		events, err := sp.db.ContractEvents.ContractEventsWithFilter(sp.l1ChainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := sp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -238,20 +238,19 @@ func (sp *ScrollEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int)
 }
 
 func (sp *ScrollEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	chainId := sp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+
 	l2Contracts := sp.cfgRpc.EventContracts
 	for _, l2contract := range l2Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
-		events, err := sp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
+		events, err := sp.db.ContractEvents.ContractEventsWithFilter(sp.l2ChainId, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := sp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -260,8 +259,7 @@ func (sp *ScrollEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int)
 }
 
 func (sp *ScrollEventProcessor) l1EventUnpack(event event.ContractEvent) error {
-	chainId := sp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+	chainIdStr := sp.l2ChainId
 	switch event.EventSignature.String() {
 	case abi.L1DepositETHSig.String():
 		err := bridge.L1DepositETH(chainIdStr, event, sp.db)
@@ -292,8 +290,7 @@ func (sp *ScrollEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 }
 
 func (sp *ScrollEventProcessor) l2EventUnpack(event event.ContractEvent) error {
-	chainId := sp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
+	chainIdStr := sp.l2ChainId
 	switch event.EventSignature.String() {
 	case abi.L2WithdrawETHSig.String():
 		err := bridge.L2WithdrawETH(chainIdStr, event, sp.db)
@@ -369,7 +366,7 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 			if len(l1ToL2s) > 0 {
 				saveErr := sp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
 				if saveErr != nil {
-					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}
@@ -377,7 +374,7 @@ func (sp *ScrollEventProcessor) relationL1L2() error {
 			if len(l2ToL1s) > 0 {
 				saveErr := sp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
 				if saveErr != nil {
-					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}

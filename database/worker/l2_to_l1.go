@@ -55,6 +55,8 @@ type L2ToL1DB interface {
 	MarkL2ToL1TransactionWithdrawalProvenV0(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalized(chainId string, l2L1List []L2ToL1) error
 	MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, l2L1List []L2ToL1) error
+	MarkL2ToL1TransactionMsgHashFinalized(chainId string, l2L1List []L2ToL1) error
+	MarkL2ToL1TransactionMsgHashFinalizedV0(chainId string, l2L1List []L2ToL1) error
 	UpdateL2ToL1ClaimedStatus(chainId string, l1L2 L2ToL1) error
 }
 
@@ -63,8 +65,9 @@ type L2ToL1View interface {
 	L1LatestBlockHeader(l2chainId, destChainId string) (*common2.BlockHeader, error)
 	L2LatestBlockHeader(chainId string) (*common2.BlockHeader, error)
 	L2ToL1TransactionWithdrawal(string, common.Hash) (*L2ToL1, error)
+	L2ToL1TransactionMsgHash(string, common.Hash) (*L2ToL1, error)
 	GetBlockNumberFromHash(chainId string, blockHash common.Hash) (*big.Int, error)
-	L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
+	L1LatestFinalizedBlockHeader(l2chainId, l1chainId string) (*common2.BlockHeader, error)
 	L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error)
 }
 
@@ -285,6 +288,63 @@ func (l2l1 l2ToL1DB) MarkL2ToL1TransactionWithdrawalFinalizedV0(chainId string, 
 	return nil
 }
 
+func (l2l1 l2ToL1DB) MarkL2ToL1TransactionMsgHashFinalized(chainId string, l2L1List []L2ToL1) error {
+	for i := 0; i < len(l2L1List); i++ {
+		var l2ToL1 = L2ToL1{}
+		messageHash := l2L1List[i].MessageHash
+		nilHash := common.Hash{}
+		if messageHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
+		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
+		l2ToL1.Status = common3.L2ToL1Claimed // relayed
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(l2ToL1).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (l2l1 l2ToL1DB) MarkL2ToL1TransactionMsgHashFinalizedV0(chainId string, l2L1List []L2ToL1) error {
+	for i := 0; i < len(l2L1List); i++ {
+		var l2ToL1 = L2ToL1{}
+		if l2L1List[i].L1BlockNumber.Uint64() <= 0 {
+			continue
+		}
+		messageHash := l2L1List[i].MessageHash
+		nilHash := common.Hash{}
+		if messageHash == nilHash {
+			continue
+		}
+		result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return result.Error
+		}
+		log.Info("mark transaction v0 finalized",
+			"L1BlockNumber", l2L1List[i].L1BlockNumber, "L1FinalizeTxHash", l2L1List[i].L1FinalizeTxHash,
+			"MessageHash", l2L1List[i].WithdrawTransactionHash)
+		l2ToL1.L1BlockNumber = l2L1List[i].L1BlockNumber
+		l2ToL1.L1FinalizeTxHash = l2L1List[i].L1FinalizeTxHash
+		l2ToL1.Status = common3.L2ToL1Claimed // relayed
+		err := l2l1.gorm.Table("l2_to_l1_" + chainId).Save(&l2ToL1).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l2l1 l2ToL1DB) UpdateReadyForProvedStatus(chainId string, blockTimestamp int64, fraudProofWindows time.Duration) error {
 	err := l2l1.gorm.Table("l2_to_l1_"+chainId).Where("timestamp < ? AND status = ?", blockTimestamp, 0).Updates(map[string]interface{}{"status": common3.L2ToL1ReadyForProved, "time_left": uint64(fraudProofWindows)}).Error
 	if err != nil {
@@ -357,7 +417,27 @@ func (l2l1 l2ToL1DB) GetBlockNumberFromHash(chainId string, blockHash common.Has
 
 func (l2l1 l2ToL1DB) L2ToL1TransactionWithdrawal(chainId string, withdrawalHash common.Hash) (*L2ToL1, error) {
 	var l2ToL1Withdrawal L2ToL1
+	nilHash := common.Hash{}
+	if withdrawalHash.String() == nilHash.String() {
+		return nil, nil
+	}
 	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{WithdrawTransactionHash: withdrawalHash}).Take(&l2ToL1Withdrawal)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+	return &l2ToL1Withdrawal, nil
+}
+
+func (l2l1 l2ToL1DB) L2ToL1TransactionMsgHash(chainId string, messageHash common.Hash) (*L2ToL1, error) {
+	var l2ToL1Withdrawal L2ToL1
+	nilHash := common.Hash{}
+	if messageHash.String() == nilHash.String() {
+		return nil, nil
+	}
+	result := l2l1.gorm.Table("l2_to_l1_" + chainId).Where(&L2ToL1{MessageHash: messageHash}).Take(&l2ToL1Withdrawal)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -390,7 +470,7 @@ func (l2l1 l2ToL1DB) L2LatestBlockHeader(chainId string) (*common2.BlockHeader, 
 
 func (l2l1 l2ToL1DB) latestBlockHeaderWithChainId(chainId, destChainId string) (*common2.BlockHeader, error) {
 	tableName := fmt.Sprintf("l2_to_l1_%s", chainId)
-	l2Query := l2l1.gorm.Where("timestamp = (?)", l2l1.gorm.Table(tableName).Select("MAX(timestamp)"))
+	l2Query := l2l1.gorm.Where("number = (?)", l2l1.gorm.Table(tableName).Select("MAX(l2_block_number)"))
 	var l2Header common2.BlockHeader
 	blockHeaderSTableName := fmt.Sprintf("block_headers_%s", destChainId)
 	result := l2Query.Table(blockHeaderSTableName).Take(&l2Header)
@@ -403,8 +483,8 @@ func (l2l1 l2ToL1DB) latestBlockHeaderWithChainId(chainId, destChainId string) (
 	return &l2Header, nil
 }
 
-func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {
-	return l2l1.latestFinalizedBlockHeaderWithChainId(chainId, "1")
+func (l2l1 l2ToL1DB) L1LatestFinalizedBlockHeader(l2chainId, l1chainId string) (*common2.BlockHeader, error) {
+	return l2l1.latestFinalizedBlockHeaderWithChainId(l2chainId, l1chainId)
 }
 
 func (l2l1 l2ToL1DB) L2LatestFinalizedBlockHeader(chainId string) (*common2.BlockHeader, error) {

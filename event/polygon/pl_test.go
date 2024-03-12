@@ -12,4 +12,7 @@ func TestAbi_contract(t *testing.T) {
 
 	s2 := utils.ClaimEventSignatureHash.String()
 	fmt.Println(s2)
+
+	s3 := utils.OldClaimEventSignatureHash.String()
+	fmt.Println(s3)
 }

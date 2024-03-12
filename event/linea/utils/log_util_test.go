@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"testing"
 
@@ -44,7 +44,7 @@ func TestBase64(t *testing.T) {
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(base64String)
 	if err != nil {
-		log.Fatal(err)
+		log.Error("DecodeString ", "err", err)
 	}
 
 	decodedString := string(decodedBytes)

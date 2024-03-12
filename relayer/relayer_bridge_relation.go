@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/database/relayer"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"time"
 
 	"github.com/cornerstone-labs/acorus/common/tasks"
@@ -44,7 +44,7 @@ func (rbr *RelayerBridgeRelation) Start() error {
 		for range tickerBridgeRel.C {
 			err := rbr.relationBridge()
 			if err != nil {
-				log.Println(" shutting down relationBridge")
+				log.Error(" shutting down relationBridge")
 				continue
 			}
 		}
@@ -56,7 +56,7 @@ func (rbr *RelayerBridgeRelation) Start() error {
 		for range tickerCross.C {
 			err := rbr.CrossChainTransfer()
 			if err != nil {
-				log.Println("shutting down relationBridge")
+				log.Error("shutting down relationBridge")
 				continue
 			}
 		}
@@ -68,7 +68,7 @@ func (rbr *RelayerBridgeRelation) Start() error {
 		for range tickerTrans.C {
 			err := rbr.ChangeTransferStatus()
 			if err != nil {
-				log.Println("shutting down relationBridge")
+				log.Error("shutting down relationBridge")
 				continue
 			}
 		}
@@ -80,38 +80,38 @@ func (rbr *RelayerBridgeRelation) Start() error {
 func (rbr *RelayerBridgeRelation) relationBridge() error {
 	if errRel := rbr.db.Transaction(func(tx *database.DB) error {
 		// step 1
-		log.Println("RelationClaim")
+		log.Info("RelationClaim")
 		err := rbr.db.BridgeFinalize.RelationClaim()
 		if err != nil {
-			log.Println("relationBridge failed", "err", err)
+			log.Error("relationBridge failed", "err", err)
 			return err
 		}
 		// step 2
-		log.Println("RelationMsgHash")
+		log.Info("RelationMsgHash")
 		err = rbr.db.BridgeMsgHash.RelationMsgHash()
 		if err != nil {
-			log.Println("relationBridge failed", "err", err)
+			log.Error("relationBridge failed", "err", err)
 			return err
 		}
 
-		log.Println("CleanMsgSent")
+		log.Info("CleanMsgSent")
 		err = rbr.db.BridgeMsgSent.CleanMsgSent()
 		if err != nil {
 			return err
 		}
 		// step 3
-		log.Println("RelationMsgSent")
+		log.Info("RelationMsgSent")
 		err = rbr.db.BridgeClaim.RelationMsgSent()
 		if err != nil {
-			log.Println("RelationMsgSent failed", "err", err)
+			log.Error("RelationMsgSent failed", "err", err)
 			return err
 		}
 
 		// setp 4
-		log.Println("RelationClaimData")
+		log.Info("RelationClaimData")
 		err = rbr.db.BridgeRecord.RelationClaimData()
 		if err != nil {
-			log.Println("RelationClaimData failed", "err", err)
+			log.Error("RelationClaimData failed", "err", err)
 			return err
 		}
 		return nil
@@ -137,7 +137,7 @@ func (rbr *RelayerBridgeRelation) relationBridge() error {
 			bridgeRecordSaveList = append(bridgeRecordSaveList, bridgeRecord)
 		}
 		if len(bridgeRecordSaveList) > 0 {
-			log.Println("StoreBridgeRecords")
+			log.Info("StoreBridgeRecords")
 			err = rbr.db.BridgeRecord.StoreBridgeRecords(bridgeRecordSaveList)
 			if err != nil {
 				return err
@@ -170,10 +170,10 @@ func (rbr *RelayerBridgeRelation) CrossChainTransfer() error {
 			transfer, err := rbr.bridgeRpcService.CrossChainTransfer(sourceChainId, destChainId, amount, to,
 				tokenAddress, fee, nonce, sourceTxHash)
 			if err != nil {
-				log.Println("CrossChainTransfer", "error", err)
+				log.Error("CrossChainTransfer", "error", err)
 				continue
 			}
-			log.Println("CrossChainTransfer", "transfer", transfer.Success)
+			log.Info("CrossChainTransfer", "transfer", transfer.Success)
 			// todo if call rpc fail ,need add retry times
 			if transfer.Success {
 				rbr.db.BridgeMsgSent.UpdateCrossStatus(v.TxHash.String())
@@ -197,10 +197,10 @@ func (rbr *RelayerBridgeRelation) ChangeTransferStatus() error {
 			hash := v.DestHash.String()
 			changeStatus, err := rbr.bridgeRpcService.ChangeTransferStatus(sourceChainId, destChainId, hash)
 			if err != nil {
-				log.Println("ChangeTransferStatus", "error", err)
+				log.Error("ChangeTransferStatus", "error", err)
 				continue
 			}
-			log.Println("ChangeTransferStatus", "changeStatus", changeStatus.Success)
+			log.Info("ChangeTransferStatus", "changeStatus", changeStatus.Success)
 			// todo if call rpc fail ,need add retry times
 			if changeStatus.Success {
 				rbr.db.BridgeMsgSent.UpdateChangeStatus(v.TxHash.String())

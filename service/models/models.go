@@ -18,6 +18,7 @@ type QuerySRParams struct {
 	Page     int
 	PageSize int
 	Order    string
+	TxType   int
 }
 
 type QueryBRParams struct {

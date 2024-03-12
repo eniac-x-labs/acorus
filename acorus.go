@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	common3 "github.com/cornerstone-labs/acorus/common"
-	"log"
+	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
+
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"net"
 	"strconv"
@@ -17,11 +18,14 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
+	common3 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database"
 	event2 "github.com/cornerstone-labs/acorus/event"
+	"github.com/cornerstone-labs/acorus/event/base"
 	"github.com/cornerstone-labs/acorus/event/linea"
+	"github.com/cornerstone-labs/acorus/event/manta"
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
@@ -31,6 +35,8 @@ import (
 	"github.com/cornerstone-labs/acorus/synchronizer"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	worker2 "github.com/cornerstone-labs/acorus/worker"
+	"github.com/cornerstone-labs/acorus/worker/base_worker"
+	"github.com/cornerstone-labs/acorus/worker/manta_worker"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
 )
 
@@ -60,20 +66,20 @@ type RpcServerConfig struct {
 const MaxRecvMessageSize = 1024 * 1024 * 300
 
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
-	log.Println("New acrous start️ 🕖")
+	log.Info("New acrous start️ 🕖")
 	out := &Acorus{
 		shutdown: shutdown,
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
 	}
-	log.Println("New acrous success🏅️")
+	log.Info("New acrous success🏅️")
 	return out, nil
 }
 
 func (as *Acorus) Start(ctx context.Context) error {
 	for i := range as.chainIdList {
-		log.Println("starting Sync", "chainId", as.chainIdList[i])
+		log.Info("starting Sync", "chainId", as.chainIdList[i])
 		realChainId := as.chainIdList[i]
 		if err := as.Synchronizer[realChainId].Start(); err != nil {
 			return fmt.Errorf("failed to start L1 Sync: %w", err)
@@ -90,9 +96,9 @@ func (as *Acorus) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to start worker: %w", err)
 			}
 		}
-		relayer := as.Relayer[realChainId]
-		if relayer != nil {
-			if err := relayer.Start(); err != nil {
+		relayerRunner := as.Relayer[realChainId]
+		if relayerRunner != nil {
+			if err := relayerRunner.Start(); err != nil {
 				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
@@ -142,7 +148,7 @@ func (as *Acorus) Stop(ctx context.Context) error {
 
 	as.stopped.Store(true)
 
-	log.Println("acorus stopped")
+	log.Info("acorus stopped")
 
 	return result
 }
@@ -182,11 +188,11 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 
 func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error {
 	for i := range conf.RPCs {
-		log.Println("Init rpc client", "ChainId", conf.RPCs[i].ChainId, "RpcUrl", conf.RPCs[i].RpcUrl)
+		log.Info("Init rpc client", "ChainId", conf.RPCs[i].ChainId, "RpcUrl", conf.RPCs[i].RpcUrl)
 		rpc := conf.RPCs[i]
 		ethClient, err := node.DialEthClient(ctx, rpc.RpcUrl)
 		if err != nil {
-			log.Fatalf("dial eth client fail", "err", err)
+			log.Error("dial eth client fail", "err", err)
 			return fmt.Errorf("Failed to dial L1 client: %w", err)
 		}
 		if as.ethClient == nil {
@@ -195,17 +201,18 @@ func (as *Acorus) initRPCClients(ctx context.Context, conf *config.Config) error
 		as.ethClient[rpc.ChainId] = ethClient
 		as.chainIdList = append(as.chainIdList, rpc.ChainId)
 	}
-	log.Println("Init rpc client success")
+	log.Info("Init rpc client success")
 	return nil
 }
 
 func (as *Acorus) initDB(ctx context.Context, cfg config.Database) error {
+
 	db, err := database.NewDB(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	as.DB = db
-	log.Println("Init database success")
+	log.Info("Init database success")
 	return nil
 }
 
@@ -214,8 +221,8 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 	var epoch uint64 = 10_000
 	var l1StartBlockNumber *big.Int
 	for i := range cfg.RPCs {
-		log.Println("init chain processor", "chainId", cfg.RPCs[i].ChainId)
-		log.Println("Init processor success", "chainId", cfg.RPCs[i].ChainId)
+		log.Info("init chain processor", "chainId", cfg.RPCs[i].ChainId)
+		log.Info("Init processor success", "chainId", cfg.RPCs[i].ChainId)
 		if as.Processor == nil {
 			as.Processor = make(map[uint64]event2.IEventProcessor)
 		}
@@ -240,7 +247,11 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			if err != nil {
 				return err
 			}
-		} else if chainId == global_const.PolygonChainId {
+		} else if chainId == global_const.PolygonChainId ||
+			chainId == global_const.PolygonSepoliaChainId {
+			if worker, err = polygon_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
 			processor, err = polygon.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
 				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr)
 			if err != nil {
@@ -270,6 +281,41 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			if err != nil {
 				return err
 			}
+		} else if chainId == global_const.BaseChainId ||
+			chainId == global_const.BaseSepoliaChainId {
+			if worker, err = base_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = base.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
+				return err
+			}
+		} else if chainId == global_const.MantaChainId {
+			if worker, err = manta_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = manta.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
+				return err
+			}
 		}
 		if processor != nil {
 			as.Processor[chainId] = processor
@@ -283,7 +329,7 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 
 func (as *Acorus) initSynchronizer(config *config.Config) error {
 	for i := range config.RPCs {
-		log.Println("Init synchronizer success", "chainId", config.RPCs[i].ChainId)
+		log.Info("Init synchronizer success", "chainId", config.RPCs[i].ChainId)
 		rpcItem := config.RPCs[i]
 		cfg := synchronizer.Config{
 			LoopIntervalMsec:  5,
@@ -316,8 +362,9 @@ func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
 		}
 		var rlworker *relayer.RelayerListener
 		var err error
-		log.Println("Init Relayer success", "chainId", chainIdStr)
-		if chainIdStr == "1" || chainIdStr == "11155111" {
+		log.Info("Init Relayer success", "chainId", chainIdStr)
+		if chainIdStr == "1" || chainIdStr == "11155111" ||
+			chainIdStr == "5" {
 			rlworker, err = relayer.NewRelayerListener(as.DB, chainIdStr, relayerCfg.Contracts, relayerCfg.Contracts,
 				relayerCfg.EventStartBlock, relayerCfg.EventStartBlock, 1, as.shutdown, loopInterval, epoch)
 			if err != nil {
@@ -343,7 +390,7 @@ func (as *Acorus) initRelayer(ctx context.Context, cfg *config.Config) error {
 func (as *Acorus) initRelayerRelation() error {
 	relayerBridgeRelation, err := relayer.NewRelayerBridgeRelation(as.DB, as.birdgeRpcService, as.shutdown)
 	if err != nil {
-		log.Println("initRelayerRelation failed", "err", err)
+		log.Error("initRelayerRelation failed", "err", err)
 		return err
 	} else {
 		as.relayerBridgeRelation = relayerBridgeRelation
@@ -354,7 +401,7 @@ func (as *Acorus) initRelayerRelation() error {
 func (as *Acorus) initFundingPool(cfg *config.Config) error {
 	fundingPool, err := relayer.NewRelayerFundingPool(as.DB, as.birdgeRpcService, cfg.RPCs, as.shutdown)
 	if err != nil {
-		log.Println("initFundingPool failed", "err", err)
+		log.Error("initFundingPool failed", "err", err)
 		return err
 	} else {
 		as.relayerFundingPoolTask = fundingPool
@@ -365,7 +412,7 @@ func (as *Acorus) initFundingPool(cfg *config.Config) error {
 func (as *Acorus) initBridgeRpcService(cfg config.Config) error {
 	service, err := bridge.NewBridgeRpcService(cfg.BridgeGrpcUrl)
 	if err != nil {
-		log.Println("init bridge rpc service failed", "err", err)
+		log.Error("init bridge rpc service failed", "err", err)
 		return err
 	} else {
 		as.birdgeRpcService = service
@@ -374,7 +421,7 @@ func (as *Acorus) initBridgeRpcService(cfg config.Config) error {
 }
 
 func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error {
-	log.Println("starting http server...", "port", cfg.Port)
+	log.Info("starting http server...", "port", cfg.Port)
 	r := chi.NewRouter()
 	r.Use(middleware.Heartbeat("/healthz"))
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
@@ -383,7 +430,7 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 		return fmt.Errorf("http server failed to start: %w", err)
 	}
 	as.apiServer = srv
-	log.Println("http server started", "addr", srv.Addr())
+	log.Info("http server started", "addr", srv.Addr())
 	return nil
 }
 

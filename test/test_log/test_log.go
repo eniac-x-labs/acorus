@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"log"
 	"math/big"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	// 创建以太坊客户端
 	client, err := ethclient.Dial(nodeURL)
 	if err != nil {
-		log.Fatal("连接以太坊节点错误:", err)
+		log.Error("连接以太坊节点错误:", err)
 	}
 
 	// 创建过滤器查询参数
@@ -40,7 +40,7 @@ func main() {
 	// 执行日志查询
 	logs, err := client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Fatal("执行日志查询错误:", err)
+		log.Error("执行日志查询错误:", err)
 	}
 
 	// 处理查询结果

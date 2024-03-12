@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	common3 "github.com/cornerstone-labs/acorus/event/op_stack/common"
+	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
-	"log"
 	"math/big"
 	"time"
 
@@ -109,7 +109,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn1.C {
 			err := ep.onL1Data()
 			if err != nil {
-				log.Println("failed to process L1 data", "err", err)
+				log.Error("failed to process L1 data", "err", err)
 				continue
 			}
 		}
@@ -120,7 +120,7 @@ func (ep *OpEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := ep.onL2Data()
 			if err != nil {
-				log.Println("failed to process L2 data", "err", err)
+				log.Error("failed to process L2 data", "err", err)
 				continue
 			}
 		}
@@ -170,6 +170,8 @@ func (ep *OpEventProcessor) processInitiatedL1Events() error {
 	lastL1BlockNumber := ep.L1StartHeight
 	if ep.LatestL1L2InitL1Header != nil {
 		lastL1BlockNumber = ep.LatestL1L2InitL1Header.Number
+	} else {
+		lastL1BlockNumber = new(big.Int).Sub(lastL1BlockNumber, bigint.One)
 	}
 	latestL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
@@ -207,9 +209,11 @@ func (ep *OpEventProcessor) processInitiatedL1Events() error {
 }
 
 func (ep *OpEventProcessor) processInitiatedL2Events() error {
-	lastL2BlockNumber := ep.L1StartHeight
+	lastL2BlockNumber := ep.L2StartHeight
 	if ep.LatestL2L1InitL2Header != nil {
 		lastL2BlockNumber = ep.LatestL2L1InitL2Header.Number
+	} else {
+		lastL2BlockNumber = new(big.Int).Sub(lastL2BlockNumber, bigint.One)
 	}
 	latestL2HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
@@ -250,6 +254,8 @@ func (ep *OpEventProcessor) processProvenL1Events() error {
 	lastProvenL1BlockNumber := ep.L1StartHeight
 	if ep.LatestProvenL1Header != nil {
 		lastProvenL1BlockNumber = ep.LatestProvenL1Header.Number
+	} else {
+		lastProvenL1BlockNumber = new(big.Int).Sub(lastProvenL1BlockNumber, bigint.One)
 	}
 	latestProvenL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
@@ -284,6 +290,8 @@ func (ep *OpEventProcessor) processFinalizedL1Events() error {
 	lastFinalizedL1BlockNumber := ep.L1StartHeight
 	if ep.LatestFinalizedL1Header != nil {
 		lastFinalizedL1BlockNumber = ep.LatestFinalizedL1Header.Number
+	} else {
+		lastFinalizedL1BlockNumber = new(big.Int).Sub(lastFinalizedL1BlockNumber, bigint.One)
 	}
 	latestFinalizedL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})
@@ -330,10 +338,12 @@ func (ep *OpEventProcessor) processFinalizedL2Events() error {
 	latestL1L2BlockNumber := ep.L2StartHeight
 	if ep.LatestL1L2FinalizedL2Header != nil {
 		lastFinalizedL2BlockNumber = ep.LatestL1L2FinalizedL2Header.Number
+	} else {
+		lastFinalizedL2BlockNumber = new(big.Int).Sub(lastFinalizedL2BlockNumber, bigint.One)
 	}
 	l2BlockHeader, err := ep.db.L1ToL2.L2LatestBlockHeader(ep.l2ChainId)
 	if err != nil {
-		log.Println("get latest l2 block header fail", "err", err)
+		log.Error("get latest l2 block header fail", "err", err)
 		return err
 	}
 	if l2BlockHeader != nil {
@@ -380,6 +390,8 @@ func (ep *OpEventProcessor) processRollupStateRoot() error {
 	lastStateRootL1BlockNumber := ep.L1StartHeight
 	if ep.LatestStateRootL1Header != nil {
 		lastStateRootL1BlockNumber = ep.LatestStateRootL1Header.Number
+	} else {
+		lastStateRootL1BlockNumber = new(big.Int).Sub(lastStateRootL1BlockNumber, bigint.One)
 	}
 	latestRollupL1HeaderScope := func(db *gorm.DB) *gorm.DB {
 		newQuery := db.Session(&gorm.Session{NewDB: true})

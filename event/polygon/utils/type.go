@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"time"
 
@@ -12,14 +11,12 @@ import (
 var (
 	DepositEventSignatureHash  = crypto.Keccak256Hash([]byte("BridgeEvent(uint8,uint32,address,uint32,address,uint256,bytes,uint32)")) // Used in oldBridge as well
 	WithdrawEventSignatureHash = crypto.Keccak256Hash([]byte("BridgeEvent(uint8,uint32,address,uint32,address,uint256,bytes,uint32)")) // Used in oldBridge as well
+	OldClaimEventSignatureHash = crypto.Keccak256Hash([]byte("ClaimEvent(uint32,uint32,address,address,uint256)"))
 	ClaimEventSignatureHash    = crypto.Keccak256Hash([]byte("ClaimEvent(uint256,uint32,address,address,uint256)"))
-	L1_ETH                     = "0x0000000000000000000000000000000000000000"
+	TokenTransferSignatureHash = common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+	L1Eth                      = "0x0000000000000000000000000000000000000000"
 	L1PolygonZKEVMBridgeAddr   = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
 	L2PolygonZKEVMBridgeAddr   = common.HexToAddress("0x2a3DD3EB832aF982ec71669E178424b10Dca2EDe")
-	ClaimEventAbi, _           = ClaimEventAbiMeta.GetAbi()
-	ClaimEventAbiMeta          = &bind.MetaData{
-		ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"index\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"originNetwork\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"originAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"destinationAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"ClaimEvent\",\"type\":\"event\"}]",
-	}
 )
 
 // Block struct

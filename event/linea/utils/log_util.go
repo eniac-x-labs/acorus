@@ -3,7 +3,7 @@ package utils
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"strings"
 
 	eth_abi "github.com/ethereum/go-ethereum/accounts/abi"
@@ -15,7 +15,7 @@ func DecodeLog(contactAbi, callDataAbi *eth_abi.ABI, eventName, calldataFuncName
 	// unpack event's data
 	unpackErr := contactAbi.UnpackIntoMap(eventInfo, eventName, rlpLog.Data)
 	if unpackErr != nil {
-		log.Println("Failed to unpack SentMessage event", "err", unpackErr)
+		log.Error("Failed to unpack SentMessage event", "err", unpackErr)
 		return nil, unpackErr
 	}
 	// unpack topic's data
@@ -33,7 +33,7 @@ func DecodeLog(contactAbi, callDataAbi *eth_abi.ABI, eventName, calldataFuncName
 	if len(topicInputs) > 0 {
 		unpackErr := eth_abi.ParseTopicsIntoMap(eventInfo, topicInputs, chainTopics)
 		if unpackErr != nil {
-			log.Println(unpackErr)
+			log.Error("ParseTopicsIntoMap linea", "err", unpackErr)
 			return nil, unpackErr
 		}
 	}
@@ -45,7 +45,7 @@ func DecodeLog(contactAbi, callDataAbi *eth_abi.ABI, eventName, calldataFuncName
 			calldataBytes = calldataBytes[4:]
 			calldata, calldataUnpackErr := DecodeMessageCallData(callDataAbi, calldataFuncName, calldataBytes)
 			if calldataUnpackErr != nil {
-				log.Println("Failed to unpack DecodeMessageCallData function", "err", calldataUnpackErr)
+				log.Error("Failed to unpack DecodeMessageCallData function", "err", calldataUnpackErr)
 				return nil, calldataUnpackErr
 			}
 			delete(eventInfo, "_calldata")
@@ -69,7 +69,7 @@ func DecodeMessageCallData(callDataAbi *eth_abi.ABI, calldataFuncName string, da
 		if len(_tokenMetadata) > 0 {
 			tokenMetadata, tokenMetadataUnpackErr := DecodeTokenMetadata(_tokenMetadata)
 			if tokenMetadataUnpackErr != nil {
-				log.Println("Failed to unpack DecodeMessageCallData function", "err", tokenMetadataUnpackErr)
+				log.Error("Failed to unpack DecodeMessageCallData function", "err", tokenMetadataUnpackErr)
 				return nil, tokenMetadataUnpackErr
 			}
 			calldataInfo["tokenMetadata"] = tokenMetadata

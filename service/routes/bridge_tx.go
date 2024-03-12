@@ -93,9 +93,10 @@ func (h Routes) StakingRecordsHandler(w http.ResponseWriter, r *http.Request) {
 	address := r.URL.Query().Get("address")
 	pageQuery := r.URL.Query().Get("page")
 	pageSizeQuery := r.URL.Query().Get("pageSize")
+	txType := r.URL.Query().Get("txType")
 	order := r.URL.Query().Get("order")
 
-	params, err := h.svc.QuerySRParams(address, pageQuery, pageSizeQuery, order)
+	params, err := h.svc.QuerySRParams(address, pageQuery, pageSizeQuery, order, txType)
 	if err != nil {
 		http.Error(w, "invalid query params", http.StatusBadRequest)
 		log.Error("error reading request params", "err", err.Error())

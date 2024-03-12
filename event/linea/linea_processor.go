@@ -7,7 +7,7 @@ import (
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database/worker"
 
-	"log"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"time"
@@ -60,12 +60,12 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(lp.loopInterval)
 	tickerEventOn2 := time.NewTicker(lp.loopInterval)
 	tickerEventRel := time.NewTicker(lp.loopInterval)
-	log.Println("starting scroll_worker bridge processor...")
+	log.Info("starting scroll_worker bridge processor...")
 	lp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := lp.onL1Data()
 			if err != nil {
-				log.Println("no more l1 etl updates. shutting down l1 task")
+				log.Error("no more l1 etl updates. shutting down l1 task")
 				continue
 			}
 		}
@@ -76,7 +76,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 		for range tickerEventOn2.C {
 			err := lp.onL2Data()
 			if err != nil {
-				log.Println("no more l2 etl updates. shutting down l2 task")
+				log.Error("no more l2 etl updates. shutting down l2 task")
 				continue
 			}
 		}
@@ -87,7 +87,7 @@ func (lp *LineaEventProcessor) StartUnpack() error {
 		for range tickerEventRel.C {
 			err := lp.relationL1L2()
 			if err != nil {
-				log.Println("shutting down relation task")
+				log.Info("shutting down relation task")
 				continue
 			}
 		}
@@ -105,7 +105,7 @@ func (lp *LineaEventProcessor) onL1Data() error {
 	if lp.l1StartHeight == nil {
 		lastBlockHeard, err := lp.db.L1ToL2.L1LatestBlockHeader(lp.l2ChainId, lp.l1ChainId)
 		if err != nil {
-			log.Println("l1 failed to get last block heard", "err", err)
+			log.Error("l1 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -162,7 +162,7 @@ func (lp *LineaEventProcessor) onL2Data() error {
 	if lp.l2StartHeight == nil {
 		lastBlockHeard, err := lp.db.L2ToL1.L2LatestBlockHeader(chainIdStr)
 		if err != nil {
-			log.Println("l2 failed to get last block heard", "err", err)
+			log.Error("l2 failed to get last block heard", "err", err)
 			return err
 		}
 		if lastBlockHeard == nil {
@@ -223,13 +223,13 @@ func (lp *LineaEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) 
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
 		events, err := lp.db.ContractEvents.ContractEventsWithFilter("1", contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L1ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L1ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := lp.l1EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L1 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L1 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -245,13 +245,13 @@ func (lp *LineaEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) 
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
 		events, err := lp.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
-			log.Println("failed to index L2ContractEventsWithFilter ", "err", err)
+			log.Error("failed to index L2ContractEventsWithFilter ", "err", err)
 			return err
 		}
 		for _, contractEvent := range events {
 			unpackErr := lp.l2EventUnpack(contractEvent)
 			if unpackErr != nil {
-				log.Println("failed to index L2 bridge events", "unpackErr", unpackErr)
+				log.Error("failed to index L2 bridge events", "unpackErr", unpackErr)
 				return unpackErr
 			}
 		}
@@ -285,7 +285,6 @@ func (lp *LineaEventProcessor) l2EventUnpack(event event.ContractEvent) error {
 		err := bridge.L2ClaimedMessageEvent(chainIdStr, event, lp.db)
 		return err
 	}
-	fmt.Println(chainIdStr)
 	return nil
 }
 
@@ -330,7 +329,7 @@ func (lp *LineaEventProcessor) relationL1L2() error {
 			if len(l1ToL2s) > 0 {
 				saveErr := lp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
 				if saveErr != nil {
-					log.Println("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}
@@ -338,7 +337,7 @@ func (lp *LineaEventProcessor) relationL1L2() error {
 			if len(l2ToL1s) > 0 {
 				saveErr := lp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
 				if saveErr != nil {
-					log.Println("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
+					log.Error("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
 					return saveErr
 				}
 			}

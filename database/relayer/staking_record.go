@@ -43,7 +43,7 @@ type StakingRecordDB interface {
 }
 
 type StakingRecordView interface {
-	GetStakingRecords(address string, page int, pageSize int, order string) (stakingRecords []StakingRecord, total int64)
+	GetStakingRecords(address string, page int, pageSize int, order string, txType int) (stakingRecords []StakingRecord, total int64)
 }
 
 func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
@@ -69,7 +69,7 @@ func (db stakingRecordDB) StoreStakingRecords(stakes []StakingRecord) error {
 	return result.Error
 }
 
-func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize int, order string) (sR []StakingRecord, total int64) {
+func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize int, order string, txType int) (sR []StakingRecord, total int64) {
 	var totalRecord int64
 	var stakingRecords []StakingRecord
 	table := db.gorm.Table("staking_record").Select("DISTINCT ON (tx_hash) *")
@@ -86,6 +86,11 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 			log.Error("get staking records no address count fail ")
 		}
 		querySR.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	if txType != 0 {
+		querySR.Where("tx_type = ?", txType)
+	} else {
+		querySR.Where("tx_type=1")
 	}
 	if strings.ToLower(order) == "asc" {
 		querySR.Order("timestamp asc")
