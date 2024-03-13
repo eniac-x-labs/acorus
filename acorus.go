@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle"
+	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -66,14 +68,14 @@ type RpcServerConfig struct {
 const MaxRecvMessageSize = 1024 * 1024 * 300
 
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
-	log.Info("New acrous start️ 🕖")
+	log.Info("New acorus start️ 🕖")
 	out := &Acorus{
 		shutdown: shutdown,
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
 	}
-	log.Info("New acrous success🏅️")
+	log.Info("New acorus success🏅️")
 	return out, nil
 }
 
@@ -316,6 +318,25 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			); err != nil {
 				return err
 			}
+		} else if chainId == global_const.MantleChainId ||
+			chainId == global_const.MantleSepoliaChainId {
+			if worker, err = mantle_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = mantle.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
+				return err
+			}
+
 		}
 		if processor != nil {
 			as.Processor[chainId] = processor
