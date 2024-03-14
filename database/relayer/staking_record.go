@@ -26,6 +26,7 @@ type StakingRecord struct {
 	Status      int            `json:"status"`
 	AssetType   int            `json:"assetType"`
 	Timestamp   uint64         `json:"timestamp"`
+	IsPoints    bool           `json:"is_points"`
 }
 
 func (StakingRecord) TableName() string {
@@ -40,10 +41,12 @@ type StakingRecordDB interface {
 	StakingRecordView
 	StoreStakingRecords(stakes []StakingRecord) error
 	StoreStakingRecord(stake StakingRecord) error
+	UpdatePointsStatus(guid uuid.UUID) error
 }
 
 type StakingRecordView interface {
 	GetStakingRecords(address string, page int, pageSize int, order string, txType int) (stakingRecords []StakingRecord, total int64)
+	GetNotPointsRecords() (stakingRecords []StakingRecord)
 }
 
 func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
@@ -102,4 +105,20 @@ func (db stakingRecordDB) GetStakingRecords(address string, page int, pageSize i
 		log.Error("get staking records fail", "err", qErr)
 	}
 	return stakingRecords, totalRecord
+}
+
+func (db stakingRecordDB) GetNotPointsRecords() (stakingRecords []StakingRecord) {
+	err := db.gorm.Table("staking_record").Where("is_points = ?", false).Find(&stakingRecords).Error
+	if err != nil {
+		log.Error("get not points records fail", "err", err)
+	}
+	return stakingRecords
+}
+
+func (db stakingRecordDB) UpdatePointsStatus(guid uuid.UUID) error {
+	err := db.gorm.Table("staking_record").Where("guid = ?", guid).Update("is_points", true).Error
+	if err != nil {
+		log.Error("update points status fail", "err", err)
+	}
+	return nil
 }
