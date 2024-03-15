@@ -123,7 +123,7 @@ func (db bridgeRecordsDB) GetNotPointsRecords() (bridgeRecords []BridgeRecords) 
 }
 
 func (db bridgeRecordsDB) UpdatePointsStatus(guid uuid.UUID) error {
-	err := db.gorm.Table("bridge_record").Where("guid = ?", guid).Update("is_points", true).Error
+	err := db.gorm.Table("bridge_record").Where(BridgeRecords{GUID: guid}).Update("is_points", true).Error
 	if err != nil {
 		log.Error("update points status fail", "err", err)
 	}
