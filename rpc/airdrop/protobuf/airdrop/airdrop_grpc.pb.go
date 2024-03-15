@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.25.3
-// source: savourrpc/airdrop.proto
+// source: savour_rpc/airdrop.proto
 
 package airdrop
 
@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AirdropService_SubmitDppLinkPoints_FullMethodName = "/savourrpc.airdrop.AirdropService/submitDppLinkPoints"
+	AirdropService_SubmitDppLinkPoints_FullMethodName = "/services.savour_rpc.airdrop.AirdropService/submitDppLinkPoints"
 )
 
 // AirdropServiceClient is the client API for AirdropService service.
@@ -96,7 +96,7 @@ func _AirdropService_SubmitDppLinkPoints_Handler(srv interface{}, ctx context.Co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AirdropService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "savourrpc.airdrop.AirdropService",
+	ServiceName: "services.savour_rpc.airdrop.AirdropService",
 	HandlerType: (*AirdropServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -105,5 +105,5 @@ var AirdropService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "savourrpc/airdrop.proto",
+	Metadata: "savour_rpc/airdrop.proto",
 }

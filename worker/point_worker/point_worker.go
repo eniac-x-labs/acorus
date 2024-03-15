@@ -9,7 +9,6 @@ import (
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/rpc/airdrop"
-	"github.com/cornerstone-labs/acorus/rpc/common"
 )
 
 type PointWorker struct {
@@ -65,7 +64,7 @@ func (pw *PointWorker) pointsByBridge() error {
 		if err != nil {
 			return err
 		}
-		if points.Code == common.ReturnCode_SUCCESS {
+		if points.Code == 200 {
 			dbErr := pw.db.BridgeRecord.UpdatePointsStatus(guid)
 			if dbErr != nil {
 				log.Error("UpdatePointsStatus error", "dbErr", dbErr, "this point is success", guid)
@@ -89,7 +88,7 @@ func (pw *PointWorker) pointsByStaking() error {
 		if err != nil {
 			return err
 		}
-		if points.Code == common.ReturnCode_SUCCESS {
+		if points.Code == 200 {
 			dbErr := pw.db.StakeRecord.UpdatePointsStatus(guid)
 			if dbErr != nil {
 				log.Error("UpdatePointsStatus error", "dbErr", dbErr, "this point is success", guid)
