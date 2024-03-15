@@ -35,6 +35,5 @@ func (a airDropRpcService) SubmitDppLinkPoints(consumerToken, pointType, address
 		Address:       address,
 	}
 	submitStatus, err := a.rpcService.SubmitDppLinkPoints(ctx, dappLinkPointsReq)
-	log.Info("submitStatus: ", submitStatus, " err: ", err)
 	return submitStatus, err
 }

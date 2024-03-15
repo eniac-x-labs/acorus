@@ -64,7 +64,7 @@ func (pw *PointWorker) pointsByBridge() error {
 		if err != nil {
 			return err
 		}
-		if points.Code == 200 {
+		if points.Code == "200" {
 			dbErr := pw.db.BridgeRecord.UpdatePointsStatus(guid)
 			if dbErr != nil {
 				log.Error("UpdatePointsStatus error", "dbErr", dbErr, "this point is success", guid)
@@ -88,7 +88,7 @@ func (pw *PointWorker) pointsByStaking() error {
 		if err != nil {
 			return err
 		}
-		if points.Code == 200 {
+		if points.Code == "200" {
 			dbErr := pw.db.StakeRecord.UpdatePointsStatus(guid)
 			if dbErr != nil {
 				log.Error("UpdatePointsStatus error", "dbErr", dbErr, "this point is success", guid)
