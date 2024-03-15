@@ -35,7 +35,7 @@ func (pw *PointWorker) Start() error {
 		for range tickerScan.C {
 			err := pw.pointsByBridge()
 			if err != nil {
-				log.Error(" shutting down ScanL1NeedFundBalance ", "err", err)
+				log.Error(" shutting down pointsByBridge ", "err", err)
 				continue
 			}
 		}
@@ -45,7 +45,7 @@ func (pw *PointWorker) Start() error {
 		for range tickerScan.C {
 			err := pw.pointsByStaking()
 			if err != nil {
-				log.Error(" shutting down ScanL1NeedFundBalance ", "err", err)
+				log.Error(" shutting down pointsByBridge ", "err", err)
 				continue
 			}
 		}
@@ -55,6 +55,7 @@ func (pw *PointWorker) Start() error {
 }
 
 func (pw *PointWorker) pointsByBridge() error {
+	log.Info(" start pointsByBridge ")
 	records := pw.db.BridgeRecord.GetNotPointsRecords()
 	for i := 0; i < len(records); i++ {
 		bridgeRecord := records[i]
@@ -76,6 +77,7 @@ func (pw *PointWorker) pointsByBridge() error {
 }
 
 func (pw *PointWorker) pointsByStaking() error {
+	log.Info(" start pointsByStaking ")
 	records := pw.db.StakeRecord.GetNotPointsRecords()
 	for i := 0; i < len(records); i++ {
 		stakingRecord := records[i]
