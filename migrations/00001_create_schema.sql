@@ -286,7 +286,8 @@ CREATE TABLE IF NOT EXISTS staking_record
     status        smallint not null,
     tx_type       smallint not null,
     asset_type    SMALLINT NOT NULL,
-    timestamp     INTEGER  NOT NULL CHECK (timestamp > 0)
+    timestamp     INTEGER  NOT NULL CHECK (timestamp > 0),
+    is_points             boolean          default false
 );
 CREATE INDEX IF NOT EXISTS staking_tx_hash ON staking_record (tx_hash);
 CREATE INDEX IF NOT EXISTS staking_block_number ON staking_record (block_number);
@@ -318,7 +319,8 @@ CREATE TABLE IF NOT EXISTS bridge_record
     asset_type             SMALLINT NOT NULL,
     bridge_record_relation boolean          default false,
     msg_sent_timestamp     INTEGER,
-    claim_timestamp        INTEGER
+    claim_timestamp        INTEGER,
+    is_points             boolean          default false
 );
 CREATE INDEX IF NOT EXISTS bridge_record_source_chain_id ON bridge_record (source_chain_id);
 CREATE INDEX IF NOT EXISTS bridge_record_dest_chain_id ON bridge_record (dest_chain_id);

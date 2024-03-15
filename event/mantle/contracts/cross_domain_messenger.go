@@ -2,13 +2,14 @@ package contracts
 
 import (
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
-	"github.com/google/uuid"
 	"math/big"
+
+	"github.com/google/uuid"
 
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/utils"
+	"github.com/cornerstone-labs/acorus/event/mantle/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -135,37 +136,37 @@ func CrossDomainMessengerSentMessageEvents(contractAddress common.Address, chain
 	return crossDomainSentMessages, nil
 }
 
-func TransferMessageHashFromV0ToV1(db *database.DB) error {
-	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
-	l2SendMsgList := db.L2SentMessageEvent.L2SentMessageList()
-	for i := range l2SendMsgList {
-		l2SendMsg := l2SendMsgList[i]
-		l2l1Transaction, err := db.L2ToL1.L2ToL1TransactionTxHash(l2SendMsg.TxHash)
-		if err != nil {
-			log.Error("get l2 to l1 by transaction hash fail", "err", err)
-			continue
-		}
-		mntValue := l2l1Transaction.ETHAmount
-		ethValue := l2l1Transaction.ERC20Amount
-		sentMessage := bindings.CrossDomainMessengerSentMessage{
-			Target:       l2SendMsg.Target,
-			Sender:       l2SendMsg.Sender,
-			Message:      []byte(l2SendMsg.Message),
-			MessageNonce: l2SendMsg.MessageNonce,
-			GasLimit:     l2SendMsg.GasLimit,
-		}
-		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, mntValue, ethValue)
-		if err != nil {
-			log.Error("create message call data fail", "err", err)
-			continue
-		}
-		fmt.Println("message call data hash===", crypto.Keccak256Hash(messageCalldata))
-	}
-	return nil
-}
+//func TransferMessageHashFromV0ToV1(db *database.DB) error {
+//	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()
+//	if err != nil {
+//		return err
+//	}
+//	l2SendMsgList := db.L2SentMessageEvent.L2SentMessageList()
+//	for i := range l2SendMsgList {
+//		l2SendMsg := l2SendMsgList[i]
+//		l2l1Transaction, err := db.L2ToL1.L2ToL1TransactionTxHash(l2SendMsg.TxHash)
+//		if err != nil {
+//			log.Error("get l2 to l1 by transaction hash fail", "err", err)
+//			continue
+//		}
+//		mntValue := l2l1Transaction.ETHAmount
+//		ethValue := l2l1Transaction.ERC20Amount
+//		sentMessage := bindings.CrossDomainMessengerSentMessage{
+//			Target:       l2SendMsg.Target,
+//			Sender:       l2SendMsg.Sender,
+//			Message:      []byte(l2SendMsg.Message),
+//			MessageNonce: l2SendMsg.MessageNonce,
+//			GasLimit:     l2SendMsg.GasLimit,
+//		}
+//		messageCalldata, err := CrossDomainMessageCalldata(crossDomainMessengerAbi, &sentMessage, mntValue, ethValue)
+//		if err != nil {
+//			log.Error("create message call data fail", "err", err)
+//			continue
+//		}
+//		fmt.Println("message call data hash===", crypto.Keccak256Hash(messageCalldata))
+//	}
+//	return nil
+//}
 
 func CrossDomainMessengerRelayedMessageEvents(chainId string, contractAddress common.Address, db *database.DB, fromHeight, toHeight *big.Int) ([]CrossDomainMessengerRelayedMessageEvent, error) {
 	crossDomainMessengerAbi, err := bindings.CrossDomainMessengerMetaData.GetAbi()

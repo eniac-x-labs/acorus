@@ -32,6 +32,7 @@ type BridgeRecords struct {
 	AssetType            int            `json:"asset_type"`
 	MsgSentTimestamp     uint64         `json:"msg_sent_timestamp"`
 	ClaimTimestamp       uint64         `json:"claim_timestamp"`
+	IsPoints             bool           `json:"is_points"`
 }
 
 func (BridgeRecords) TableName() string {
@@ -47,10 +48,12 @@ type BridgeRecordDB interface {
 	StoreBridgeRecord(bridgeRecord BridgeRecords) error
 	StoreBridgeRecords(bridgeRecord []BridgeRecords) error
 	RelationClaimData() error
+	UpdatePointsStatus(guid uuid.UUID) error
 }
 
 type BridgeRecordDBView interface {
 	GetBridgeRecordList(address string, page int, pageSize int, order string) (bridgeRecords []BridgeRecords, total int64)
+	GetNotPointsRecords() (bridgeRecords []BridgeRecords)
 }
 
 func NewBridgeRecordDB(db *gorm.DB) BridgeRecordDB {
@@ -109,4 +112,20 @@ func (db bridgeRecordsDB) RelationClaimData() error {
 	`
 	err := db.gorm.Exec(relationSql).Error
 	return err
+}
+
+func (db bridgeRecordsDB) GetNotPointsRecords() (bridgeRecords []BridgeRecords) {
+	err := db.gorm.Table("bridge_record").Where("is_points = ?", false).Find(&bridgeRecords).Error
+	if err != nil {
+		log.Error("get not points records fail", "err", err)
+	}
+	return bridgeRecords
+}
+
+func (db bridgeRecordsDB) UpdatePointsStatus(guid uuid.UUID) error {
+	err := db.gorm.Table("bridge_record").Where("guid = ?", guid).Update("is_points", true).Error
+	if err != nil {
+		log.Error("update points status fail", "err", err)
+	}
+	return nil
 }

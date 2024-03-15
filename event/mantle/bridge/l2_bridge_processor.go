@@ -115,12 +115,12 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		initiatedBridge := initiatedBridges[i]
 		// extract the cross domain message hash & deposit source hash from the following events
 		if initiatedBridge.Event.EventSignature.String() == predeploys.ETHWithdrawEventSignature {
-			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
+			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 5}]
 			if !ok {
 				log.Info("expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected MessagePassed following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
-			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 2}]
+			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 6}]
 			if !ok {
 				log.Info("expected SentMessage following MessagePassed event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected SentMessage following MessagePassed event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
@@ -140,12 +140,12 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 		} else if initiatedBridge.Event.EventSignature.String() == predeploys.MNTWithdrawEventSignature {
 			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {
-				log.Info("expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Info("MNT expected MessagePassed following BridgeInitiated event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected MessagePassed following BridgeInitiated event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 			sentMessage, ok := sentMessages[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 2}]
 			if !ok {
-				log.Info("expected SentMessage following MessagePassed event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
+				log.Info("MNT expected SentMessage following MessagePassed event", "tx_hash", initiatedBridge.Event.TransactionHash.String())
 				return fmt.Errorf("expected SentMessage following MessagePassed event. tx_hash = %s", initiatedBridge.Event.TransactionHash.String())
 			}
 
@@ -159,6 +159,7 @@ func L2ProcessInitiatedBridgeEvents(db *database.DB, fromHeight, toHeight *big.I
 			l2ToL1s2[i].TokenAmounts = initiatedBridge.ERC20Amount.String()
 			l2ToL1s2[i].L1TokenAddress = initiatedBridge.LocalTokenAddress
 			l2ToL1s2[i].L2TokenAddress = initiatedBridge.RemoteTokenAddress
+			l2ToL1s2[i].AssetType = common4.ERC20
 		} else if initiatedBridge.Event.EventSignature.String() == predeploys.ERC20WithdrawEventSignature {
 			messagePassed, ok := messagesPassed[logKey{initiatedBridge.Event.BlockHash, initiatedBridge.Event.LogIndex + 1}]
 			if !ok {

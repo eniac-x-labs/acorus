@@ -3,14 +3,12 @@ package arb
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/arb/bridge"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
@@ -18,39 +16,27 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/event/polygon/bridge"
-	"github.com/cornerstone-labs/acorus/event/polygon/utils"
+	"github.com/cornerstone-labs/acorus/event/arb/utils"
 )
 
 type ArbEventProcessor struct {
-	db               *database.DB
-	cfgRpc           *config.RPC
-	resourceCtx      context.Context
-	resourceCancel   context.CancelFunc
-	tasks            tasks.Group
-	polygonBridge    *polygonzkevmbridge.Polygonzkevmbridge
-	oldpolygonBridge *oldpolygonzkevmbridge.Oldpolygonzkevmbridge
-	loopInterval     time.Duration
-	l1StartHeight    *big.Int
-	l2StartHeight    *big.Int
-	epoch            uint64
-	l1ChainId        string
-	l2ChainId        string
+	db             *database.DB
+	cfgRpc         *config.RPC
+	resourceCtx    context.Context
+	resourceCancel context.CancelFunc
+	tasks          tasks.Group
+	loopInterval   time.Duration
+	l1StartHeight  *big.Int
+	l2StartHeight  *big.Int
+	epoch          uint64
+	l1ChainId      string
+	l2ChainId      string
 }
 
 func NewBridgeProcessor(db *database.DB,
 	l2cfg *config.RPC, shutdown context.CancelCauseFunc,
 	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*ArbEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
-
-	polygonBridge, err := polygonzkevmbridge.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
-	if err != nil {
-		return nil, err
-	}
-	oldpolygonBridge, err := oldpolygonzkevmbridge.NewOldpolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return &ArbEventProcessor{
 		db:             db,
@@ -60,12 +46,10 @@ func NewBridgeProcessor(db *database.DB,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
-		polygonBridge:    polygonBridge,
-		oldpolygonBridge: oldpolygonBridge,
-		loopInterval:     loopInterval,
-		epoch:            epoch,
-		l1ChainId:        l1ChainId,
-		l2ChainId:        l2ChainId,
+		loopInterval: loopInterval,
+		epoch:        epoch,
+		l1ChainId:    l1ChainId,
+		l2ChainId:    l2ChainId,
 	}, nil
 }
 
@@ -259,32 +243,16 @@ func (pp *ArbEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	l2chainId := pp.l2ChainId
 	l1ChainId := pp.l1ChainId
 	switch event.EventSignature.String() {
-	case utils.WithdrawEventSignatureHash.String():
-		err := bridge.L1Deposit(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
-		return err
-	case utils.OldClaimEventSignatureHash.String():
-		err := bridge.L1ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
-		return err
-	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L1Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+	case utils.MessageDeliveredHash:
+		err := bridge.MessageDeliveredUnpack(l1ChainId, l2chainId, event, pp.db)
 		return err
 	}
 	return nil
 }
 
 func (pp *ArbEventProcessor) l2EventUnpack(event event.ContractEvent) error {
-	l2chainId := pp.l2ChainId
-	l1ChainId := pp.l1ChainId
-	switch event.EventSignature.String() {
-	case utils.DepositEventSignatureHash.String():
-		err := bridge.L2Withdraw(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
-		return err
-	case utils.ClaimEventSignatureHash.String():
-		err := bridge.L2Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
-		return err
-	case utils.OldClaimEventSignatureHash.String():
-		err := bridge.L2ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
-		return err
-	}
+	//l2chainId := pp.l2ChainId
+	//l1ChainId := pp.l1ChainId
+
 	return nil
 }

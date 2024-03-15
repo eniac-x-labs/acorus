@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/mantle"
+	"github.com/cornerstone-labs/acorus/rpc/airdrop"
+	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
+	"github.com/cornerstone-labs/acorus/worker/point_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -56,6 +60,7 @@ type Acorus struct {
 	birdgeRpcService       bridge.BridgeRpcService
 	relayerBridgeRelation  *relayer.RelayerBridgeRelation
 	relayerFundingPoolTask *relayer.RelayerFundingPool
+	airDropWorker          *point_worker.PointWorker
 }
 
 type RpcServerConfig struct {
@@ -66,14 +71,14 @@ type RpcServerConfig struct {
 const MaxRecvMessageSize = 1024 * 1024 * 300
 
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
-	log.Info("New acrous start️ 🕖")
+	log.Info("New acorus start️ 🕖")
 	out := &Acorus{
 		shutdown: shutdown,
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
 	}
-	log.Info("New acrous success🏅️")
+	log.Info("New acorus success🏅️")
 	return out, nil
 }
 
@@ -108,6 +113,10 @@ func (as *Acorus) Start(ctx context.Context) error {
 	}
 	if err := as.relayerFundingPoolTask.Start(); err != nil {
 		return fmt.Errorf("failed to start relayerFundingPool: %w", err)
+	}
+	if err := as.airDropWorker.Start(); err != nil {
+		log.Error("start airdrop worker failed", "err", err)
+		return err
 	}
 	return nil
 }
@@ -183,6 +192,27 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initFundingPool(cfg); err != nil {
 		fmt.Errorf("failed to init funding pool: %w", err)
 	}
+	if err := as.initAirDropWorker(cfg); err != nil {
+		fmt.Errorf("failed to init tAirDropWorker: %w", err)
+	}
+	return nil
+}
+
+func (as *Acorus) initAirDropWorker(cfg *config.Config) error {
+	airDropRpcService, err := airdrop.NewAirDropRpcService(cfg.AirDropGRpcUrl)
+	if err != nil {
+		log.Error("init airdrop rpc service failed", "err", err)
+		return err
+	} else {
+		airDropWorker, err := point_worker.NewPointWorker(as.DB, airDropRpcService)
+		if err != nil {
+			log.Error("init airdrop worker failed", "err", err)
+			return err
+		} else {
+			as.airDropWorker = airDropWorker
+		}
+	}
+
 	return nil
 }
 
@@ -316,6 +346,25 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			); err != nil {
 				return err
 			}
+		} else if chainId == global_const.MantleChainId ||
+			chainId == global_const.MantleSepoliaChainId {
+			if worker, err = mantle_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = mantle.NewBridgeProcessor(
+				as.DB,
+				l1StartBlockNumber,
+				big.NewInt(int64(rpcItem.StartBlock)),
+				as.shutdown,
+				loopInterval,
+				epoch,
+				l1ChainIdStr,
+				l2ChainIdStr,
+				isMainnet,
+			); err != nil {
+				return err
+			}
+
 		}
 		if processor != nil {
 			as.Processor[chainId] = processor

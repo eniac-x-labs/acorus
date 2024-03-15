@@ -270,7 +270,7 @@ func Withdraw(event event.ContractEvent, db *database.DB) error {
 		EndPoolId:   withdraw.EndPoolId,
 		Reward:      withdraw.Reward,
 		TxType:      global_const.StakingTypeWithdraw,
-		AssetType:   common2.WETH,
+		AssetType:   common2.ETH,
 		Timestamp:   event.Timestamp,
 	}
 	return db.StakeRecord.StoreStakingRecord(stake)
@@ -293,7 +293,7 @@ func ClaimReward(event event.ContractEvent, db *database.DB) error {
 		EndPoolId:   claimReward.EndPoolId,
 		Status:      1,
 		TxType:      global_const.StakingTypeReward,
-		AssetType:   common2.WETH,
+		AssetType:   common2.ETH,
 		Timestamp:   event.Timestamp,
 	}
 	return db.StakeRecord.StoreStakingRecord(stake)

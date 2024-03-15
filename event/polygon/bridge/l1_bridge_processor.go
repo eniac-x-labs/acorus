@@ -1,11 +1,12 @@
 package bridge
 
 import (
-	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
 	"math/big"
 
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
+	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/cornerstone-labs/acorus/common"

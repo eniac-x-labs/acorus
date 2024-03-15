@@ -43,6 +43,7 @@ type Config struct {
 	RPCs           []*RPC     `yaml:"rpcs"`
 	Metrics        Server     `yaml:"metrics"`
 	BridgeGrpcUrl  string     `yaml:"bridge_grpc_url"`
+	AirDropGRpcUrl string     `yaml:"airdrop_grpc_url"`
 	MasterDb       Database   `yaml:"master_db"`
 	SlaveDb        Database   `yaml:"slave_db"`
 	SlaveDbEnable  bool       `yaml:"slave_db_enable"`
