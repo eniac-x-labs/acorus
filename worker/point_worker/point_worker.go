@@ -62,7 +62,6 @@ func (pw *PointWorker) pointsByBridge() error {
 		address := bridgeRecord.FromAddress
 		guid := bridgeRecord.GUID
 		points, err := pw.airDropRpcService.SubmitDppLinkPoints("", "0", address.String())
-		log.Info("pointsByBridge points", "points", points, "err", err)
 		if err != nil {
 			return err
 		}
