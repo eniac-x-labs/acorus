@@ -116,7 +116,7 @@ func (db stakingRecordDB) GetNotPointsRecords() (stakingRecords []StakingRecord)
 }
 
 func (db stakingRecordDB) UpdatePointsStatus(guid uuid.UUID) error {
-	err := db.gorm.Table("staking_record").Where("guid = ?", guid).Update("is_points", true).Error
+	err := db.gorm.Table("staking_record").Where(StakingRecord{GUID: guid}).Update("is_points", true).Error
 	if err != nil {
 		log.Error("update points status fail", "err", err)
 	}
