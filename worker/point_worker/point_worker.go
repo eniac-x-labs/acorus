@@ -56,12 +56,13 @@ func (pw *PointWorker) Start() error {
 func (pw *PointWorker) pointsByBridge() error {
 	log.Info(" start pointsByBridge ")
 	records := pw.db.BridgeRecord.GetNotPointsRecords()
-	log.Info("pointsByBridge records", "records", records)
+	log.Info("pointsByBridge records", "records_size", len(records))
 	for i := 0; i < len(records); i++ {
 		bridgeRecord := records[i]
 		address := bridgeRecord.FromAddress
 		guid := bridgeRecord.GUID
 		points, err := pw.airDropRpcService.SubmitDppLinkPoints("", "0", address.String())
+		log.Info("pointsByBridge points", "points", points, "err", err)
 		if err != nil {
 			return err
 		}
@@ -79,6 +80,7 @@ func (pw *PointWorker) pointsByBridge() error {
 func (pw *PointWorker) pointsByStaking() error {
 	log.Info(" start pointsByStaking ")
 	records := pw.db.StakeRecord.GetNotPointsRecords()
+	log.Info("pointsByStaking records", "records_size", len(records))
 	for i := 0; i < len(records); i++ {
 		stakingRecord := records[i]
 		address := stakingRecord.UserAddress
