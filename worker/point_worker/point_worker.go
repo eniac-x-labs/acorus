@@ -56,6 +56,7 @@ func (pw *PointWorker) Start() error {
 func (pw *PointWorker) pointsByBridge() error {
 	log.Info(" start pointsByBridge ")
 	records := pw.db.BridgeRecord.GetNotPointsRecords()
+	log.Info("pointsByBridge records", "records", records)
 	for i := 0; i < len(records); i++ {
 		bridgeRecord := records[i]
 		address := bridgeRecord.FromAddress
