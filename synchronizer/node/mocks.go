@@ -51,10 +51,15 @@ func (m *MockEthClient) StorageHash(address common.Address, blockNumber *big.Int
 	return args.Get(0).(common.Hash), args.Error(1)
 }
 
-func (m *MockEthClient) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
+func (m *MockEthClient) FilterLogs(query ethereum.FilterQuery, chainId uint) (Logs, error) {
 	args := m.Called(query)
 	return args.Get(0).(Logs), args.Error(1)
 }
+
+//func (m *MockEthClient) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
+//	args := m.Called(query)
+//	return args.Get(0).(Logs), args.Error(1)
+//}
 
 func (m *MockEthClient) Close() {
 }

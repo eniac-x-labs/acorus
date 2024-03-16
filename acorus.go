@@ -114,10 +114,10 @@ func (as *Acorus) Start(ctx context.Context) error {
 	if err := as.relayerFundingPoolTask.Start(); err != nil {
 		return fmt.Errorf("failed to start relayerFundingPool: %w", err)
 	}
-	if err := as.airDropWorker.Start(); err != nil {
-		log.Error("start airdrop worker failed", "err", err)
-		return err
-	}
+	//if err := as.airDropWorker.Start(); err != nil {
+	//	log.Error("start airdrop worker failed", "err", err)
+	//	return err
+	//}
 	return nil
 }
 
@@ -192,9 +192,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initFundingPool(cfg); err != nil {
 		fmt.Errorf("failed to init funding pool: %w", err)
 	}
-	if err := as.initAirDropWorker(cfg); err != nil {
-		fmt.Errorf("failed to init tAirDropWorker: %w", err)
-	}
+	//if err := as.initAirDropWorker(cfg); err != nil {
+	//	fmt.Errorf("failed to init tAirDropWorker: %w", err)
+	//}
 	return nil
 }
 
