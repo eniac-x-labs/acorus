@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cornerstone-labs/acorus/event/mantle"
 	"github.com/cornerstone-labs/acorus/rpc/airdrop"
+	"github.com/cornerstone-labs/acorus/worker/clean_data_worker"
 	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
 	"github.com/cornerstone-labs/acorus/worker/point_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
@@ -61,6 +62,7 @@ type Acorus struct {
 	relayerBridgeRelation  *relayer.RelayerBridgeRelation
 	relayerFundingPoolTask *relayer.RelayerFundingPool
 	airDropWorker          *point_worker.PointWorker
+	cleanDataWorker        *clean_data_worker.WorkerProcessor
 }
 
 type RpcServerConfig struct {
@@ -114,10 +116,14 @@ func (as *Acorus) Start(ctx context.Context) error {
 	if err := as.relayerFundingPoolTask.Start(); err != nil {
 		return fmt.Errorf("failed to start relayerFundingPool: %w", err)
 	}
-	//if err := as.airDropWorker.Start(); err != nil {
-	//	log.Error("start airdrop worker failed", "err", err)
-	//	return err
-	//}
+	if err := as.airDropWorker.Start(); err != nil {
+		log.Error("start airdrop worker failed", "err", err)
+		return err
+	}
+	if err := as.cleanDataWorker.WorkerStart(); err != nil {
+		log.Error("start clean data worker failed", "err", err)
+		return err
+	}
 	return nil
 }
 
@@ -192,9 +198,19 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initFundingPool(cfg); err != nil {
 		fmt.Errorf("failed to init funding pool: %w", err)
 	}
-	//if err := as.initAirDropWorker(cfg); err != nil {
-	//	fmt.Errorf("failed to init tAirDropWorker: %w", err)
-	//}
+	if err := as.initAirDropWorker(cfg); err != nil {
+		fmt.Errorf("failed to init tAirDropWorker: %w", err)
+	}
+
+	return nil
+}
+
+func (as *Acorus) initCleanDataWorker(cfg *config.Config) error {
+	processor, err := clean_data_worker.NewWorkerProcessor(as.DB, *cfg, as.shutdown)
+	if err != nil {
+		log.Error("init clean_data_worker failed", "err", err)
+	}
+	as.cleanDataWorker = processor
 	return nil
 }
 
