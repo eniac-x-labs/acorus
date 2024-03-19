@@ -19,14 +19,14 @@ rpcs:
 #    pool_contract: ""
 #    contracts:
 #    event_contracts:
-  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
-    chain_id: 11155111
-    start_block: 5477427
-    header_buffer_size: 20
-    is_mainnet: false
-    pool_contract: ""
-    contracts:
-    event_contracts:
+#  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
+#    chain_id: 11155111
+#    start_block: 5477427
+#    header_buffer_size: 20
+#    is_mainnet: false
+#    pool_contract: ""
+#    contracts:
+#    event_contracts:
   #  - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
   #    chain_id: 1
   #    start_block: 19340743
@@ -35,13 +35,23 @@ rpcs:
   #    pool_contract: ""
   #    contracts:
   #    event_contracts:
-  - rpc_url: 'https://rpc-moon.sepolia.mantle.xyz/v1/OTEyYjhkZmJlZGFjOGFkMGUxZDNmMDYz'
-    chain_id: 5003
-    start_block: 4394822
+#  - rpc_url: 'https://rpc-moon.sepolia.mantle.xyz/v1/OTEyYjhkZmJlZGFjOGFkMGUxZDNmMDYz'
+#    chain_id: 5003
+#    start_block: 4394822
+#    l1_chain_id: 11155111
+#    is_mainnet: false
+#    l1_pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
+#    l2_pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
+#    header_buffer_size: 20
+#    contracts:
+#    event_contracts:
+  - rpc_url: 'https://testnet-rpc.zkfair.io'
+    chain_id: 43851
+    start_block: 2377471
     l1_chain_id: 11155111
     is_mainnet: false
-    l1_pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
-    l2_pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
+    l1_pool_contract: ""
+    l2_pool_contract: ""
     header_buffer_size: 20
     contracts:
     event_contracts:
@@ -173,6 +183,7 @@ slave_db:
 
 
 bridge_grpc_url: "selaginella:8080"
+airdrop_grpc_url: "hailstone:50251"
 
 relayers:
   - chain_id: 11155111

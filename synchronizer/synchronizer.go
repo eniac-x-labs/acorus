@@ -127,8 +127,10 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		header := headers[i]
 		headerMap[header.Hash()] = &header
 	}
+	chainIdInt, _ := strconv.Atoi(syncer.chainId)
+
 	filterQuery := ethereum.FilterQuery{FromBlock: firstHeader.Number, ToBlock: lastHeader.Number}
-	logs, err := syncer.ethClient.FilterLogs(filterQuery)
+	logs, err := syncer.ethClient.FilterLogs(filterQuery, uint(chainIdInt))
 	if err != nil {
 		log.Error("chain ", syncer.chainId, "failed to extract logs", "err", err)
 		return err

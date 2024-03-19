@@ -31,9 +31,10 @@ const (
 	MantaTestnetChainId    uint64 = 3441005
 	MantleSepoliaChainId   uint64 = 5003
 	MantleChainId          uint64 = 5000
-
-	OpChinId     uint64 = 10
-	OpTestChinId uint64 = 11155420
-	LineaChainId uint64 = 59144
-	BlocksLimit         = 10000
+	ZkFairSepoliaChainId   uint64 = 43851
+	ZkFairChainId          uint64 = 42766
+	OpChinId               uint64 = 10
+	OpTestChinId           uint64 = 11155420
+	LineaChainId           uint64 = 59144
+	BlocksLimit                   = 10000
 )

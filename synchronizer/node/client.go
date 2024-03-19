@@ -45,7 +45,7 @@ type EthClient interface {
 	TxByHash(common.Hash) (*types.Transaction, error)
 
 	StorageHash(common.Address, *big.Int) (common.Hash, error)
-	FilterLogs(ethereum.FilterQuery) (Logs, error)
+	FilterLogs(filterQuery ethereum.FilterQuery, chainId uint) (Logs, error)
 
 	// Close closes the underlying RPC connection.
 	// RPC close does not return any errors, but does shut down e.g. a websocket connection.
@@ -166,20 +166,13 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint
 	count := new(big.Int).Sub(endHeight, startHeight).Uint64() + 1
 	headers := make([]types.Header, count)
 	batchElems := make([]rpc.BatchElem, count)
+	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
 
-	if chainId != uint(global_const.PolygonChainId) {
-		for i := uint64(0); i < count; i++ {
-			height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
-			batchElems[i] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(height), false}, Result: &headers[i]}
-		}
-
-		ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
-		defer cancel()
-		err := c.rpc.BatchCallContext(ctxwt, batchElems)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if chainId == uint(global_const.PolygonChainId) ||
+		chainId == uint(global_const.PolygonSepoliaChainId) ||
+		chainId == uint(global_const.ZkFairSepoliaChainId) ||
+		chainId == uint(global_const.ZkFairChainId) {
 		groupSize := 100
 		var wg sync.WaitGroup
 		numGroups := (int(count)-1)/groupSize + 1
@@ -194,8 +187,6 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint
 			go func(start, end int) {
 				defer wg.Done()
 				for j := start; j <= end; j++ {
-					ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
-					defer cancel()
 					height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(uint64(j)))
 					batchElems[j] = rpc.BatchElem{
 						Method: "eth_getBlockByNumber",
@@ -210,6 +201,15 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint
 		}
 
 		wg.Wait()
+	} else {
+		for i := uint64(0); i < count; i++ {
+			height := new(big.Int).Add(startHeight, new(big.Int).SetUint64(i))
+			batchElems[i] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(height), false}, Result: &headers[i]}
+		}
+		err := c.rpc.BatchCallContext(ctxwt, batchElems)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// Parse the headers.
 	//  - Ensure integrity that they build on top of each other
@@ -284,7 +284,7 @@ type Logs struct {
 // FilterLogs returns logs that fit the query parameters. The underlying request is a batch
 // request including `eth_getBlockByNumber` to allow the caller to check that connected
 // node has the state necessary to fulfill this request
-func (c *clnt) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
+func (c *clnt) FilterLogs(query ethereum.FilterQuery, chainId uint) (Logs, error) {
 	arg, err := toFilterArg(query)
 	if err != nil {
 		return Logs{}, err
@@ -296,22 +296,30 @@ func (c *clnt) FilterLogs(query ethereum.FilterQuery) (Logs, error) {
 	batchElems := make([]rpc.BatchElem, 2)
 	batchElems[0] = rpc.BatchElem{Method: "eth_getBlockByNumber", Args: []interface{}{toBlockNumArg(query.ToBlock), false}, Result: &header}
 	batchElems[1] = rpc.BatchElem{Method: "eth_getLogs", Args: []interface{}{arg}, Result: &logs}
-
 	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*10)
 	defer cancel()
-	err = c.rpc.BatchCallContext(ctxwt, batchElems)
-	if err != nil {
-		return Logs{}, err
+	//resultHeader := new(types.Header)
+	//resultLogs := make([]types.Log, 0)
+	if chainId == uint(global_const.PolygonChainId) ||
+		chainId == uint(global_const.PolygonSepoliaChainId) ||
+		chainId == uint(global_const.ZkFairSepoliaChainId) ||
+		chainId == uint(global_const.ZkFairChainId) {
+
+		batchElems[0].Error = c.rpc.CallContext(ctxwt, &header, batchElems[0].Method, toBlockNumArg(query.ToBlock), false)
+		batchElems[1].Error = c.rpc.CallContext(ctxwt, &logs, batchElems[1].Method, arg)
+	} else {
+		err = c.rpc.BatchCallContext(ctxwt, batchElems)
+		if err != nil {
+			return Logs{}, err
+		}
 	}
 
 	if batchElems[0].Error != nil {
 		return Logs{}, fmt.Errorf("unable to query for the `FilterQuery#ToBlock` header: %w", batchElems[0].Error)
 	}
-
 	if batchElems[1].Error != nil {
 		return Logs{}, fmt.Errorf("unable to query logs: %w", batchElems[1].Error)
 	}
-
 	return Logs{Logs: logs, ToBlockHeader: &header}, nil
 }
 
