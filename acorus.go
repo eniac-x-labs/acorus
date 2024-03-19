@@ -201,7 +201,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initAirDropWorker(cfg); err != nil {
 		fmt.Errorf("failed to init tAirDropWorker: %w", err)
 	}
-
+	if err := as.initCleanDataWorker(cfg); err != nil {
+		fmt.Errorf("failed to init clean data worker: %w", err)
+	}
 	return nil
 }
 
