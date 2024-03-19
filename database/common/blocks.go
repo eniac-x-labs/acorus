@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"math/big"
 
@@ -46,6 +47,8 @@ type BlocksView interface {
 	LatestObservedEpochForChain(string, *big.Int, uint64) (*BlockHeader, error)
 
 	BlockTimeStampByNum(string, uint64) (int64, error)
+
+	CleanBlockHerders(chainId string) error
 }
 
 type BlocksDB interface {
@@ -128,4 +131,22 @@ func (db *blocksDB) BlockTimeStampByNum(chainId string, blockNumber uint64) (int
 		return 0, result.Error
 	}
 	return blockTimestamp, nil
+}
+
+func (db *blocksDB) CleanBlockHerders(chainId string) error {
+
+	tableName := "block_headers_" + chainId
+	updateSql := `
+				DELETE FROM %s
+				WHERE guid IN (
+				  SELECT guid
+				  FROM %s
+				  WHERE number < (SELECT MAX(number) FROM %s) - 10000
+				  LIMIT 10000
+				);
+				`
+	updateSql = fmt.Sprintf(updateSql, tableName, tableName, tableName)
+
+	err := db.gorm.Exec(updateSql).Error
+	return err
 }

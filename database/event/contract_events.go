@@ -62,11 +62,12 @@ type ContractEventsView interface {
 	ChainLatestContractEventWithFilter(string, ContractEvent) (*ContractEvent, error)
 
 	ContractEventsWithFilter(string, ContractEvent, *big.Int, *big.Int) ([]ContractEvent, error)
+
+	CleanEventsByChainId(chainId string) error
 }
 
 type ContractEventsDB interface {
 	ContractEventsView
-	CleanContractEvents(chainId string) error
 	StoreChainContractEvents(string, []ChainContractEvent) error
 }
 
@@ -147,7 +148,19 @@ func (db *contractEventsDB) ContractEventsWithFilter(chainId string, filter Cont
 	return eventList, nil
 }
 
-func (db *contractEventsDB) CleanContractEvents(chainId string) error {
-	result := db.gorm.Exec("DELETE FROM contract_events_" + chainId)
-	return result.Error
+func (db *contractEventsDB) CleanEventsByChainId(chainId string) error {
+	tableName := "contract_events_" + chainId
+	updateSql := `
+				DELETE FROM %s
+				WHERE guid IN (
+				  SELECT guid
+				  FROM 
+					%s
+				  WHERE block_number < (SELECT MAX(block_number) FROM %s) - 10000
+				  LIMIT 10000
+				);
+				`
+	updateSql = fmt.Sprintf(updateSql, tableName, tableName, tableName)
+	err := db.gorm.Exec(updateSql).Error
+	return err
 }
