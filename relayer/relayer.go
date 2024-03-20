@@ -112,7 +112,6 @@ func (rl *RelayerListener) onL1Data() error {
 
 		rl.l1StartHeight = new(big.Int).Add(rl.l1StartHeight, bigint.One)
 	}
-
 	fromL1Height := rl.l1StartHeight
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(rl.epoch)))
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
