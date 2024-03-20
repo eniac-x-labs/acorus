@@ -109,6 +109,7 @@ func (rl *RelayerListener) onL1Data() error {
 			rl.l1StartHeight = big.NewInt(int64(rl.l1EventStartBlock))
 		}
 	} else {
+
 		rl.l1StartHeight = new(big.Int).Add(rl.l1StartHeight, bigint.One)
 	}
 
