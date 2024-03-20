@@ -1,11 +1,10 @@
 package bridge
 
 import (
+	"github.com/cornerstone-labs/acorus/event/zkfair/bindings"
 	"math/big"
 
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
 	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
-	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/cornerstone-labs/acorus/common"
@@ -17,7 +16,7 @@ import (
 )
 
 func L2Withdraw(l1ChainId, l2chainId string,
-	polygonBridge *polygonzkevmbridge.Polygonzkevmbridge,
+	polygonBridge *bindings.Polygonzkevmbridge,
 	eventInfo event.ContractEvent, db *database.DB) error {
 	rlpLog := eventInfo.RLPLog
 	w, unpackErr := polygonBridge.ParseBridgeEvent(*rlpLog)
@@ -73,7 +72,7 @@ func L2Withdraw(l1ChainId, l2chainId string,
 	return err
 }
 
-func L2Claimed(l1ChainId, l2chainId string, polygonBridge *polygonzkevmbridge.Polygonzkevmbridge,
+func L2Claimed(l1ChainId, l2chainId string, polygonBridge *bindings.Polygonzkevmbridge,
 	eventInfo event.ContractEvent, db *database.DB) error {
 	rlpLog := eventInfo.RLPLog
 	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
@@ -81,52 +80,12 @@ func L2Claimed(l1ChainId, l2chainId string, polygonBridge *polygonzkevmbridge.Po
 		return unpackErr
 	}
 
-	index := c.GlobalIndex
-	_, _, localRootIndex, decodeErr := utils.DecodeGlobalIndex(index)
-	if decodeErr != nil {
-		return decodeErr
-	}
+	msgHash := common.BigToHash(big.NewInt(int64(c.Index)))
 
 	relayMessage := event.RelayMessage{
 		BlockNumber:          big.NewInt(int64(rlpLog.BlockNumber)),
 		RelayTransactionHash: rlpLog.TxHash,
-		MessageHash:          common.BigToHash(localRootIndex),
-		Related:              false,
-		Timestamp:            eventInfo.Timestamp,
-		ERC20Amount:          big.NewInt(0),
-		ETHAmount:            big.NewInt(0),
-	}
-	// is erc20
-	contractEventFilter := event.ContractEvent{TransactionHash: rlpLog.TxHash, EventSignature: utils.TokenTransferSignatureHash}
-	transferEvent, err := db.ContractEvents.ChainContractEventWithFilter(l2chainId, contractEventFilter)
-	if err != nil {
-		return err
-	}
-	if transferEvent != nil {
-		relayMessage.L2TokenAddress = transferEvent.ContractAddress
-		relayMessage.ERC20Amount = c.Amount
-	} else {
-		relayMessage.ETHAmount = c.Amount
-	}
-	relayMessageList := make([]event.RelayMessage, 0)
-	relayMessageList = append(relayMessageList, relayMessage)
-	err = db.RelayMessage.StoreRelayMessage(l2chainId, relayMessageList)
-	return err
-}
-
-func L2ClaimedOld(l1ChainId, l2chainId string, polygonBridge *oldpolygonzkevmbridge.Oldpolygonzkevmbridge,
-	eventInfo event.ContractEvent, db *database.DB) error {
-	rlpLog := eventInfo.RLPLog
-	c, unpackErr := polygonBridge.ParseClaimEvent(*rlpLog)
-	if unpackErr != nil {
-		return unpackErr
-	}
-	index := c.Index
-	indexBig := new(big.Int).SetUint64(uint64(index))
-	relayMessage := event.RelayMessage{
-		BlockNumber:          big.NewInt(int64(rlpLog.BlockNumber)),
-		RelayTransactionHash: rlpLog.TxHash,
-		MessageHash:          common.BigToHash(indexBig),
+		MessageHash:          msgHash,
 		Related:              false,
 		Timestamp:            eventInfo.Timestamp,
 		ERC20Amount:          big.NewInt(0),

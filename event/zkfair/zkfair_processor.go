@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/event/polygon/bridge"
 	"math/big"
 	"strconv"
 	"time"
@@ -252,8 +253,18 @@ func (pp *ZkFairEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int)
 func (pp *ZkFairEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	l2chainId := pp.l2ChainId
 	l1ChainId := pp.l1ChainId
-	bindings.PolygonzkevmbridgeAB
-	abi := bindings.PolygonzkevmbridgeABI.GetABI()
+	getAbi, err := bindings.PolygonzkevmbridgeMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+	switch event.EventSignature.String() {
+	case getAbi.Events["BridgeEvent"].ID.String():
+		err := bridge.L1Deposit(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	case getAbi.Events["ClaimEvent"].ID.String():
+		err := bridge.L1Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	}
 
 	return nil
 }
@@ -261,7 +272,18 @@ func (pp *ZkFairEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 func (pp *ZkFairEventProcessor) l2EventUnpack(event event.ContractEvent) error {
 	l2chainId := pp.l2ChainId
 	l1ChainId := pp.l1ChainId
-
+	getAbi, err := bindings.PolygonzkevmbridgeMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
+	switch event.EventSignature.String() {
+	case getAbi.Events["BridgeEvent"].ID.String():
+		err := bridge.L2Withdraw(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	case getAbi.Events["ClaimEvent"].ID.String():
+		err := bridge.L2Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	}
 	return nil
 }
 
