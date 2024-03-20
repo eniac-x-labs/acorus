@@ -239,12 +239,13 @@ func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) erro
 }
 
 func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	log.Info("relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
-
 	chainIdStr := rl.chainId
 	l2Contracts := rl.l2Contracts
 	for _, l2contract := range l2Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
+		log.Info("chainId", chainIdStr, "contract", common.HexToAddress(l2contract).String(),
+			"relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+
 		events, err := rl.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {
 			log.Error("failed to index L2ContractEventsWithFilter ", "err", err)
