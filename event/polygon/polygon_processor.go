@@ -2,16 +2,12 @@ package polygon
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
 	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
-	"github.com/cornerstone-labs/acorus/common/global_const"
-	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/common/bigint"
@@ -287,68 +283,6 @@ func (pp *PolygonEventProcessor) l2EventUnpack(event event.ContractEvent) error 
 		return err
 	case utils.OldClaimEventSignatureHash.String():
 		err := bridge.L2ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
-		return err
-	}
-	return nil
-}
-
-func (pp *PolygonEventProcessor) relationL1L2() error {
-	chainId := pp.cfgRpc.ChainId
-	chainIdStr := strconv.Itoa(int(chainId))
-	if err := pp.db.Transaction(func(tx *database.DB) error {
-		// step 1
-		if canSaveDataList, err := pp.db.MsgSentRelationD.GetCanSaveDataList(chainIdStr); err != nil {
-			return err
-		} else {
-			l1ToL2s := make([]worker.L1ToL2, 0)
-			l2ToL1s := make([]worker.L2ToL1, 0)
-			for _, data := range canSaveDataList {
-				l1l2Data := data.Data
-				if data.LayerType == global_const.LayerTypeOne {
-					var l1Tol2 worker.L1ToL2
-					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l1Tol2); unMarErr != nil {
-						return unMarErr
-					}
-					l1Tol2.MessageHash = data.MsgHash
-					l1Tol2.Status = 0
-					l1ToL2s = append(l1ToL2s, l1Tol2)
-				}
-				if data.LayerType == global_const.LayerTypeTwo {
-					var l2Tol1 worker.L2ToL1
-					if unMarErr := json.Unmarshal([]byte(l1l2Data), &l2Tol1); unMarErr != nil {
-						return unMarErr
-					}
-					l2Tol1.MessageHash = data.MsgHash
-					l2Tol1.Status = 0
-					l2ToL1s = append(l2ToL1s, l2Tol1)
-				}
-			}
-			if len(l1ToL2s) > 0 {
-				saveErr := pp.db.L1ToL2.StoreL1ToL2Transactions(chainIdStr, l1ToL2s)
-				if saveErr != nil {
-					log.Error("failed to StoreL1ToL2Transactions", "saveErr", saveErr)
-					return saveErr
-				}
-			}
-			if len(l2ToL1s) > 0 {
-				saveErr := pp.db.L2ToL1.StoreL2ToL1Transactions(chainIdStr, l2ToL1s)
-				if saveErr != nil {
-					log.Error("failed to StoreL2ToL1Transactions", "saveErr", saveErr)
-					return saveErr
-				}
-			}
-		}
-		if err := pp.db.MsgSentRelationD.RelationClear(chainIdStr); err != nil {
-			return err
-		}
-		if err := pp.db.MsgSentRelationD.L1RelayToRelation(chainIdStr); err != nil {
-			return err
-		}
-		if err := pp.db.MsgSentRelationD.L2RelayToRelation(chainIdStr); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
 		return err
 	}
 	return nil

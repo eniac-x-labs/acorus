@@ -1,9 +1,9 @@
 package bridge
 
 import (
-	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
 	"math/big"
 
+	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
 	"github.com/ethereum/go-ethereum/common"
 
 	common3 "github.com/cornerstone-labs/acorus/common"
@@ -80,16 +80,12 @@ func L2Claimed(l1ChainId, l2chainId string, polygonBridge *bindings.Polygonzkevm
 		return unpackErr
 	}
 
-	index := c.GlobalIndex
-	_, _, localRootIndex, decodeErr := utils.DecodeGlobalIndex(index)
-	if decodeErr != nil {
-		return decodeErr
-	}
+	msgHash := common.BigToHash(big.NewInt(int64(c.Index)))
 
 	relayMessage := event.RelayMessage{
 		BlockNumber:          big.NewInt(int64(rlpLog.BlockNumber)),
 		RelayTransactionHash: rlpLog.TxHash,
-		MessageHash:          common.BigToHash(localRootIndex),
+		MessageHash:          msgHash,
 		Related:              false,
 		Timestamp:            eventInfo.Timestamp,
 		ERC20Amount:          big.NewInt(0),

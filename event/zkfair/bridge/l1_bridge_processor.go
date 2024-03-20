@@ -1,11 +1,11 @@
 package bridge
 
 import (
-	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
-	"github.com/cornerstone-labs/acorus/common/global_const"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+
+	erc20 "github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/pol"
 
 	common3 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/database"
@@ -16,11 +16,10 @@ import (
 	"github.com/cornerstone-labs/acorus/event/zkfair/bindings"
 )
 
-func L1DepositETH(l1ChainId, l2chainId string, polygonBridge *bindings.Polygonzkevmbridge,
+func L1Deposit(l1ChainId, l2chainId string, polygonBridge *bindings.Polygonzkevmbridge,
 	eventInfo event.ContractEvent, db *database.DB) error {
 	rlpLog := eventInfo.RLPLog
-	polygonBridge.pa
-	d, unpackErr := polygonBridge.ParseInitiateETH(*rlpLog)
+	d, unpackErr := polygonBridge.ParseBridgeEvent(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
@@ -31,14 +30,14 @@ func L1DepositETH(l1ChainId, l2chainId string, polygonBridge *bindings.Polygonzk
 		L1TxOrigin:        common.Address{},
 		L1BlockNumber:     big.NewInt(int64(rlpLog.BlockNumber)),
 		Status:            common3.L1ToL2Pending,
-		FromAddress:       d.From,
-		ToAddress:         d.To,
-		L1TokenAddress:    common.HexToAddress(global_const.EthAddress),
+		FromAddress:       common.Address{},
+		ToAddress:         d.DestinationAddress,
+		L1TokenAddress:    d.OriginAddress,
 		L2TokenAddress:    common.Address{},
 		GasLimit:          big.NewInt(0),
 		Timestamp:         int64(eventInfo.Timestamp),
 		MessageHash:       common.BigToHash(big.NewInt(int64(d.DepositCount))),
-		ETHAmount:         big.NewInt(),
+		ETHAmount:         big.NewInt(0),
 		TokenAmounts:      "0",
 	}
 	// is erc20
@@ -78,17 +77,12 @@ func L1Claimed(l1chainId, l2chainId string, polygonBridge *bindings.Polygonzkevm
 		return unpackErr
 	}
 
-	index := c.GlobalIndex
-	_, _, localRootIndex, decodeErr := utils.DecodeGlobalIndex(index)
-	if decodeErr != nil {
-		return decodeErr
-	}
-
+	msgHash := common.BigToHash(big.NewInt(int64(c.Index)))
 	withDrawMessage := event.WithdrawFinalized{
 		BlockNumber:              big.NewInt(int64(rlpLog.BlockNumber)),
 		FinalizedTransactionHash: rlpLog.TxHash,
 		WithdrawHash:             rlpLog.TxHash,
-		MessageHash:              common.BigToHash(localRootIndex),
+		MessageHash:              msgHash,
 		Related:                  false,
 		Timestamp:                eventInfo.Timestamp,
 		ERC20Amount:              big.NewInt(0),
