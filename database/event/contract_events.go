@@ -156,7 +156,7 @@ func (db *contractEventsDB) CleanEventsByChainId(chainId string) error {
 				  SELECT guid
 				  FROM 
 					%s
-				  WHERE block_number < (SELECT MAX(block_number) FROM %s) - 10000
+				  WHERE block_number < (SELECT MAX(block_number) FROM %s) - 200000
 				  LIMIT 10000
 				);
 				`

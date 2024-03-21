@@ -141,7 +141,7 @@ func (db *blocksDB) CleanBlockHerders(chainId string) error {
 				WHERE guid IN (
 				  SELECT guid
 				  FROM %s
-				  WHERE number < (SELECT MAX(number) FROM %s) - 10000
+				  WHERE number < (SELECT MAX(number) FROM %s) - 200000
 				  LIMIT 10000
 				);
 				`
