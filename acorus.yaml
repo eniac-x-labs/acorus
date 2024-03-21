@@ -45,16 +45,25 @@ rpcs:
 #    header_buffer_size: 20
 #    contracts:
 #    event_contracts:
-  - rpc_url: 'https://testnet-rpc.zkfair.io'
-    chain_id: 43851
-    start_block: 2377471
-    l1_chain_id: 11155111
-    is_mainnet: false
-    l1_pool_contract: ""
-    l2_pool_contract: ""
-    header_buffer_size: 20
-    contracts:
-    event_contracts:
+#  - rpc_url: 'https://testnet-rpc.zkfair.io'
+#    chain_id: 43851
+#    start_block: 2377471
+#    l1_chain_id: 11155111
+#    is_mainnet: false
+#    l1_pool_contract: ""
+#    l2_pool_contract: ""
+#    header_buffer_size: 20
+#    contracts:
+#    event_contracts:- rpc_url: 'https://testnet-rpc.zkfair.io'
+#    chain_id: 43851
+#    start_block: 2377471
+#    l1_chain_id: 11155111
+#    is_mainnet: false
+#    l1_pool_contract: ""
+#    l2_pool_contract: ""
+#    header_buffer_size: 20
+#    contracts:
+#    event_contracts:
 
   #  - rpc_url: ''
   #    chain_id: 169
