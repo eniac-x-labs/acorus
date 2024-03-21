@@ -5,11 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/event/mantle"
+	"github.com/cornerstone-labs/acorus/event/okx"
+	"github.com/cornerstone-labs/acorus/event/zkfair"
 	"github.com/cornerstone-labs/acorus/rpc/airdrop"
 	"github.com/cornerstone-labs/acorus/worker/clean_data_worker"
 	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
+	"github.com/cornerstone-labs/acorus/worker/okx_worker"
 	"github.com/cornerstone-labs/acorus/worker/point_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
+	"github.com/cornerstone-labs/acorus/worker/zkfair_worker"
 
 	"github.com/ethereum/go-ethereum/log"
 	"math/big"
@@ -382,8 +386,26 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			); err != nil {
 				return err
 			}
-
+		} else if chainId == global_const.ZkFairSepoliaChainId ||
+			chainId == global_const.ZkFairChainId {
+			if worker, err = zkfair_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = zkfair.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
+				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr); err != nil {
+				return err
+			}
+		} else if chainId == global_const.OkxSepoliaChainId ||
+			chainId == global_const.OkxChainId {
+			if worker, err = okx_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
+				return err
+			}
+			if processor, err = okx.NewBridgeProcessor(as.DB, rpcItem, as.shutdown,
+				loopInterval, epoch, l1ChainIdStr, l2ChainIdStr); err != nil {
+				return err
+			}
 		}
+
 		if processor != nil {
 			as.Processor[chainId] = processor
 		}
