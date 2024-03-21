@@ -24,8 +24,6 @@ type RelayerListener struct {
 	l2Contracts       []string
 	l1EventStartBlock uint64
 	l2EventStartBlock uint64
-	l1StartHeight     *big.Int
-	l2StartHeight     *big.Int
 	layerType         int
 	resourceCtx       context.Context
 	resourceCancel    context.CancelFunc
@@ -93,34 +91,29 @@ func (rl *RelayerListener) Start() error {
 }
 
 func (rl *RelayerListener) onL1Data() error {
-	if rl.l1StartHeight == nil {
-		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
-		if err != nil {
-			log.Error("l1 failed to get last block heard", "err", err)
-			return err
-		}
-		if lastListenBlock == nil {
-			lastListenBlock = &relayer.BridgeBlockListener{
-				BlockNumber: big.NewInt(0),
-			}
-		}
-		rl.l1StartHeight = lastListenBlock.BlockNumber
-		if rl.l1StartHeight.Cmp(big.NewInt(int64(rl.l1EventStartBlock))) == -1 {
-			rl.l1StartHeight = big.NewInt(int64(rl.l1EventStartBlock))
-		}
-	} else {
-
-		rl.l1StartHeight = new(big.Int).Add(rl.l1StartHeight, bigint.One)
+	lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
+	if err != nil {
+		log.Error("l1 failed to get last block heard", "err", err)
+		return err
 	}
-	fromL1Height := rl.l1StartHeight
+	fromL1Height := bigint.Zero
+
+	if lastListenBlock != nil {
+		fromL1Height = new(big.Int).Add(lastListenBlock.BlockNumber, bigint.One)
+	}
+
+	if rl.l1EventStartBlock > 0 {
+		if fromL1Height.Cmp(big.NewInt(int64(rl.l1EventStartBlock))) == -1 {
+			fromL1Height = big.NewInt(int64(rl.l1EventStartBlock))
+		}
+	}
+
 	toL1Height := new(big.Int).Add(fromL1Height, big.NewInt(int64(rl.epoch)))
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
-		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
-		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL1Height) == -1 {
@@ -147,44 +140,32 @@ func (rl *RelayerListener) onL1Data() error {
 		}
 		return nil
 	}); err != nil {
-		rl.l1StartHeight = new(big.Int).Sub(rl.l1StartHeight, bigint.One)
 		return err
 	}
-	rl.l1StartHeight = toL1Height
 	return nil
 }
 
 func (rl *RelayerListener) onL2Data() error {
-	if rl.l2StartHeight == nil {
-		lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
-		if err != nil {
-			log.Error("l2 failed to get last block heard", "err", err)
-			return err
-		}
-		if lastListenBlock == nil {
-			if rl.l2EventStartBlock > 0 {
-				lastListenBlock = &relayer.BridgeBlockListener{
-					BlockNumber: big.NewInt(int64(rl.l2EventStartBlock)),
-				}
-			} else {
-				lastListenBlock = &relayer.BridgeBlockListener{
-					BlockNumber: big.NewInt(0),
-				}
-			}
-		}
-		rl.l2StartHeight = lastListenBlock.BlockNumber
-	} else {
-		rl.l2StartHeight = new(big.Int).Add(rl.l2StartHeight, bigint.One)
+	lastListenBlock, err := rl.db.BridgeBlockListener.GetLastBlockNumber(rl.chainId)
+	if err != nil {
+		log.Error("l2 failed to get last block heard", "err", err)
+		return err
 	}
-	fromL2Height := rl.l2StartHeight
+	fromL2Height := bigint.Zero
+	if lastListenBlock != nil {
+		fromL2Height = new(big.Int).Add(lastListenBlock.BlockNumber, bigint.One)
+	}
+	if rl.l2EventStartBlock > 0 {
+		if fromL2Height.Cmp(big.NewInt(int64(rl.l2EventStartBlock))) == -1 {
+			fromL2Height = big.NewInt(int64(rl.l2EventStartBlock))
+		}
+	}
 	toL2Height := new(big.Int).Add(fromL2Height, big.NewInt(int64(rl.epoch)))
 	chainLatestBlockHeader, err := rl.db.Blocks.ChainLatestBlockHeader(rl.chainId)
 	if err != nil {
-		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return err
 	}
 	if chainLatestBlockHeader == nil {
-		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return nil
 	}
 	if chainLatestBlockHeader.Number.Cmp(fromL2Height) == -1 {
@@ -210,10 +191,8 @@ func (rl *RelayerListener) onL2Data() error {
 		}
 		return nil
 	}); err != nil {
-		rl.l2StartHeight = new(big.Int).Sub(rl.l2StartHeight, bigint.One)
 		return err
 	}
-	rl.l2StartHeight = toL2Height
 	return nil
 }
 

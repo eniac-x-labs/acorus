@@ -1,12 +1,13 @@
-package zkfair
+package okx
 
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/event/zkfair/bridge"
 	"math/big"
 	"time"
 
+	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/oldpolygonzkevmbridge"
+	"github.com/0xPolygonHermez/zkevm-node/etherman/smartcontracts/polygonzkevmbridge"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/common/bigint"
@@ -15,36 +16,42 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/cornerstone-labs/acorus/event/zkfair/bindings"
+	"github.com/cornerstone-labs/acorus/event/okx/bridge"
+	"github.com/cornerstone-labs/acorus/event/okx/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type ZkFairEventProcessor struct {
-	db             *database.DB
-	cfgRpc         *config.RPC
-	resourceCtx    context.Context
-	resourceCancel context.CancelFunc
-	tasks          tasks.Group
-	polygonBridge  *bindings.Polygonzkevmbridge
-	loopInterval   time.Duration
-	l1StartHeight  *big.Int
-	l2StartHeight  *big.Int
-	epoch          uint64
-	l1ChainId      string
-	l2ChainId      string
+type OkxEventProcessor struct {
+	db               *database.DB
+	cfgRpc           *config.RPC
+	resourceCtx      context.Context
+	resourceCancel   context.CancelFunc
+	tasks            tasks.Group
+	polygonBridge    *polygonzkevmbridge.Polygonzkevmbridge
+	oldpolygonBridge *oldpolygonzkevmbridge.Oldpolygonzkevmbridge
+	loopInterval     time.Duration
+	l1StartHeight    *big.Int
+	l2StartHeight    *big.Int
+	epoch            uint64
+	l1ChainId        string
+	l2ChainId        string
 }
 
 func NewBridgeProcessor(db *database.DB,
 	l2cfg *config.RPC, shutdown context.CancelCauseFunc,
-	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*ZkFairEventProcessor, error) {
+	loopInterval time.Duration, epoch uint64, l1ChainId, l2ChainId string) (*OkxEventProcessor, error) {
 	resCtx, resCancel := context.WithCancel(context.Background())
 
-	polygonBridge, err := bindings.NewPolygonzkevmbridge(common.Address{}, nil)
+	polygonBridge, err := polygonzkevmbridge.NewPolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
+	if err != nil {
+		return nil, err
+	}
+	oldpolygonBridge, err := oldpolygonzkevmbridge.NewOldpolygonzkevmbridge(utils.L2PolygonZKEVMBridgeAddr, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ZkFairEventProcessor{
+	return &OkxEventProcessor{
 		db:             db,
 		cfgRpc:         l2cfg,
 		resourceCtx:    resCtx,
@@ -52,18 +59,19 @@ func NewBridgeProcessor(db *database.DB,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in bridge processor: %w", err))
 		}},
-		polygonBridge: polygonBridge,
-		loopInterval:  loopInterval,
-		epoch:         epoch,
-		l1ChainId:     l1ChainId,
-		l2ChainId:     l2ChainId,
+		polygonBridge:    polygonBridge,
+		oldpolygonBridge: oldpolygonBridge,
+		loopInterval:     loopInterval,
+		epoch:            epoch,
+		l1ChainId:        l1ChainId,
+		l2ChainId:        l2ChainId,
 	}, nil
 }
 
-func (pp *ZkFairEventProcessor) StartUnpack() error {
+func (pp *OkxEventProcessor) StartUnpack() error {
 	tickerEventOn1 := time.NewTicker(pp.loopInterval)
 	tickerEventOn2 := time.NewTicker(pp.loopInterval)
-	log.Info("starting zkfair bridge processor...")
+	log.Info("starting okx bridge processor...")
 	pp.tasks.Go(func() error {
 		for range tickerEventOn1.C {
 			err := pp.onL1Data()
@@ -88,12 +96,12 @@ func (pp *ZkFairEventProcessor) StartUnpack() error {
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) ClosetUnpack() error {
+func (pp *OkxEventProcessor) ClosetUnpack() error {
 	pp.resourceCancel()
 	return pp.tasks.Wait()
 }
 
-func (pp *ZkFairEventProcessor) onL1Data() error {
+func (pp *OkxEventProcessor) onL1Data() error {
 	if pp.l1StartHeight == nil {
 		lastBlockHeard, err := pp.db.L1ToL2.L1LatestBlockHeader(pp.l2ChainId, pp.l1ChainId)
 		if err != nil {
@@ -150,7 +158,7 @@ func (pp *ZkFairEventProcessor) onL1Data() error {
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) onL2Data() error {
+func (pp *OkxEventProcessor) onL2Data() error {
 	if pp.l2StartHeight == nil {
 		lastBlockHeard, err := pp.db.L2ToL1.L2LatestBlockHeader(pp.l2ChainId)
 		if err != nil {
@@ -205,7 +213,7 @@ func (pp *ZkFairEventProcessor) onL2Data() error {
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
+func (pp *OkxEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
 	l1Contracts := pp.cfgRpc.Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
@@ -225,7 +233,7 @@ func (pp *ZkFairEventProcessor) l1EventsFetch(fromL1Height, toL1Height *big.Int)
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
+func (pp *OkxEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int) error {
 	l2chainIdStr := pp.l2ChainId
 	l2Contracts := pp.cfgRpc.EventContracts
 	for _, l2contract := range l2Contracts {
@@ -246,38 +254,35 @@ func (pp *ZkFairEventProcessor) l2EventsFetch(fromL1Height, toL1Height *big.Int)
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) l1EventUnpack(event event.ContractEvent) error {
+func (pp *OkxEventProcessor) l1EventUnpack(event event.ContractEvent) error {
 	l2chainId := pp.l2ChainId
 	l1ChainId := pp.l1ChainId
-	getAbi, err := bindings.PolygonzkevmbridgeMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
 	switch event.EventSignature.String() {
-	case getAbi.Events["BridgeEvent"].ID.String():
+	case utils.WithdrawEventSignatureHash.String():
 		err := bridge.L1Deposit(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
-	case getAbi.Events["ClaimEvent"].ID.String():
+	case utils.OldClaimEventSignatureHash.String():
+		err := bridge.L1ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
+		return err
+	case utils.ClaimEventSignatureHash.String():
 		err := bridge.L1Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
 	}
-
 	return nil
 }
 
-func (pp *ZkFairEventProcessor) l2EventUnpack(event event.ContractEvent) error {
+func (pp *OkxEventProcessor) l2EventUnpack(event event.ContractEvent) error {
 	l2chainId := pp.l2ChainId
 	l1ChainId := pp.l1ChainId
-	getAbi, err := bindings.PolygonzkevmbridgeMetaData.GetAbi()
-	if err != nil {
-		return err
-	}
 	switch event.EventSignature.String() {
-	case getAbi.Events["BridgeEvent"].ID.String():
+	case utils.DepositEventSignatureHash.String():
 		err := bridge.L2Withdraw(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
 		return err
-	case getAbi.Events["ClaimEvent"].ID.String():
+	case utils.ClaimEventSignatureHash.String():
 		err := bridge.L2Claimed(l1ChainId, l2chainId, pp.polygonBridge, event, pp.db)
+		return err
+	case utils.OldClaimEventSignatureHash.String():
+		err := bridge.L2ClaimedOld(l1ChainId, l2chainId, pp.oldpolygonBridge, event, pp.db)
 		return err
 	}
 	return nil

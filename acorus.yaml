@@ -19,14 +19,14 @@ rpcs:
 #    pool_contract: ""
 #    contracts:
 #    event_contracts:
-#  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
-#    chain_id: 11155111
-#    start_block: 5477427
-#    header_buffer_size: 20
-#    is_mainnet: false
-#    pool_contract: ""
-#    contracts:
-#    event_contracts:
+  - rpc_url: 'https://eth-sepolia.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
+    chain_id: 11155111
+    start_block: 5477427
+    header_buffer_size: 20
+    is_mainnet: false
+    pool_contract: ""
+    contracts:
+    event_contracts:
   #  - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
   #    chain_id: 1
   #    start_block: 19340743
@@ -45,25 +45,28 @@ rpcs:
 #    header_buffer_size: 20
 #    contracts:
 #    event_contracts:
-#  - rpc_url: 'https://testnet-rpc.zkfair.io'
-#    chain_id: 43851
-#    start_block: 2377471
-#    l1_chain_id: 11155111
-#    is_mainnet: false
-#    l1_pool_contract: ""
-#    l2_pool_contract: ""
-#    header_buffer_size: 20
-#    contracts:
-#    event_contracts:- rpc_url: 'https://testnet-rpc.zkfair.io'
-#    chain_id: 43851
-#    start_block: 2377471
-#    l1_chain_id: 11155111
-#    is_mainnet: false
-#    l1_pool_contract: ""
-#    l2_pool_contract: ""
-#    header_buffer_size: 20
-#    contracts:
-#    event_contracts:
+  - rpc_url: 'https://testnet-rpc.zkfair.io'
+    chain_id: 43851
+    start_block: 2377471
+    l1_chain_id: 11155111
+    is_mainnet: false
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    header_buffer_size: 20
+    contracts:
+  - rpc_url: 'https://testrpc.x1.tech/'
+    chain_id: 195
+    start_block: 12576321
+    header_buffer_size: 10
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: "0x4F34C922fB0D80c7d79Ac25e497d90d7efa513C2"
+    l2_pool_contract: "0xdb196c84731d46a06e5209fb97313431b214349b"
+    l1_event_unpack_block: 5408117
+    contracts:
+      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
+    event_contracts:
+      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
 
   #  - rpc_url: ''
   #    chain_id: 169
