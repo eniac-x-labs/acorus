@@ -169,9 +169,9 @@ func (c *clnt) BlockHeadersByRange(startHeight, endHeight *big.Int, chainId uint
 	ctxwt, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
 	defer cancel()
 
-	if chainId == uint(global_const.PolygonChainId) ||
-		chainId == uint(global_const.PolygonSepoliaChainId) ||
-		chainId == uint(global_const.ZkFairSepoliaChainId) ||
+	//chainId == uint(global_const.PolygonChainId) ||
+	//	chainId == uint(global_const.PolygonSepoliaChainId) ||
+	if chainId == uint(global_const.ZkFairSepoliaChainId) ||
 		chainId == uint(global_const.ZkFairChainId) {
 		groupSize := 100
 		var wg sync.WaitGroup
@@ -300,9 +300,9 @@ func (c *clnt) FilterLogs(query ethereum.FilterQuery, chainId uint) (Logs, error
 	defer cancel()
 	//resultHeader := new(types.Header)
 	//resultLogs := make([]types.Log, 0)
-	if chainId == uint(global_const.PolygonChainId) ||
-		chainId == uint(global_const.PolygonSepoliaChainId) ||
-		chainId == uint(global_const.ZkFairSepoliaChainId) ||
+	//chainId == uint(global_const.PolygonChainId) ||
+	//	chainId == uint(global_const.PolygonSepoliaChainId) ||
+	if chainId == uint(global_const.ZkFairSepoliaChainId) ||
 		chainId == uint(global_const.ZkFairChainId) {
 
 		batchElems[0].Error = c.rpc.CallContext(ctxwt, &header, batchElems[0].Method, toBlockNumArg(query.ToBlock), false)
