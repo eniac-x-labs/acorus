@@ -351,7 +351,8 @@ func (as *Acorus) initEventProcessor(cfg *config.Config) error {
 			); err != nil {
 				return err
 			}
-		} else if chainId == global_const.MantaChainId {
+		} else if chainId == global_const.MantaChainId ||
+			chainId == global_const.MantaSepoliaChainId {
 			if worker, err = manta_worker.NewWorkerProcessor(as.DB, l2ChainIdStr, as.shutdown); err != nil {
 				return err
 			}
