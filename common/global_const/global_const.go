@@ -28,7 +28,7 @@ const (
 	BaseChainId            uint64 = 8453
 	BaseSepoliaChainId     uint64 = 84532
 	MantaChainId           uint64 = 169
-	MantaTestnetChainId    uint64 = 3441005
+	MantaSepoliaChainId    uint64 = 3441006
 	MantleSepoliaChainId   uint64 = 5003
 	MantleChainId          uint64 = 5000
 	ZkFairSepoliaChainId   uint64 = 43851
