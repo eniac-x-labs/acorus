@@ -3,8 +3,6 @@ package synchronizer
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/common/bigint"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"time"
@@ -12,11 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	exporter "github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
 )
@@ -100,6 +101,8 @@ func (syncer *Synchronizer) Start() error {
 				}
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
+					latestHeaderF, _ := latestHeader.Number.Float64()
+					exporter.ChainBlockNumberMetric.WithLabelValues(syncer.chainId).Set(latestHeaderF)
 					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number)
 				}
 			}
