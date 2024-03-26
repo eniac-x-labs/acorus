@@ -7,7 +7,6 @@ import (
 	"github.com/cornerstone-labs/acorus/event/mantle"
 	"github.com/cornerstone-labs/acorus/event/okx"
 	"github.com/cornerstone-labs/acorus/event/zkfair"
-	exporter "github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/rpc/airdrop"
 	"github.com/cornerstone-labs/acorus/worker/clean_data_worker"
 	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
@@ -15,10 +14,6 @@ import (
 	"github.com/cornerstone-labs/acorus/worker/point_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
 	"github.com/cornerstone-labs/acorus/worker/zkfair_worker"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/version"
-	"net/http"
-
 	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"net"
@@ -42,6 +37,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
+	"github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/relayer"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
@@ -71,7 +67,6 @@ type Acorus struct {
 	relayerFundingPoolTask *relayer.RelayerFundingPool
 	airDropWorker          *point_worker.PointWorker
 	cleanDataWorker        *clean_data_worker.WorkerProcessor
-	metrics                *exporter.Exporter
 }
 
 type RpcServerConfig struct {
@@ -84,27 +79,17 @@ const MaxRecvMessageSize = 1024 * 1024 * 300
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	log.Info("New acorus start️ 🕖")
 	out := &Acorus{
-		shutdown: shutdown,
+		shutdown:        shutdown,
+		metricsRegistry: metrics.NewRegistry(),
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
 	}
-
-	metrics, err := exporter.NewExporter(ctx, out.DB, cfg.Metrics, shutdown)
-	if err != nil {
-		return nil, errors.New("init acorus exporter fail")
-	}
-	out.metrics = metrics
-
 	log.Info("New acorus success🏅️")
 	return out, nil
 }
 
 func (as *Acorus) Start(ctx context.Context) error {
-	if err := as.metrics.Start(); err != nil {
-		log.Error("start acorus metric failed", "err", err)
-		return err
-	}
 	for i := range as.chainIdList {
 		log.Info("starting Sync", "chainId", as.chainIdList[i])
 		realChainId := as.chainIdList[i]
@@ -223,6 +208,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	}
 	if err := as.initCleanDataWorker(cfg); err != nil {
 		fmt.Errorf("failed to init clean data worker: %w", err)
+	}
+	if err := as.startMetricsServer(ctx, cfg.Metrics); err != nil {
+		log.Error("start acorus metric failed", "err", err)
 	}
 	return nil
 }
@@ -444,7 +432,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
 		}
-		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], as.shutdown)
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], metrics.NewSynchronizerMetrics(as.metricsRegistry, "synchronizer"), as.shutdown)
 		if err != nil {
 			return err
 		}
@@ -541,25 +529,12 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 }
 
 func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
-	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port))
-	log.Info("exporter config", addr)
-	log.Info("Starting acorus_exporter", version.Info())
-	log.Info("Build context", version.BuildContext())
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-		<head><title>Acorus Exporter</title></head>
-		<body>
-		<h1>Acorus Exporter</h1>
-		<p><a href="/metrics">Metrics</a></p>
-		</body>
-		</html>`))
-	})
-
-	log.Info("Listening on", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Error(err.Error())
-		return err
+	log.Info("starting metrics server...", "port", cfg.Port)
+	srv, err := metrics.StartServer(as.metricsRegistry, cfg.Host, cfg.Port)
+	if err != nil {
+		return fmt.Errorf("metrics server failed to start: %w", err)
 	}
+	as.metricsServer = srv
+	log.Info("metrics server started", "addr", srv.Addr())
 	return nil
 }
