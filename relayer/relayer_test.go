@@ -45,7 +45,7 @@ func TestUnpack(t *testing.T) {
 	// 创建以太坊客户端
 	client, err := ethclient.Dial(nodeURL)
 	if err != nil {
-		log.Error("连接以太坊节点错误:", err)
+		log.Error("connect rpc err :", err)
 	}
 	hash := common.HexToHash("0x3ac7d3823c11677fba9479ed26f696a3f17e16a5a5c39162fa6d183905aa6735")
 
@@ -60,7 +60,7 @@ func TestUnpack(t *testing.T) {
 	// 执行日志查询
 	logs, err := client.FilterLogs(context.Background(), query)
 	if err != nil {
-		log.Error("执行日志查询错误:", err)
+		log.Error("filter log err:", err)
 	}
 
 	// 处理查询结果

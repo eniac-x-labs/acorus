@@ -229,3 +229,12 @@ relayers:
 #    contracts:
 #      - "0x8fEE59c274eA82fAc9280FeB04B7364A80c63BA6"
 #      - "0x03C43a778A4157c8781aA1bc645F2703B224b9d8"
+
+
+appchain:
+  l1:
+    chain_id: "11155111"
+    start_height: 5477427
+    contracts:
+      - "0x4F34C922fB0D80c7d79Ac25e497d90d7efa513C2"
+  l2:

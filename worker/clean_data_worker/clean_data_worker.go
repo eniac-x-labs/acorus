@@ -37,7 +37,7 @@ func (b *WorkerProcessor) WorkerStart() error {
 				log.Info("clean table by chainId", "chainId", rpCs[i].ChainId)
 				err := b.db.Blocks.CleanBlockHerders(strconv.Itoa(int(rpCs[i].ChainId)))
 				if err != nil {
-					log.Error("clean table by chainId", "chainId", err)
+					log.Error("clean table by chainId", "chainId", rpCs[i].ChainId, "err ", err)
 					continue
 				}
 			}
@@ -52,7 +52,7 @@ func (b *WorkerProcessor) WorkerStart() error {
 				log.Info("clean events by chainId", "chainId", rpCs[i].ChainId)
 				err := b.db.ContractEvents.CleanEventsByChainId(strconv.Itoa(int(rpCs[i].ChainId)))
 				if err != nil {
-					log.Error("clean events by chainId", "chainId", err)
+					log.Error("clean events by chainId", "chainId", rpCs[i].ChainId, "err ", err)
 					continue
 				}
 			}

@@ -63,7 +63,7 @@ func (rfp *RelayerFundingPool) Start() error {
 		for range l2TickerScan.C {
 			err := rfp.ScanL2NeedFundBalance()
 			if err != nil {
-				log.Error(" shutting down ScanL1NeedFundBalance ", "err", err)
+				log.Error(" shutting down ScanL2NeedFundBalance ", "err", err)
 				continue
 			}
 		}
@@ -212,7 +212,7 @@ func (rfp *RelayerFundingPool) scanL2NeedFundBalanceByChainId(l1ChainIdStr, l2Ch
 }
 
 func (rfp *RelayerFundingPool) FundingPoolCross() {
-	log.Info("FundingPoolCross, start")
+	log.Info("UpdateDepositFundingPoolBalance, start")
 	list := rfp.db.BridgeFundingPoolDB.BridgeFundingPoolNoSendList()
 	if len(list) > 0 {
 		for _, v := range list {
@@ -222,13 +222,13 @@ func (rfp *RelayerFundingPool) FundingPoolCross() {
 			receiveAddress := v.ReceiveAddress
 			tokenAddress := v.TokenAddress
 			txHash := v.TxHash
-			updateFundingPool, err := rfp.bridgeRpcService.UpdateFundingPoolBalance(sourceChainId, destChainId, amount,
+			updateFundingPool, err := rfp.bridgeRpcService.UpdateDepositFundingPoolBalance(sourceChainId, destChainId, amount,
 				receiveAddress, tokenAddress, txHash)
 			if err != nil {
-				log.Error("FundingPoolCross", "error", err)
+				log.Error("UpdateDepositFundingPoolBalance", "error", err)
 				continue
 			}
-			log.Info("FundingPoolCross", "Update", updateFundingPool.Success)
+			log.Info("UpdateDepositFundingPoolBalance", "Update", updateFundingPool.Success)
 			if updateFundingPool.Success {
 				rfp.db.BridgeFundingPoolDB.UpdateCrossStatus(txHash)
 			}
