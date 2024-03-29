@@ -73,16 +73,6 @@ func (l *L1AppChainListener) Start() error {
 		}
 		return nil
 	})
-	l.tasks.Go(func() error {
-		for range l1ListenerEventOn1.C {
-			err := l.notifyRelayerSingle()
-			if err != nil {
-				log.Error("notifyRelayerSingle", "err", err)
-				continue
-			}
-		}
-		return nil
-	})
 	return nil
 }
 
@@ -163,11 +153,8 @@ func (l *L1AppChainListener) EventsFetch(fromL1Height, toL1Height *big.Int) erro
 
 func (l *L1AppChainListener) eventUnpack(event event.ContractEvent) error {
 	switch event.EventSignature.String() {
-	case bindings.AppChainL1Abi.Events["UnstakeSingle"].ID.String():
-		err := unpack.UnstakeSingle(event, l.db)
-		return err
-	case bindings.AppChainL1Abi.Events["UnstakeBatchRequest"].ID.String():
-		err := unpack.UnstakeBatchRequest(event, l.db)
+	case bindings.AppChainL1Abi.Events["UnstakeRequested"].ID.String():
+		err := unpack.UnstakeRequested(l.chainId, event, l.db)
 		return err
 	case bindings.AppChainL1Abi.Events["UnstakeRequestClaimed"].ID.String():
 		err := unpack.UnstakeRequestClaimed(event, l.db)
@@ -177,44 +164,20 @@ func (l *L1AppChainListener) eventUnpack(event event.ContractEvent) error {
 }
 
 func (l *L1AppChainListener) notifyRelayerBatch() error {
-	batchList := l.db.AppChainUnStakeBatch.ListAppChainUnStakeBatch()
+	batchList := l.db.AppChainUnStake.ListAppChainUnStake()
 	log.Info("notifyRelayerBatch", "batchList", batchList)
 	for _, batch := range batchList {
-		batchId := batch.BatchId
 		destChainId := batch.DestChainId
 		sourceChainId := batch.SourceChainId
 		bridge := batch.Bridge
 		txHash := batch.TxHash
-		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), batchId.String(), bridge.String(), sourceChainId, destChainId)
+		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), bridge.String(), sourceChainId, destChainId)
 		if err != nil {
 			return err
 		}
 		success := unstakeBatch.Success
 		if success {
-			err := l.db.AppChainUnStakeBatch.NotifyAppChainUnStakeBatch(txHash.String())
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (l *L1AppChainListener) notifyRelayerSingle() error {
-	singleList := l.db.AppChainUnStakeSingle.ListAppChainUnStakeSingle()
-	log.Info("notifyRelayerSingle", "singleList", singleList)
-	for _, single := range singleList {
-		txHash := single.TxHash
-		strategy := single.L2Strategy
-		amount := single.LockedAmount
-		staker := single.Staker
-		unstakeSingle, err := l.bridgeRpcService.UnstakeSingle(staker.String(), strategy.String(), amount.String(), l.chainId, txHash.String())
-		if err != nil {
-			return err
-		}
-		success := unstakeSingle.Success
-		if success {
-			err := l.db.AppChainUnStakeSingle.NotifyAppChainUnStakeSingle(txHash.String())
+			err := l.db.AppChainUnStake.NotifyAppChainUnStake(txHash.String())
 			if err != nil {
 				return err
 			}

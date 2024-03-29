@@ -17,8 +17,7 @@ type BridgeRpcService interface {
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateWithdrawFundingPoolBalanceResponse, error)
 	UpdateDepositFundingPoolBalance(sourceChainId, destChainId, amount,
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateDepositFundingPoolBalanceResponse, error)
-	UnstakeBatch(sourceHash, batchId, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
-	UnstakeSingle(stakerAddress, strategyAddress, sharesAmount, chainId, sourceHash string) (*pb.UnstakeSingleResponse, error)
+	UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -96,28 +95,15 @@ func (r *bridgeRpcService) UpdateWithdrawFundingPoolBalance(sourceChainId, destC
 	return poolBalanceResponse, err
 }
 
-func (r *bridgeRpcService) UnstakeBatch(sourceHash, batchId, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error) {
+func (r *bridgeRpcService) UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error) {
 	ctx := context.Background()
 	upstakeBatchReq := &pb.UnstakeBatchRequest{
-		UnstakeRequestId: batchId,
-		BridgeAddress:    bridgeAddress,
-		SourceChainId:    sourceChainId,
-		DestChainId:      destChainId,
-		SourceHash:       sourceHash,
+		BridgeAddress: bridgeAddress,
+		SourceChainId: sourceChainId,
+		DestChainId:   destChainId,
+		SourceHash:    sourceHash,
+		GasLimit:      "21000",
 	}
 	log.Info("UnstakeBatchRpc", "upstakeBatchReq", upstakeBatchReq)
 	return r.bRpcService.UnstakeBatch(ctx, upstakeBatchReq)
-}
-
-func (r *bridgeRpcService) UnstakeSingle(stakerAddress, strategyAddress, sharesAmount, chainId, sourceHash string) (*pb.UnstakeSingleResponse, error) {
-	ctx := context.Background()
-	unstakeSingleReq := &pb.UnstakeSingleRequest{
-		StakerAddress:   stakerAddress,
-		StrategyAddress: strategyAddress,
-		SharesAmount:    sharesAmount,
-		ChainId:         chainId,
-		SourceHash:      sourceHash,
-	}
-	log.Info("UnstakeSingleRpc", "UnstakeSingle", unstakeSingleReq)
-	return r.bRpcService.UnstakeSingle(ctx, unstakeSingleReq)
 }

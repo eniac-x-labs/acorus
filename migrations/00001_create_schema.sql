@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS staking_record
     tx_type       smallint not null,
     asset_type    SMALLINT NOT NULL,
     timestamp     INTEGER  NOT NULL CHECK (timestamp > 0),
-    is_points             boolean          default false
+    is_points     boolean          default false
 );
 CREATE INDEX IF NOT EXISTS staking_tx_hash ON staking_record (tx_hash);
 CREATE INDEX IF NOT EXISTS staking_block_number ON staking_record (block_number);
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS bridge_record
     bridge_record_relation boolean          default false,
     msg_sent_timestamp     INTEGER,
     claim_timestamp        INTEGER,
-    is_points             boolean          default false
+    is_points              boolean          default false
 );
 CREATE INDEX IF NOT EXISTS bridge_record_source_chain_id ON bridge_record (source_chain_id);
 CREATE INDEX IF NOT EXISTS bridge_record_dest_chain_id ON bridge_record (dest_chain_id);
@@ -408,17 +408,49 @@ create table if not exists bridge_block_listener
 create table if not exists bridge_funding_pool_update
 (
     guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
-    tx_hash      varchar,
+    tx_hash         varchar,
     source_chain_id varchar,
     dest_chain_id   varchar,
     receive_address varchar,
     amount          varchar,
     token_address   varchar,
-    layer_type int,
+    layer_type      int,
     on_send         boolean          default false
 );
 
 CREATE INDEX IF NOT EXISTS bridge_funding_pool_update_tx_hash ON bridge_funding_pool_update (tx_hash);
 CREATE INDEX IF NOT EXISTS bridge_funding_pool_update_receive_address ON bridge_funding_pool_update (receive_address);
 
+create table if not exists ac_last_block
+(
+    guid         text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    chain_id     varchar,
+    block_number UINT256          default 0,
+    created      INTEGER CHECK (created > 0),
+    updated      INTEGER CHECK (updated > 0)
+);
+CREATE INDEX IF NOT EXISTS ac_last_block_chain_id ON ac_last_block (chain_id);
 
+create table if not exists ac_chain_unstake
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    block_number    UINT256          default 0,
+    tx_hash         varchar,
+    eth_amount      UINT256          default 0,
+    locked_amount   UINT256          default 0,
+    claim_tx_hash   varchar,
+    l2_strategy     varchar,
+    staker          varchar,
+    bridge          varchar,
+    source_chain_id varchar,
+    dest_chain_id   varchar,
+    status          int              default 0,
+    notify_relayer  boolean          default false,
+    created         INTEGER CHECK (created > 0),
+    updated         INTEGER
+);
+CREATE INDEX IF NOT EXISTS ac_chain_unstake_tx_hash ON ac_chain_unstake (tx_hash);
+CREATE INDEX IF NOT EXISTS ac_chain_unstake_l2_strategy ON ac_chain_unstake (l2_strategy);
+CREATE INDEX IF NOT EXISTS ac_chain_unstake_staker ON ac_chain_unstake (staker);
+CREATE INDEX IF NOT EXISTS ac_chain_unstake_bridge ON ac_chain_unstake (bridge);
+CREATE INDEX IF NOT EXISTS ac_chain_unstake_claim_tx_hash ON ac_chain_unstake (claim_tx_hash);

@@ -23,51 +23,36 @@ func UnstakeRequestClaimed(event event.ContractEvent, db *database.DB) error {
 	if unpackErr != nil {
 		return unpackErr
 	}
-	unStakeSingle := appchain.AppChainUnStakeBatch{
+	unStakeSingle := appchain.AppChainUnStake{
 		ClaimTxHash:   rlpLog.TxHash,
 		Bridge:        uEvent.Bridge,
 		Staker:        uEvent.Staker,
-		BatchId:       uEvent.Id,
 		SourceChainId: uEvent.SourceChainId.String(),
 		DestChainId:   uEvent.DestChainId.String(),
+		L2Strategy:    uEvent.L2Strategy,
 		Updated:       event.Timestamp,
 		Status:        Claim,
 	}
-	return db.AppChainUnStakeBatch.ClaimAppChainUnStakeBatch(unStakeSingle)
-	return nil
+	return db.AppChainUnStake.ClaimAppChainUnStake(unStakeSingle, Pending)
 }
 
-func UnstakeSingle(event event.ContractEvent, db *database.DB) error {
+func UnstakeRequested(chainId string, event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	uEvent, unpackErr := StakeUnpack.ParseUnstakeSingle(*rlpLog)
+	uEvent, unpackErr := StakeUnpack.ParseUnstakeRequested(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
-
-	unStakeSingle := appchain.AppChainUnStakeSingle{
-		TxHash:       rlpLog.TxHash,
-		BlockNumber:  event.BlockNumber,
-		LockedAmount: uEvent.DETHLocked,
-		L2Strategy:   uEvent.L2Strategy,
-		Created:      event.Timestamp,
+	unStakeSingle := appchain.AppChainUnStake{
+		TxHash:        rlpLog.TxHash,
+		BlockNumber:   event.BlockNumber,
+		L2Strategy:    uEvent.L2Strategy,
+		Staker:        uEvent.Staker,
+		EthAmount:     uEvent.EthAmount,
+		DETHLocked:    uEvent.DETHLocked,
+		SourceChainId: chainId,
+		DestChainId:   uEvent.DestChainId.String(),
+		Created:       event.Timestamp,
+		Status:        Pending,
 	}
-	return db.AppChainUnStakeSingle.StoreAppChainUnStakeSingle(unStakeSingle)
-
-}
-
-func UnstakeBatchRequest(event event.ContractEvent, db *database.DB) error {
-	rlpLog := event.RLPLog
-	uEvent, unpackErr := StakeUnpack.ParseUnstakeBatchRequest(*rlpLog)
-	if unpackErr != nil {
-		return unpackErr
-	}
-	unStakeBatch := appchain.AppChainUnStakeBatch{
-		TxHash:          rlpLog.TxHash,
-		BlockNumber:     event.BlockNumber,
-		BatchEthAmount:  uEvent.BatchEthAmount,
-		BatchDETHLocked: uEvent.BatchDETHLocked,
-		Status:          Pending,
-		Created:         event.Timestamp,
-	}
-	return db.AppChainUnStakeBatch.StoreAppChainUnStakeBatch(unStakeBatch)
+	return db.AppChainUnStake.StoreAppChainUnStake(unStakeSingle)
 }
