@@ -17,7 +17,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
-	metrics2 "github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
 )
@@ -42,10 +41,9 @@ type Synchronizer struct {
 	tasks            tasks.Group
 	db               *database.DB
 	chainId          string
-	metrics          metrics2.AcorusMetrics
 }
 
-func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, metrics metrics2.AcorusMetrics, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
+func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
 	latestHeader, err := db.Blocks.ChainLatestBlockHeader(strconv.Itoa(int(cfg.ChainId)))
 	if err != nil {
 		return nil, err
@@ -81,7 +79,6 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, metric
 			shutdown(fmt.Errorf("critical error in L1 Synchronizer: %w", err))
 		}},
 		chainId: strconv.Itoa(int(cfg.ChainId)),
-		metrics: metrics,
 	}, nil
 }
 
@@ -104,7 +101,6 @@ func (syncer *Synchronizer) Start() error {
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
 					latestHeaderF, _ := latestHeader.Number.Float64()
-					syncer.metrics.L1BlockHeight(latestHeader.Number)
 					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
 				}
 			}
