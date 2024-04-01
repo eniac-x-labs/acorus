@@ -104,7 +104,6 @@ func (syncer *Synchronizer) Start() error {
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
 					latestHeaderF, _ := latestHeader.Number.Float64()
-					syncer.metrics.L1BlockHeight(latestHeader.Number)
 					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
 				}
 			}

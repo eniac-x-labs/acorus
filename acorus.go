@@ -547,14 +547,3 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 	log.Info("http server started", "addr", srv.Addr())
 	return nil
 }
-
-func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
-	log.Info("starting metrics server...", "port", cfg.Port)
-	srv, err := metrics.StartServer(as.metricsRegistry, cfg.Host, cfg.Port)
-	if err != nil {
-		return fmt.Errorf("metrics server failed to start: %w", err)
-	}
-	as.metricsServer = srv
-	log.Info("metrics server started", "addr", srv.Addr())
-	return nil
-}
