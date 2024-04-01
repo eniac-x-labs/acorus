@@ -38,6 +38,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
+	"github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/relayer"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
@@ -80,7 +81,8 @@ const MaxRecvMessageSize = 1024 * 1024 * 300
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	log.Info("New acorus start️ 🕖")
 	out := &Acorus{
-		shutdown: shutdown,
+		shutdown:        shutdown,
+		metricsRegistry: metrics.NewRegistry(),
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
@@ -450,7 +452,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
 		}
-		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], as.shutdown)
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], metrics.NewSynchronizerMetrics(as.metricsRegistry, "synchronizer"), as.shutdown)
 		if err != nil {
 			return err
 		}
