@@ -68,7 +68,7 @@ func (rl *RelayerListener) Start() error {
 			for range relayerEventOn1.C {
 				err := rl.onL1Data()
 				if err != nil {
-					log.Error("no more l1 etl updates. shutting down l1 task")
+					log.Error("l1 relayer. shutting down l1 task", "err", err)
 					continue
 				}
 			}
@@ -80,7 +80,7 @@ func (rl *RelayerListener) Start() error {
 			for range relayerEventOn2.C {
 				err := rl.onL2Data()
 				if err != nil {
-					log.Error("no more l1 etl updates. shutting down l1 task")
+					log.Error("l2 relayer. shutting down l2 task", "err", err)
 					continue
 				}
 			}
@@ -197,7 +197,7 @@ func (rl *RelayerListener) onL2Data() error {
 }
 
 func (rl *RelayerListener) l1EventsFetch(fromL1Height, toL1Height *big.Int) error {
-	log.Info("relayer l1EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+	log.Info("Relayer l1EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
 	l1Contracts := rl.l1Contracts
 	for _, l1contract := range l1Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l1contract)}
@@ -222,8 +222,8 @@ func (rl *RelayerListener) l2EventsFetch(fromL1Height, toL1Height *big.Int) erro
 	l2Contracts := rl.l2Contracts
 	for _, l2contract := range l2Contracts {
 		contractEventFilter := event.ContractEvent{ContractAddress: common.HexToAddress(l2contract)}
-		log.Info("chainId", chainIdStr, "contract", common.HexToAddress(l2contract).String(),
-			"relayer l2EventsFetch", "fromL1Height", fromL1Height, "toL1Height", toL1Height)
+		log.Info("Relayer l2EventsFetch", "chainId", chainIdStr, "contract", common.HexToAddress(l2contract).String(),
+			"fromL1Height", fromL1Height, "toL1Height", toL1Height)
 
 		events, err := rl.db.ContractEvents.ContractEventsWithFilter(chainIdStr, contractEventFilter, fromL1Height, toL1Height)
 		if err != nil {

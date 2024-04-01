@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/appchain"
 	"github.com/cornerstone-labs/acorus/event/mantle"
 	"github.com/cornerstone-labs/acorus/event/okx"
 	"github.com/cornerstone-labs/acorus/event/zkfair"
@@ -14,7 +15,6 @@ import (
 	"github.com/cornerstone-labs/acorus/worker/point_worker"
 	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
 	"github.com/cornerstone-labs/acorus/worker/zkfair_worker"
-
 	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"net"
@@ -38,6 +38,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
+	"github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/relayer"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
@@ -67,6 +68,7 @@ type Acorus struct {
 	relayerFundingPoolTask *relayer.RelayerFundingPool
 	airDropWorker          *point_worker.PointWorker
 	cleanDataWorker        *clean_data_worker.WorkerProcessor
+	appChainL1             *appchain.L1AppChainListener
 }
 
 type RpcServerConfig struct {
@@ -79,7 +81,8 @@ const MaxRecvMessageSize = 1024 * 1024 * 300
 func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelCauseFunc) (*Acorus, error) {
 	log.Info("New acorus start️ 🕖")
 	out := &Acorus{
-		shutdown: shutdown,
+		shutdown:        shutdown,
+		metricsRegistry: metrics.NewRegistry(),
 	}
 	if err := out.initFromConfig(ctx, cfg); err != nil {
 		return nil, errors.Join(err, out.Stop(ctx))
@@ -126,6 +129,10 @@ func (as *Acorus) Start(ctx context.Context) error {
 	}
 	if err := as.cleanDataWorker.WorkerStart(); err != nil {
 		log.Error("start clean data worker failed", "err", err)
+		return err
+	}
+	if err := as.appChainL1.Start(); err != nil {
+		log.Error("start appChainL1 failed", "err", err)
 		return err
 	}
 	return nil
@@ -208,6 +215,23 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initCleanDataWorker(cfg); err != nil {
 		fmt.Errorf("failed to init clean data worker: %w", err)
 	}
+	if err := as.initAppChainL1(cfg); err != nil {
+		fmt.Errorf("failed to initAppChainL1: %w", err)
+	}
+	return nil
+}
+
+func (as *Acorus) initAppChainL1(cfg *config.Config) error {
+	chainId := cfg.AppChain.L1.ChainId
+	contracts := cfg.AppChain.L1.Contracts
+	startHeight := cfg.AppChain.L1.StartHeight
+	var loopInterval time.Duration = time.Second * 5
+	var epoch uint64 = 10_000
+	processor, err := appchain.NewL1AppChainListener(chainId, contracts, as.shutdown, loopInterval, startHeight, epoch, as.birdgeRpcService, as.DB)
+	if err != nil {
+		log.Error("init initAppChainL1 failed", "err", err)
+	}
+	as.appChainL1 = processor
 	return nil
 }
 
@@ -428,7 +452,7 @@ func (as *Acorus) initSynchronizer(config *config.Config) error {
 			StartHeight:       big.NewInt(int64(rpcItem.StartBlock)),
 			ChainId:           uint(rpcItem.ChainId),
 		}
-		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], as.shutdown)
+		synchronizerTemp, err := synchronizer.NewSynchronizer(&cfg, as.DB, as.ethClient[rpcItem.ChainId], metrics.NewSynchronizerMetrics(as.metricsRegistry, "synchronizer"), as.shutdown)
 		if err != nil {
 			return err
 		}
@@ -525,5 +549,12 @@ func (as *Acorus) startHttpServer(ctx context.Context, cfg config.Server) error 
 }
 
 func (as *Acorus) startMetricsServer(ctx context.Context, cfg config.Server) error {
+	log.Info("starting metrics server...", "port", cfg.Port)
+	srv, err := metrics.StartServer(as.metricsRegistry, cfg.Host, cfg.Port)
+	if err != nil {
+		return fmt.Errorf("metrics server failed to start: %w", err)
+	}
+	as.metricsServer = srv
+	log.Info("metrics server started", "addr", srv.Addr())
 	return nil
 }

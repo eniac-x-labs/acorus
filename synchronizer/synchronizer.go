@@ -3,8 +3,6 @@ package synchronizer
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/common/bigint"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"time"
@@ -12,11 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/database"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
+	metrics2 "github.com/cornerstone-labs/acorus/metrics"
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
 )
@@ -41,9 +42,10 @@ type Synchronizer struct {
 	tasks            tasks.Group
 	db               *database.DB
 	chainId          string
+	metrics          metrics2.AcorusMetrics
 }
 
-func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
+func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, metrics metrics2.AcorusMetrics, shutdown context.CancelCauseFunc) (*Synchronizer, error) {
 	latestHeader, err := db.Blocks.ChainLatestBlockHeader(strconv.Itoa(int(cfg.ChainId)))
 	if err != nil {
 		return nil, err
@@ -79,6 +81,7 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 			shutdown(fmt.Errorf("critical error in L1 Synchronizer: %w", err))
 		}},
 		chainId: strconv.Itoa(int(cfg.ChainId)),
+		metrics: metrics,
 	}, nil
 }
 
@@ -87,7 +90,7 @@ func (syncer *Synchronizer) Start() error {
 	syncer.tasks.Go(func() error {
 		for range tickerSyncer.C {
 			if len(syncer.headers) > 0 {
-				log.Info("chain ", "retrying previous batch")
+				log.Info("chain ", syncer.chainId, "retrying previous batch")
 			} else {
 				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
 				if err != nil {
@@ -100,7 +103,9 @@ func (syncer *Synchronizer) Start() error {
 				}
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
-					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number)
+					latestHeaderF, _ := latestHeader.Number.Float64()
+					syncer.metrics.L1BlockHeight(latestHeader.Number)
+					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
 				}
 			}
 			err := syncer.processBatch(syncer.headers)

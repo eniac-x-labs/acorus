@@ -9,11 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/cornerstone-labs/acorus/cache"
 	"github.com/cornerstone-labs/acorus/config"
@@ -37,12 +35,11 @@ type APIConfig struct {
 }
 
 type API struct {
-	router          *chi.Mux
-	metricsRegistry *prometheus.Registry
-	apiServer       *httputil.HTTPServer
-	metricsServer   *httputil.HTTPServer
-	db              *database.DB
-	stopped         atomic.Bool
+	router        *chi.Mux
+	apiServer     *httputil.HTTPServer
+	metricsServer *httputil.HTTPServer
+	db            *database.DB
+	stopped       atomic.Bool
 }
 
 func NewApi(ctx context.Context, cfg *config.Config) (*API, error) {
@@ -56,9 +53,6 @@ func NewApi(ctx context.Context, cfg *config.Config) (*API, error) {
 func (a *API) initFromConfig(ctx context.Context, cfg *config.Config) error {
 	if err := a.initDB(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to init DB: %w", err)
-	}
-	if err := a.startMetricsServer(cfg.Metrics); err != nil {
-		return fmt.Errorf("failed to start metrics server: %w", err)
 	}
 	a.initRouter(cfg)
 	if err := a.startServer(cfg.Server); err != nil {
@@ -147,10 +141,6 @@ func (a *API) startServer(serverConfig config.Server) error {
 	}
 	log.Info("API server started", "addr", srv.Addr().String())
 	a.apiServer = srv
-	return nil
-}
-
-func (a *API) startMetricsServer(metricsConfig config.Server) error {
 	return nil
 }
 

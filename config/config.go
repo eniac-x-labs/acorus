@@ -49,6 +49,23 @@ type Config struct {
 	SlaveDbEnable  bool       `yaml:"slave_db_enable"`
 	EnableApiCache bool       `yaml:"enable_api_cache"`
 	Relayers       []*Relayer `yaml:"relayers"`
+	AppChain       AppChain   `yaml:"appchain"`
+}
+
+type AppChain struct {
+	L1 L1AppChain `yaml:"l1"`
+	L2 L2AppChain `yaml:"l2"`
+}
+
+type L1AppChain struct {
+	ChainId     string   `yaml:"chain_id"`
+	Contracts   []string `yaml:"contracts"`
+	StartHeight uint64   `yaml:"start_height"`
+}
+
+type L2AppChain struct {
+	ChainId   string   `yaml:"chain_id"`
+	Contracts []string `yaml:"contracts"`
 }
 
 func New(path string) (*Config, error) {

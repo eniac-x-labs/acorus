@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cornerstone-labs/acorus/config"
+	"github.com/cornerstone-labs/acorus/database/appchain"
 	"github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/relation"
@@ -42,6 +43,8 @@ type DB struct {
 	BridgeFinalize      relayer.BridgeFinalizeDB
 	BridgeBlockListener relayer.BridgeBlockListenerDB
 	BridgeFundingPoolDB relayer.BridgeFundingPoolUpdateDB
+	AppChainLastBlock   appchain.AppChainLastBlockDB
+	AppChainUnStake     appchain.AppChainUnStakeDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -97,6 +100,8 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
 		BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
 		BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
+		AppChainLastBlock:   appchain.NewAppChainLastBlockDB(gorm),
+		AppChainUnStake:     appchain.NewAppChainUnStakeDB(gorm),
 	}
 	return db, nil
 }
@@ -124,6 +129,8 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			BridgeFinalize:      relayer.NewBridgeFinalizeDB(gorm),
 			BridgeBlockListener: relayer.NewBlockListenerDB(gorm),
 			BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
+			AppChainLastBlock:   appchain.NewAppChainLastBlockDB(gorm),
+			AppChainUnStake:     appchain.NewAppChainUnStakeDB(gorm),
 		}
 		return fn(txDB)
 	})

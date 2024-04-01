@@ -27,7 +27,7 @@ func main() {
 	// 创建以太坊客户端
 	client, err := ethclient.Dial(nodeURL)
 	if err != nil {
-		log.Error("连接以太坊节点错误:", err)
+		log.Error("connect rpc err:", err)
 	}
 
 	// 创建过滤器查询参数
