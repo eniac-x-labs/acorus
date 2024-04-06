@@ -69,13 +69,14 @@ func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC, shutdown 
 }
 
 func (s *RpcServer) Start(ctx context.Context) error {
-	go func(s *RpcServer) {
+	go func(s *RpcServer) error {
 		addr := fmt.Sprintf("%s:%s", s.GrpcHostname, s.GrpcPort)
 		log.Info("start rpc server", "addr", addr)
 
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
-			log.Error("Could not start tcp listener")
+			log.Error("Could not start tcp listener", "err", err)
+			return err
 		}
 
 		opt := grpc.MaxRecvMsgSize(MaxRecvMessageSize)
@@ -89,8 +90,10 @@ func (s *RpcServer) Start(ctx context.Context) error {
 
 		log.Info("grpc info", "port", s.GrpcPort, "address", listener.Addr().String())
 		if err := gs.Serve(listener); err != nil {
-			log.Error("Could not GRPC server")
+			log.Error("Could not GRPC server", "err", err)
+			return err
 		}
+		return nil
 	}(s)
 	return nil
 }
