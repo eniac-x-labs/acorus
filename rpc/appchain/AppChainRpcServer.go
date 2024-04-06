@@ -49,6 +49,9 @@ func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC, shutdown 
 
 		l1RewardManagerAddr := chainRpcCfg[i].AppChainAddr.L2.L1RewardManager
 		l2RewardManagerAddr := chainRpcCfg[i].AppChainAddr.L2.L2RewardManager
+		if l1RewardManagerAddr == "" || l2RewardManagerAddr == "" {
+			continue
+		}
 		L1RewardManager, _ := bindings.NewL1RewardManager(common.HexToAddress(l1RewardManagerAddr), client)
 		L2RewardManager, _ := bindings.NewL2RewardManager(common.HexToAddress(l2RewardManagerAddr), client)
 		l1RewardManagers[chainRpcCfg[i].ChainId] = L1RewardManager
