@@ -138,9 +138,6 @@ func (as *Acorus) Start(ctx context.Context) error {
 	if err := as.appChainRpcServer.Start(ctx); err != nil {
 		log.Error("start appChainRpcServer failed", "err", err)
 	}
-	if err := as.appChainRpcServer.Start(ctx); err != nil {
-		log.Error("start appChainRpcServer failed", "err", err)
-	}
 	return nil
 }
 
