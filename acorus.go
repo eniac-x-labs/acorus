@@ -116,6 +116,7 @@ func (as *Acorus) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to start relayer: %w", err)
 			}
 		}
+
 	}
 	if err := as.relayerBridgeRelation.Start(); err != nil {
 		return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
