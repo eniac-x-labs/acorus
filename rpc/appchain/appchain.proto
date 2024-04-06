@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option go_package = "./protobuf/pb";
+package acorus.rpc.appchain;
+
+service AppChainService {
+  rpc L1StakerRewardsAmount(L1StakerRewardsAmountRequest) returns (L1StakerRewardsAmountResponse);
+  rpc L2StakerRewardsAmount(L2StakerRewardsAmountRequest) returns (L2StakerRewardsAmountResponse);
+}
+
+message L1StakerRewardsAmountRequest {
+  string chain_id = 1;
+  string staker_address = 2;
+  string strategies = 3;
+}
+
+message L1StakerRewardsAmountResponse {
+  bool success = 1;
+  string message = 2;
+  string income = 3;
+}
+
+message L2StakerRewardsAmountRequest {
+  string chain_id = 1;
+  string staker_address = 2;
+  string strategy = 3;
+}
+
+message L2StakerRewardsAmountResponse {
+  bool success = 1;
+  string message = 2;
+  string income = 3;
+}

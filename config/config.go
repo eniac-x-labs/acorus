@@ -6,8 +6,9 @@ import (
 )
 
 type Server struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	GrpcPort int    `yaml:"grpc_port"`
 }
 
 type Database struct {
@@ -19,17 +20,31 @@ type Database struct {
 }
 
 type RPC struct {
-	RpcUrl             string   `yaml:"rpc_url"`
-	IsMainnet          bool     `yaml:"is_mainnet"`
-	ChainId            uint64   `yaml:"chain_id"`
-	L1ChainId          uint64   `yaml:"l1_chain_id"`
-	StartBlock         uint64   `yaml:"start_block"`
-	HeaderBufferSize   uint64   `yaml:"header_buffer_size"`
-	L1EventUnpackBlock uint64   `yaml:"l1_event_unpack_block"`
-	L1PoolContract     string   `yaml:"l1_pool_contract"`
-	L2PoolContract     string   `yaml:"l2_pool_contract"`
-	Contracts          []string `yaml:"contracts"`
-	EventContracts     []string `yaml:"event_contracts"`
+	RpcUrl             string       `yaml:"rpc_url"`
+	IsMainnet          bool         `yaml:"is_mainnet"`
+	ChainId            uint64       `yaml:"chain_id"`
+	L1ChainId          uint64       `yaml:"l1_chain_id"`
+	StartBlock         uint64       `yaml:"start_block"`
+	HeaderBufferSize   uint64       `yaml:"header_buffer_size"`
+	L1EventUnpackBlock uint64       `yaml:"l1_event_unpack_block"`
+	L1PoolContract     string       `yaml:"l1_pool_contract"`
+	L2PoolContract     string       `yaml:"l2_pool_contract"`
+	AppChainAddr       AppChainAddr `yaml:"app_chain_addr"`
+	Contracts          []string     `yaml:"contracts"`
+	EventContracts     []string     `yaml:"event_contracts"`
+}
+
+type AppChainAddr struct {
+	L1 AppChainL1 `yaml:"l1"`
+	L2 AppChainL2 `yaml:"l2"`
+}
+
+type AppChainL1 struct {
+}
+
+type AppChainL2 struct {
+	L1RewardManager string `yaml:"l1_reward_manager"`
+	L2RewardManager string `yaml:"l2_reward_manager"`
 }
 
 type Relayer struct {

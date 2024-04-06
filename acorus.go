@@ -39,6 +39,7 @@ import (
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
 	"github.com/cornerstone-labs/acorus/relayer"
+	rpc_appchain "github.com/cornerstone-labs/acorus/rpc/appchain"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
 	"github.com/cornerstone-labs/acorus/synchronizer"
@@ -68,6 +69,7 @@ type Acorus struct {
 	airDropWorker          *point_worker.PointWorker
 	cleanDataWorker        *clean_data_worker.WorkerProcessor
 	appChainL1             *appchain.L1AppChainListener
+	appChainRpcServer      *rpc_appchain.RpcServer
 }
 
 type RpcServerConfig struct {
@@ -90,48 +92,51 @@ func NewAcorus(ctx context.Context, cfg *config.Config, shutdown context.CancelC
 }
 
 func (as *Acorus) Start(ctx context.Context) error {
-	for i := range as.chainIdList {
-		log.Info("starting Sync", "chainId", as.chainIdList[i])
-		realChainId := as.chainIdList[i]
-		if err := as.Synchronizer[realChainId].Start(); err != nil {
-			return fmt.Errorf("failed to start L1 Sync: %w", err)
-		}
-		processor := as.Processor[realChainId]
-		if processor != nil {
-			if err := processor.StartUnpack(); err != nil {
-				return fmt.Errorf("failed to start event: %w", err)
-			}
-		}
-		worker := as.Worker[realChainId]
-		if worker != nil {
-			if err := worker.WorkerStart(); err != nil {
-				return fmt.Errorf("failed to start worker: %w", err)
-			}
-		}
-		relayerRunner := as.Relayer[realChainId]
-		if relayerRunner != nil {
-			if err := relayerRunner.Start(); err != nil {
-				return fmt.Errorf("failed to start relayer: %w", err)
-			}
-		}
-	}
-	if err := as.relayerBridgeRelation.Start(); err != nil {
-		return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
-	}
-	if err := as.relayerFundingPoolTask.Start(); err != nil {
-		return fmt.Errorf("failed to start relayerFundingPool: %w", err)
-	}
-	if err := as.airDropWorker.Start(); err != nil {
-		log.Error("start airdrop worker failed", "err", err)
-		return err
-	}
-	if err := as.cleanDataWorker.WorkerStart(); err != nil {
-		log.Error("start clean data worker failed", "err", err)
-		return err
-	}
-	if err := as.appChainL1.Start(); err != nil {
-		log.Error("start appChainL1 failed", "err", err)
-		return err
+	//for i := range as.chainIdList {
+	//	log.Info("starting Sync", "chainId", as.chainIdList[i])
+	//	realChainId := as.chainIdList[i]
+	//	if err := as.Synchronizer[realChainId].Start(); err != nil {
+	//		return fmt.Errorf("failed to start L1 Sync: %w", err)
+	//	}
+	//	processor := as.Processor[realChainId]
+	//	if processor != nil {
+	//		if err := processor.StartUnpack(); err != nil {
+	//			return fmt.Errorf("failed to start event: %w", err)
+	//		}
+	//	}
+	//	worker := as.Worker[realChainId]
+	//	if worker != nil {
+	//		if err := worker.WorkerStart(); err != nil {
+	//			return fmt.Errorf("failed to start worker: %w", err)
+	//		}
+	//	}
+	//	relayerRunner := as.Relayer[realChainId]
+	//	if relayerRunner != nil {
+	//		if err := relayerRunner.Start(); err != nil {
+	//			return fmt.Errorf("failed to start relayer: %w", err)
+	//		}
+	//	}
+	//}
+	//if err := as.relayerBridgeRelation.Start(); err != nil {
+	//	return fmt.Errorf("failed to start relayerBridgeRelation: %w", err)
+	//}
+	//if err := as.relayerFundingPoolTask.Start(); err != nil {
+	//	return fmt.Errorf("failed to start relayerFundingPool: %w", err)
+	//}
+	//if err := as.airDropWorker.Start(); err != nil {
+	//	log.Error("start airdrop worker failed", "err", err)
+	//	return err
+	//}
+	//if err := as.cleanDataWorker.WorkerStart(); err != nil {
+	//	log.Error("start clean data worker failed", "err", err)
+	//	return err
+	//}
+	//if err := as.appChainL1.Start(); err != nil {
+	//	log.Error("start appChainL1 failed", "err", err)
+	//	return err
+	//}
+	if err := as.appChainRpcServer.Start(ctx); err != nil {
+		log.Error("start appChainRpcServer failed", "err", err)
 	}
 	return nil
 }
@@ -215,6 +220,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	}
 	if err := as.initAppChainL1(cfg); err != nil {
 		fmt.Errorf("failed to initAppChainL1: %w", err)
+	}
+	if err := as.initAppChainRpcServer(cfg); err != nil {
+		fmt.Errorf("failed to initAppChainRpcServer: %w", err)
 	}
 	return nil
 }
@@ -507,6 +515,20 @@ func (as *Acorus) initRelayerRelation() error {
 	} else {
 		as.relayerBridgeRelation = relayerBridgeRelation
 	}
+	return nil
+}
+
+func (as *Acorus) initAppChainRpcServer(cfg *config.Config) error {
+	grpcCfg := &rpc_appchain.RpcServerConfig{
+		GrpcHostname: cfg.Server.Host,
+		GrpcPort:     strconv.Itoa(cfg.Server.GrpcPort),
+	}
+	server, err := rpc_appchain.NewRpcServer(grpcCfg, cfg.RPCs, as.shutdown)
+	if err != nil {
+		log.Error("initAppChainRpcServer failed", "err", err)
+		return err
+	}
+	as.appChainRpcServer = server
 	return nil
 }
 

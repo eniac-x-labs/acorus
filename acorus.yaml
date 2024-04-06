@@ -3,6 +3,8 @@ slave_db_enable: false
 server:
   host: 0.0.0.0
   port: 8080
+  grpc_port: 8082
+
 
 metrics:
   host: 0.0.0.0
@@ -27,6 +29,20 @@ rpcs:
     pool_contract: ""
     contracts:
     event_contracts:
+  - rpc_url: 'https://opt-sepolia.g.alchemy.com/v2/FzuTJBqbf8-w1E6AAcPkWO1a2OGFX2DL'
+    chain_id: 11155420
+    start_block: 10209967
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: "0x4F34C922fB0D80c7d79Ac25e497d90d7efa513C2"
+    l2_pool_contract: "0xb0221487B9FEF4F391b310338Fd0740f2797fBB1"
+    app_chain_addr:
+      l2:
+        l1_reward_manager: "0x51c41eF75cbB976617E001E8d2b8C378332a785A"
+        l2_reward_manager: "0x22ACCca54B744b1822D47162d40A5af45BC82534"
+    header_buffer_size: 20
+    contracts:
+    event_contracts:
   #  - rpc_url: 'https://eth-mainnet.g.alchemy.com/v2/13PoJNZA67XxE87RJ8ZFyGkWKRGcOOgY'
   #    chain_id: 1
   #    start_block: 19340743
@@ -45,28 +61,28 @@ rpcs:
 #    header_buffer_size: 20
 #    contracts:
 #    event_contracts:
-  - rpc_url: 'https://testnet-rpc.zkfair.io'
-    chain_id: 43851
-    start_block: 2377471
-    l1_chain_id: 11155111
-    is_mainnet: false
-    l1_pool_contract: ""
-    l2_pool_contract: ""
-    header_buffer_size: 20
-    contracts:
-  - rpc_url: 'https://testrpc.x1.tech/'
-    chain_id: 195
-    start_block: 12576321
-    header_buffer_size: 10
-    is_mainnet: false
-    l1_chain_id: 11155111
-    l1_pool_contract: "0x4F34C922fB0D80c7d79Ac25e497d90d7efa513C2"
-    l2_pool_contract: "0xdb196c84731d46a06e5209fb97313431b214349b"
-    l1_event_unpack_block: 5408117
-    contracts:
-      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
-    event_contracts:
-      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
+#  - rpc_url: 'https://testnet-rpc.zkfair.io'
+#    chain_id: 43851
+#    start_block: 2377471
+#    l1_chain_id: 11155111
+#    is_mainnet: false
+#    l1_pool_contract: ""
+#    l2_pool_contract: ""
+#    header_buffer_size: 20
+#    contracts:
+#  - rpc_url: 'https://testrpc.x1.tech/'
+#    chain_id: 195
+#    start_block: 12576321
+#    header_buffer_size: 10
+#    is_mainnet: false
+#    l1_chain_id: 11155111
+#    l1_pool_contract: "0x4F34C922fB0D80c7d79Ac25e497d90d7efa513C2"
+#    l2_pool_contract: "0xdb196c84731d46a06e5209fb97313431b214349b"
+#    l1_event_unpack_block: 5408117
+#    contracts:
+#      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
+#    event_contracts:
+#      - "0x7a4ee6f9f0ab037fe771fc36d39c1e19bcc0fdb5"
 
   #  - rpc_url: ''
   #    chain_id: 169
@@ -183,7 +199,7 @@ master_db:
   db_host: "120.77.251.247"
   db_port: 5432
   db_user: "postgres"
-  db_password: "galamini"
+  db_password: "tiangege@#234"
   db_name: "acorus"
 
 slave_db:
