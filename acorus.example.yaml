@@ -1,0 +1,232 @@
+slave_db_enable: false
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  grpc_port: 50051
+
+metrics:
+  host: 0.0.0.0
+  port: 8081
+
+rpcs:
+  - rpc_url: ''
+    chain_id: 11155111
+    start_block: 5408117
+    header_buffer_size: 20
+    is_mainnet: false
+    pool_contract:
+    contracts:
+    event_contracts:
+
+  - rpc_url: ''
+    chain_id: 11155420
+    start_block: 8834368
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    header_buffer_size: 20
+    app_chain_addr:
+      l2:
+        l1_reward_manager: ""
+        l2_reward_manager: ""
+    contracts:
+    event_contracts:
+
+  - rpc_url: ""
+    chain_id: 1442
+    start_block: 4226132
+    header_buffer_size: 20
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+      - ""
+    event_contracts:
+      - ""
+  - rpc_url: ''
+    chain_id: 534351
+    start_block: 3120148
+    header_buffer_size: 15
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+    event_contracts:
+  - rpc_url: ''
+    chain_id: 421614
+    start_block: 19550019
+    header_buffer_size: 20
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+    event_contracts:
+  - rpc_url: ''
+    chain_id: 43851
+    start_block: 2386719
+    header_buffer_size: 10
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+      - ""
+    event_contracts:
+      - ""
+  - rpc_url: ''
+    chain_id: 195
+    start_block: 12576321
+    header_buffer_size: 10
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+      - ""
+    event_contracts:
+      - ""
+  - rpc_url: ''
+    chain_id: 3441006
+    start_block: 315197
+    header_buffer_size: 10
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+    event_contracts:
+
+
+  #  - rpc_url: ''
+  #    chain_id: 300
+  #    start_block: 14666826
+  #    header_buffer_size: 50
+  #    is_mainnet: false
+  #    l1_pool_contract: ""
+  #    l2_pool_contract: ""
+  #    l1_event_unpack_block: 5408117
+  #    contracts:
+  #    event_contracts:
+  - rpc_url: ''
+    chain_id: 84532
+    start_block: 6857079
+    header_buffer_size: 20
+    is_mainnet: false
+    l1_chain_id: 11155111
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    l1_event_unpack_block: 5408117
+    contracts:
+    event_contracts:
+  - rpc_url: ''
+    chain_id: 5003
+    start_block: 4394822
+    l1_chain_id: 11155111
+    is_mainnet: false
+    l1_pool_contract: ""
+    l2_pool_contract: ""
+    header_buffer_size: 20
+    contracts:
+    event_contracts:
+
+master_db:
+  db_host: ""
+  db_port: 5432
+  db_user: ""
+  db_password: ""
+  db_name: ""
+
+#master_db:
+#  db_host: "120.77.251.247"
+#  db_port:
+#  db_user: ""
+#  db_password: ""
+#  db_name: ""
+
+slave_db:
+  db_host: "127.0.0.1"
+  db_port: 5432
+  db_user: ""
+  db_password: ""
+  db_name: ""
+
+
+bridge_grpc_url: ""
+airdrop_grpc_url: ""
+
+relayers:
+  - chain_id: 11155111
+    eventStartBlock: 5408117
+    contracts:
+      - ""
+      - "0xD774D76A4e46b29432307831e99e6C0E1da11e81"
+  - chain_id: 1442
+    eventStartBlock: 4226132
+    contracts:
+      - ""
+      - ""
+  - chain_id: 534351
+    eventStartBlock: 3120148
+    contracts:
+      - ""
+      - ""
+  - chain_id: 11155420
+    eventStartBlock: 8834368
+    contracts:
+      - ""
+      - ""
+  - chain_id: 421614
+    eventStartBlock: 19550019
+    contracts:
+      - ""
+      - ""
+  #  - chain_id: 300
+  #    eventStartBlock: 14675027
+  #    contracts:
+  #      - ""
+  #      - ""
+  - chain_id: 84532
+    eventStartBlock: 6857079
+    contracts:
+      - ""
+      - ""
+  - chain_id: 43851
+    eventStartBlock: 2386719
+    contracts:
+      - ""
+      - ""
+  - chain_id: 195
+    eventStartBlock: 12576321
+    contracts:
+      - ""
+      - ""
+  - chain_id: 5003
+    eventStartBlock: 6155463
+    contracts:
+      - ""
+      - ""
+  - chain_id: 3441006
+    eventStartBlock: 315197
+    contracts:
+      - ""
+      - ""
+
+appchain:
+  l1:
+    chain_id: "11155111"
+    start_height: 5477427
+    contracts:
+      - ""
+      - ""
+  l2:
