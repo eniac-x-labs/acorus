@@ -59,6 +59,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.grpc }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.grpc.portNumber }}
+              protocol: TCP
+          {{- end }}
           command:
           - acorus
           - index

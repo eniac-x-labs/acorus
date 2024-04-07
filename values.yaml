@@ -44,8 +44,8 @@ ports:
    portNumber: 8080
  - name: metrics
    portNumber: 8081
- - name: grpc
-   portNumber: 50051
+grpc:
+  portNumber: 50051
 ingress:
   enabled: false
   className: ""
