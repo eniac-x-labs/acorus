@@ -62,6 +62,10 @@ spec:
           command:
           - acorus
           - index
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
       initContainers:
         - name: {{ .Release.Name }}-migrate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
