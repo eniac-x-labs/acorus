@@ -14,8 +14,8 @@ spec:
       name: {{  $val.name }}
     {{- end }}
     {{- with .Values.grpc }}
-    - port: {{ .Values.grpc.portNumber }}
-      targetPort: {{ .Values.grpc.portNumber }}
+    - port: {{ .portNumber }}
+      targetPort: {{ .portNumber }}
       protocol: TCP
       name: grpc
     {{- end }}
