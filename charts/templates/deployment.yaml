@@ -62,7 +62,7 @@ spec:
           {{- with .Values.grpc }}
           ports:
             - name: grpc
-              containerPort: {{ .Values.grpc.portNumber }}
+              containerPort: {{ .portNumber }}
               protocol: TCP
           {{- end }}
           command:
