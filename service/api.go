@@ -27,6 +27,8 @@ const (
 	WithdrawalsV1Path    = "/api/v1/withdrawals"
 	StakingRecordsV1Path = "/api/v1/staking-records"
 	BridgeRecordsV1Path  = "/api/v1/bridge-records"
+	StakingValidV1Path   = "/api/v1/staking-valid"
+	BridgeValidV1Path    = "/api/v1/bridge-valid"
 )
 
 type APIConfig struct {
@@ -82,6 +84,8 @@ func (a *API) initRouter(conf *config.Config) {
 	apiRouter.Get(fmt.Sprintf(WithdrawalsV1Path), h.L2ToL1ListHandler)
 	apiRouter.Get(fmt.Sprintf(StakingRecordsV1Path), h.StakingRecordsHandler)
 	apiRouter.Get(fmt.Sprintf(BridgeRecordsV1Path), h.BridgeRecordsHandler)
+	apiRouter.Get(fmt.Sprintf(StakingValidV1Path), h.StakingValidHandler)
+	apiRouter.Get(fmt.Sprintf(BridgeValidV1Path), h.BridgeValidHandler)
 
 	a.router = apiRouter
 }

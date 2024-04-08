@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	StakeUnpack, _ = bindings.NewStakingManager(common.Address{}, nil)
+	StakeUnpack, _    = bindings.NewStakingManager(common.Address{}, nil)
+	StrategyUnpack, _ = bindings.NewStrategyManager(common.Address{}, nil)
 )
 
 const (
@@ -55,4 +56,23 @@ func UnstakeRequested(chainId string, event event.ContractEvent, db *database.DB
 		Status:        Pending,
 	}
 	return db.AppChainUnStake.StoreAppChainUnStake(unStakeSingle)
+}
+
+func StakeRecord(chainId string, event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := StrategyUnpack.ParseDeposit(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	stakeSingle := appchain.AppChainStake{
+		TxHash:          rlpLog.TxHash,
+		BlockNumber:     event.BlockNumber,
+		StrategyAddress: uEvent.Strategy,
+		Staker:          uEvent.Staker,
+		Shares:          uEvent.Shares,
+		TokenAddress:    uEvent.Weth,
+		ChainId:         chainId,
+		Created:         event.Timestamp,
+	}
+	return db.AppChainStake.StoreAppChainStake(stakeSingle)
 }

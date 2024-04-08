@@ -2,10 +2,14 @@ package appchain
 
 import (
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+
+	common2 "github.com/cornerstone-labs/acorus/common"
 )
 
 type AppChainUnStake struct {
@@ -13,7 +17,7 @@ type AppChainUnStake struct {
 	BlockNumber   *big.Int       `json:"block_number" gorm:"serializer:u256"`
 	TxHash        common.Hash    `json:"tx_hash" gorm:"serializer:bytes"`
 	EthAmount     *big.Int       `json:"eth_amount" gorm:"serializer:u256"`
-	DETHLocked    *big.Int       `json:"locked_amount" gorm:"serializer:u256"`
+	DETHLocked    *big.Int       `json:"locked_amount" gorm:"column:locked_amount;serializer:u256"`
 	ClaimTxHash   common.Hash    `json:"claim_tx_hash" gorm:"serializer:bytes"`
 	L2Strategy    common.Address `json:"l2_strategy" gorm:"serializer:bytes"`
 	Staker        common.Address `json:"staker" gorm:"serializer:bytes"`
@@ -42,7 +46,8 @@ type AppChainUnStakeDB interface {
 }
 
 type AppChainUnStakeDBView interface {
-	ListAppChainUnStake() (chainUnStakeBatch []AppChainUnStake)
+	ListAppChainUnStake(page, pageSize uint32, staker, strategy string) ([]AppChainUnStake, int64, int64)
+	ListAppChainUnStakeWaitNotify() []AppChainUnStake
 }
 
 func NewAppChainUnStakeDB(db *gorm.DB) AppChainUnStakeDB {
@@ -64,7 +69,7 @@ func (db appChainUnStakeDB) StoreAppChainUnStake(chainUnStakeBatch AppChainUnSta
 	return err
 }
 
-func (db appChainUnStakeDB) ListAppChainUnStake() (chainUnStakeBatch []AppChainUnStake) {
+func (db appChainUnStakeDB) ListAppChainUnStakeWaitNotify() (chainUnStakeBatch []AppChainUnStake) {
 	getSql := `
 		select * from  ac_chain_unstake_batch where notify_relayer = false  LIMIT 20
 	`
@@ -74,6 +79,29 @@ func (db appChainUnStakeDB) ListAppChainUnStake() (chainUnStakeBatch []AppChainU
 		return nil
 	}
 	return chainUnStakeBatch
+}
+func (db appChainUnStakeDB) ListAppChainUnStake(page, pageSize uint32, staker, strategy string) ([]AppChainUnStake, int64, int64) {
+	var chainUnStakeBatch []AppChainUnStake
+	var totalRecord int64
+	offset := common2.CalculateOffset(uint(page), uint(pageSize))
+	table := db.gorm.Table(AppChainUnStake{}.TableName()).Select("*")
+	querySR := db.gorm.Table("(?) as temp ", table)
+	if staker != "" {
+		querySR = querySR.Where("staker = ?", staker)
+	}
+	if strategy != "" {
+		querySR = querySR.Where("l2_strategy = ?", strategy)
+	}
+	resultTotal := querySR.Count(&totalRecord)
+	if resultTotal.Error != nil {
+		log.Error("appchain unstake record", "get unstaking records by address count fail", resultTotal.Error)
+	}
+	querySR = querySR.Offset(int(offset)).Limit(int(pageSize))
+	resultList := querySR.Find(&chainUnStakeBatch)
+	if resultList.Error != nil {
+		log.Error("appchain unstake record", "get unstaking records by address fail", resultList.Error)
+	}
+	return chainUnStakeBatch, totalRecord, int64(page)
 }
 
 func (db appChainUnStakeDB) NotifyAppChainUnStake(txHash string) error {

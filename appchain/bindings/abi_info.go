@@ -1,5 +1,6 @@
 package bindings
 
 var (
-	AppChainL1Abi, _ = StakingManagerMetaData.GetAbi()
+	StakingManagerAbi, _  = StakingManagerMetaData.GetAbi()
+	StrategyManagerAbi, _ = StrategyManagerMetaData.GetAbi()
 )

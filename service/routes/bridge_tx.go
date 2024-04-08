@@ -172,3 +172,21 @@ func (h Routes) BridgeRecordsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error("Error writing response", "err", err.Error())
 	}
 }
+
+func (h Routes) BridgeValidHandler(w http.ResponseWriter, r *http.Request) {
+	address := r.URL.Query().Get("address")
+	bridgeValid := h.svc.BridgeValid(address)
+	err := jsonResponse(w, bridgeValid, http.StatusOK)
+	if err != nil {
+		log.Error("Error writing response", "err", err.Error())
+	}
+}
+
+func (h Routes) StakingValidHandler(w http.ResponseWriter, r *http.Request) {
+	address := r.URL.Query().Get("address")
+	stakingValid := h.svc.StakingValid(address)
+	err := jsonResponse(w, stakingValid, http.StatusOK)
+	if err != nil {
+		log.Error("Error writing response", "err", err.Error())
+	}
+}
