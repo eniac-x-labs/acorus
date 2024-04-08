@@ -4,29 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/appchain"
-	"github.com/cornerstone-labs/acorus/event/mantle"
-	"github.com/cornerstone-labs/acorus/event/okx"
-	"github.com/cornerstone-labs/acorus/event/zkfair"
-	"github.com/cornerstone-labs/acorus/rpc/airdrop"
-	"github.com/cornerstone-labs/acorus/worker/clean_data_worker"
-	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
-	"github.com/cornerstone-labs/acorus/worker/okx_worker"
-	"github.com/cornerstone-labs/acorus/worker/point_worker"
-	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
-	"github.com/cornerstone-labs/acorus/worker/zkfair_worker"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"net"
 	"strconv"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	chi "github.com/go-chi/chi/v5"
-
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/cornerstone-labs/acorus/appchain"
 	common3 "github.com/cornerstone-labs/acorus/common"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/config"
@@ -35,10 +24,14 @@ import (
 	"github.com/cornerstone-labs/acorus/event/base"
 	"github.com/cornerstone-labs/acorus/event/linea"
 	"github.com/cornerstone-labs/acorus/event/manta"
+	"github.com/cornerstone-labs/acorus/event/mantle"
+	"github.com/cornerstone-labs/acorus/event/okx"
 	"github.com/cornerstone-labs/acorus/event/op_stack"
 	"github.com/cornerstone-labs/acorus/event/polygon"
 	"github.com/cornerstone-labs/acorus/event/scroll"
+	"github.com/cornerstone-labs/acorus/event/zkfair"
 	"github.com/cornerstone-labs/acorus/relayer"
+	"github.com/cornerstone-labs/acorus/rpc/airdrop"
 	rpc_appchain "github.com/cornerstone-labs/acorus/rpc/appchain"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
 	"github.com/cornerstone-labs/acorus/service/common/httputil"
@@ -46,8 +39,14 @@ import (
 	"github.com/cornerstone-labs/acorus/synchronizer/node"
 	worker2 "github.com/cornerstone-labs/acorus/worker"
 	"github.com/cornerstone-labs/acorus/worker/base_worker"
+	"github.com/cornerstone-labs/acorus/worker/clean_data_worker"
 	"github.com/cornerstone-labs/acorus/worker/manta_worker"
+	"github.com/cornerstone-labs/acorus/worker/mantle_worker"
+	"github.com/cornerstone-labs/acorus/worker/okx_worker"
 	op_stack2 "github.com/cornerstone-labs/acorus/worker/op-stack"
+	"github.com/cornerstone-labs/acorus/worker/point_worker"
+	"github.com/cornerstone-labs/acorus/worker/polygon_worker"
+	"github.com/cornerstone-labs/acorus/worker/zkfair_worker"
 )
 
 type Acorus struct {
@@ -523,7 +522,7 @@ func (as *Acorus) initAppChainRpcServer(cfg *config.Config) error {
 		GrpcHostname: cfg.Server.Host,
 		GrpcPort:     strconv.Itoa(cfg.Server.GrpcPort),
 	}
-	server, err := rpc_appchain.NewRpcServer(grpcCfg, cfg.RPCs, as.shutdown)
+	server, err := rpc_appchain.NewRpcServer(grpcCfg, cfg.RPCs, as.DB, as.shutdown)
 	if err != nil {
 		log.Error("initAppChainRpcServer failed", "err", err)
 		return err

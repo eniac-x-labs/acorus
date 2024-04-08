@@ -47,6 +47,7 @@ type StakingRecordDB interface {
 type StakingRecordView interface {
 	GetStakingRecords(address string, page int, pageSize int, order string, txType int) (stakingRecords []StakingRecord, total int64)
 	GetNotPointsRecords() (stakingRecords []StakingRecord)
+	StakingValid(address string) bool
 }
 
 func NewStakingRecordDB(db *gorm.DB) StakingRecordDB {
@@ -113,6 +114,21 @@ func (db stakingRecordDB) GetNotPointsRecords() (stakingRecords []StakingRecord)
 		log.Error("get not points records fail", "err", err)
 	}
 	return stakingRecords
+}
+
+func (db stakingRecordDB) StakingValid(address string) bool {
+	var totalRecord int64
+	table := db.gorm.Table("staking_record").Select(" *")
+	querySR := db.gorm.Table("(?) as temp ", table)
+	querySR = querySR.Where(StakingRecord{UserAddress: common.HexToAddress(address)})
+	result := querySR.Count(&totalRecord)
+	if result.Error != nil {
+		log.Error("get staking records by address count fail", "err", result.Error)
+	}
+	if totalRecord > 0 {
+		return true
+	}
+	return false
 }
 
 func (db stakingRecordDB) UpdatePointsStatus(guid uuid.UUID) error {

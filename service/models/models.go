@@ -72,3 +72,11 @@ type BridgeResponse struct {
 	Total   int64                   `json:"Total"`
 	Records []relayer.BridgeRecords `json:"Records"`
 }
+
+type ValidResult struct {
+	Result Result `json:"result"`
+}
+
+type Result struct {
+	IsValid bool `json:"isValid"`
+}

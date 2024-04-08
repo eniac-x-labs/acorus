@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"reflect"
@@ -104,4 +105,15 @@ func CloseAction(fn func(ctx context.Context, shutdown <-chan struct{}) error) e
 		cancel()
 		return err
 	}
+}
+
+func CalculateCurrentPage(total uint, pageSize uint) uint {
+	totalFloat := float64(total)
+	pageSizeFloat := float64(pageSize)
+	currentPage := math.Ceil(totalFloat / pageSizeFloat)
+	return uint(currentPage)
+}
+
+func CalculateOffset(page uint, pageSize uint) uint {
+	return (page - 1) * pageSize
 }

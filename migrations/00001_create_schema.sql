@@ -454,3 +454,21 @@ CREATE INDEX IF NOT EXISTS ac_chain_unstake_l2_strategy ON ac_chain_unstake (l2_
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_staker ON ac_chain_unstake (staker);
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_bridge ON ac_chain_unstake (bridge);
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_claim_tx_hash ON ac_chain_unstake (claim_tx_hash);
+
+create table if not exists ac_chain_stake
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    block_number    UINT256          default 0,
+    tx_hash         varchar,
+    shares      UINT256          default 0,
+    token_address   varchar,
+    strategy_address     varchar,
+    staker          varchar,
+    chain_id varchar,
+    created         INTEGER CHECK (created > 0)
+    );
+CREATE INDEX IF NOT EXISTS ac_chain_stake_tx_hash ON ac_chain_stake (tx_hash);
+CREATE INDEX IF NOT EXISTS ac_chain_stake_strategy ON ac_chain_stake (strategy_address);
+CREATE INDEX IF NOT EXISTS ac_chain_stake_chain_id ON ac_chain_stake (chain_id);
+CREATE INDEX IF NOT EXISTS ac_chain_stake_staker ON ac_chain_stake (staker);
+

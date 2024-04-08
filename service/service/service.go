@@ -17,6 +17,8 @@ type Service interface {
 	GetWithdrawalList(params *models.QueryDWParams) (*models.WithdrawsResponse, error)
 	GetStakingRecords(params *models.QuerySRParams) (*models.StakingResponse, error)
 	GetBridgeRecords(params *models.QueryBRParams) (*models.BridgeResponse, error)
+	StakingValid(address string) *models.ValidResult
+	BridgeValid(address string) *models.ValidResult
 
 	QueryDWParams(chainId string, address string, page string, pageSize string, order string) (*models.QueryDWParams, error)
 	QuerySRParams(address, page, pageSize, order, txType string) (*models.QuerySRParams, error)
@@ -38,6 +40,22 @@ func New(v *Validator, l1l2v worker.L1ToL2View, l2l1v worker.L2ToL1View, srv rel
 		l2ToL1View:        l2l1v,
 		stakingRecordView: srv,
 		bridgeRecordView:  brv,
+	}
+}
+
+func (h HandlerSvc) StakingValid(address string) *models.ValidResult {
+	valid := h.stakingRecordView.StakingValid(address)
+	return &models.ValidResult{
+		Result: models.Result{
+			IsValid: valid,
+		},
+	}
+}
+
+func (h HandlerSvc) BridgeValid(address string) *models.ValidResult {
+	valid := h.bridgeRecordView.BridgeValid(address)
+	return &models.ValidResult{
+		Result: models.Result{IsValid: valid},
 	}
 }
 

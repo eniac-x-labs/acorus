@@ -45,6 +45,7 @@ type DB struct {
 	BridgeFundingPoolDB relayer.BridgeFundingPoolUpdateDB
 	AppChainLastBlock   appchain.AppChainLastBlockDB
 	AppChainUnStake     appchain.AppChainUnStakeDB
+	AppChainStake       appchain.AppChainStakeDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -102,6 +103,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
 		AppChainLastBlock:   appchain.NewAppChainLastBlockDB(gorm),
 		AppChainUnStake:     appchain.NewAppChainUnStakeDB(gorm),
+		AppChainStake:       appchain.NewAppChainStakeDB(gorm),
 	}
 	return db, nil
 }
@@ -131,6 +133,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			BridgeFundingPoolDB: relayer.NewBridgeFundingPoolUpdateDB(gorm),
 			AppChainLastBlock:   appchain.NewAppChainLastBlockDB(gorm),
 			AppChainUnStake:     appchain.NewAppChainUnStakeDB(gorm),
+			AppChainStake:       appchain.NewAppChainStakeDB(gorm),
 		}
 		return fn(txDB)
 	})

@@ -54,6 +54,7 @@ type BridgeRecordDB interface {
 type BridgeRecordDBView interface {
 	GetBridgeRecordList(address string, page int, pageSize int, order string) (bridgeRecords []BridgeRecords, total int64)
 	GetNotPointsRecords() (bridgeRecords []BridgeRecords)
+	BridgeValid(address string) bool
 }
 
 func NewBridgeRecordDB(db *gorm.DB) BridgeRecordDB {
@@ -112,6 +113,21 @@ func (db bridgeRecordsDB) RelationClaimData() error {
 	`
 	err := db.gorm.Exec(relationSql).Error
 	return err
+}
+
+func (db bridgeRecordsDB) BridgeValid(address string) bool {
+	var totalRecord int64
+	table := db.gorm.Table("bridge_record").Select(" *")
+	querySR := db.gorm.Table("(?) as temp ", table)
+	querySR = querySR.Where(BridgeRecords{FromAddress: common.HexToAddress(address)})
+	result := querySR.Count(&totalRecord)
+	if result.Error != nil {
+		log.Error("get bridge records by address count fail", "err", result.Error)
+	}
+	if totalRecord > 0 {
+		return true
+	}
+	return false
 }
 
 func (db bridgeRecordsDB) GetNotPointsRecords() (bridgeRecords []BridgeRecords) {

@@ -51,7 +51,7 @@ func (l Logger) Trace(ctx context.Context, begin time.Time, fc func() (sql strin
 	}
 
 	if elapsedMs < 200 {
-		l.log.Debug("database operation", "duration_ms", elapsedMs, "rows_affected", rows, "sql", sql)
+		l.log.Info("database operation", "duration_ms", elapsedMs, "rows_affected", rows, "sql", sql)
 	} else {
 		l.log.Warn("database operation", "duration_ms", elapsedMs, "rows_affected", rows, "sql", sql)
 	}

@@ -3,6 +3,7 @@ package appchain
 import (
 	"context"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/database"
 	"math/big"
 	"net"
 	"strings"
@@ -35,9 +36,12 @@ type RpcServer struct {
 	l2RewardManagers map[uint64]*bindings.L2RewardManager
 	tasks            tasks.Group
 	stopped          atomic.Bool
+	db               *database.DB
 }
 
-func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC, shutdown context.CancelCauseFunc) (*RpcServer, error) {
+func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC,
+	db *database.DB,
+	shutdown context.CancelCauseFunc) (*RpcServer, error) {
 	l1RewardManagers := make(map[uint64]*bindings.L1RewardManager)
 	l2RewardManagers := make(map[uint64]*bindings.L2RewardManager)
 	for i := 0; i < len(chainRpcCfg); i++ {
@@ -62,6 +66,7 @@ func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC, shutdown 
 		RpcServerConfig:  grpcCfg,
 		l1RewardManagers: l1RewardManagers,
 		l2RewardManagers: l2RewardManagers,
+		db:               db,
 		tasks: tasks.Group{HandleCrit: func(err error) {
 			shutdown(fmt.Errorf("critical error in acorus processor: %w", err))
 		}},
@@ -113,6 +118,12 @@ func (s *RpcServer) L1StakerRewardsAmount(ctx context.Context, request *pb.L1Sta
 	chainIdUint := chainIdBig.Uint64()
 	// get call instance
 	l1RewardManager := s.l1RewardManagers[chainIdUint]
+	if l1RewardManager == nil {
+		return &pb.L1StakerRewardsAmountResponse{
+			Success: false,
+			Message: "this chainId is unsupported",
+		}, nil
+	}
 	// create req params
 	stakerAddress := request.StakerAddress
 	strategies := request.Strategies
@@ -148,6 +159,12 @@ func (s *RpcServer) L2StakerRewardsAmount(ctx context.Context, request *pb.L2Sta
 	chainIdUint := chainIdBig.Uint64()
 	// get call instance
 	l2RewardManager := s.l2RewardManagers[chainIdUint]
+	if l2RewardManager == nil {
+		return &pb.L2StakerRewardsAmountResponse{
+			Success: false,
+			Message: "this chainId is unsupported",
+		}, nil
+	}
 	// create req params
 	stakerAddress := request.StakerAddress
 	strategy := request.Strategy
@@ -173,5 +190,97 @@ func (s *RpcServer) L2StakerRewardsAmount(ctx context.Context, request *pb.L2Sta
 		Success: true,
 		Message: "success",
 		Income:  incomeResult[0].(*big.Int).String(),
+	}, nil
+}
+
+func (s *RpcServer) L2UnStakeRecord(ctx context.Context, request *pb.L2UnStakeRecordRequest) (*pb.L2UnStakeRecordResponse, error) {
+	pageSize := request.PageSize
+	page := request.Page
+	strategy := request.Strategy
+	staker := request.StakerAddress
+	if page == 0 {
+		page = 1
+	}
+	if pageSize <= 10 {
+		pageSize = 10
+	}
+	records := make([]*pb.L2UnStakeRecord, 0)
+	unStakeList, total, currentPage := s.db.AppChainUnStake.ListAppChainUnStake(page, pageSize, staker, strategy)
+	if len(unStakeList) > 0 {
+		for _, unStake := range unStakeList {
+			record := &pb.L2UnStakeRecord{
+				Guid:          unStake.GUID.String(),
+				BlockNumber:   unStake.BlockNumber.Int64(),
+				TxHash:        unStake.TxHash.String(),
+				EthAmount:     unStake.EthAmount.Int64(),
+				LockedAmount:  unStake.DETHLocked.Int64(),
+				ClaimTxHash:   unStake.ClaimTxHash.String(),
+				L2Strategy:    unStake.L2Strategy.String(),
+				Staker:        unStake.Staker.String(),
+				Bridge:        unStake.Bridge.String(),
+				SourceChainId: unStake.SourceChainId,
+				DestChainId:   unStake.DestChainId,
+				Status:        int32(unStake.Status),
+				NotifyRelayer: unStake.NotifyRelayer,
+				Created:       unStake.Created,
+				Updated:       unStake.Updated,
+			}
+			records = append(records, record)
+		}
+	}
+	resultPage := &pb.L2UnStakeRecordResponse_L2UnStakePage{
+		CurrentPage: uint32(currentPage),
+		PageSize:    pageSize,
+		Total:       total,
+		Records:     records,
+	}
+	return &pb.L2UnStakeRecordResponse{
+		Success: true,
+		Message: "success",
+		Page:    resultPage,
+	}, nil
+}
+
+func (s *RpcServer) L2StakeRecord(ctx context.Context, request *pb.L2StakeRecordRequest) (*pb.L2StakeRecordResponse, error) {
+	page := request.Page
+	pageSize := request.PageSize
+	strategy := request.Strategy
+	staker := request.StakerAddress
+	records := make([]*pb.L2StakeRecord, 0)
+	if page == 0 {
+		page = 1
+	}
+	if pageSize <= 10 {
+		pageSize = 10
+	}
+	stakeList, total, currentPage := s.db.AppChainStake.ListAppChainStake(page, pageSize, staker, strategy)
+
+	if len(stakeList) > 0 {
+		for _, stake := range stakeList {
+			record := &pb.L2StakeRecord{
+				Staker:       stake.Staker.String(),
+				Strategy:     stake.StrategyAddress.String(),
+				Shares:       stake.Shares.Int64(),
+				TxHash:       stake.TxHash.String(),
+				TokenAddress: stake.TokenAddress.String(),
+				BlockNumber:  stake.BlockNumber.Int64(),
+				Guid:         stake.GUID.String(),
+				ChainId:      stake.ChainId,
+				Created:      stake.Created,
+			}
+			records = append(records, record)
+		}
+	}
+
+	resultPage := &pb.L2StakeRecordResponse_L2StakePage{
+		CurrentPage: uint32(currentPage),
+		PageSize:    pageSize,
+		Total:       total,
+		Records:     records,
+	}
+	return &pb.L2StakeRecordResponse{
+		Success: true,
+		Message: "success",
+		Page:    resultPage,
 	}, nil
 }
