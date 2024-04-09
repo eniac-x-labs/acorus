@@ -1,16 +1,20 @@
 package unpack
 
 import (
-	"github.com/cornerstone-labs/acorus/appchain/bindings"
+	"github.com/ethereum/go-ethereum/common"
+
+	delegation_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/delegation/bindings"
+	stake_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/staking_manager/bindings"
+	stratege_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/strategy_manager/bindings"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/appchain"
 	"github.com/cornerstone-labs/acorus/database/event"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 var (
-	StakeUnpack, _    = bindings.NewStakingManager(common.Address{}, nil)
-	StrategyUnpack, _ = bindings.NewStrategyManager(common.Address{}, nil)
+	StakeUnpack, _    = stake_bindings.NewStakingManager(common.Address{}, nil)
+	StrategyUnpack, _ = stratege_bindings.NewStrategyManager(common.Address{}, nil)
+	DelegateUnpack, _ = delegation_bindings.NewDelegationManager(common.Address{}, nil)
 )
 
 const (
@@ -75,4 +79,23 @@ func StakeRecord(chainId string, event event.ContractEvent, db *database.DB) err
 		Created:         event.Timestamp,
 	}
 	return db.AppChainStake.StoreAppChainStake(stakeSingle)
+}
+
+func OperatorSharesIncreased(chainId string, event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := DelegateUnpack.ParseOperatorSharesIncreased(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	operatorSharesIncreased := appchain.AppChainOperatorSharesIncreased{
+		TxHash:          rlpLog.TxHash,
+		BlockNumber:     event.BlockNumber,
+		StrategyAddress: uEvent.Strategy,
+		Operator:        uEvent.Operator,
+		Staker:          uEvent.Staker,
+		Shares:          uEvent.Shares,
+		ChainId:         chainId,
+		Created:         event.Timestamp,
+	}
+	return db.AppChainOperatorSharesIncreased.StoreAppChainOperatorSharesIncreased(operatorSharesIncreased)
 }

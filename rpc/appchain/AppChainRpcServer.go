@@ -3,7 +3,7 @@ package appchain
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/database"
+
 	"math/big"
 	"net"
 	"strings"
@@ -16,10 +16,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/cornerstone-labs/acorus/appchain/bindings"
+	l1_reward_manager_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/l1_reward_manager/bindings"
+	l2_reward_manager_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/l2_reward_manager/bindings"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/config"
+	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/rpc/appchain/protobuf/pb"
 )
 
@@ -32,8 +34,8 @@ type RpcServerConfig struct {
 
 type RpcServer struct {
 	*RpcServerConfig
-	l1RewardManagers map[uint64]*bindings.L1RewardManager
-	l2RewardManagers map[uint64]*bindings.L2RewardManager
+	l1RewardManagers map[uint64]*l1_reward_manager_bindings.L1RewardManager
+	l2RewardManagers map[uint64]*l2_reward_manager_bindings.L2RewardManager
 	tasks            tasks.Group
 	stopped          atomic.Bool
 	db               *database.DB
@@ -42,8 +44,8 @@ type RpcServer struct {
 func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC,
 	db *database.DB,
 	shutdown context.CancelCauseFunc) (*RpcServer, error) {
-	l1RewardManagers := make(map[uint64]*bindings.L1RewardManager)
-	l2RewardManagers := make(map[uint64]*bindings.L2RewardManager)
+	l1RewardManagers := make(map[uint64]*l1_reward_manager_bindings.L1RewardManager)
+	l2RewardManagers := make(map[uint64]*l2_reward_manager_bindings.L2RewardManager)
 	for i := 0; i < len(chainRpcCfg); i++ {
 		if chainRpcCfg[i].ChainId == global_const.EthereumSepoliaChainId ||
 			chainRpcCfg[i].ChainId == global_const.EthereumChainId {
@@ -56,8 +58,8 @@ func NewRpcServer(grpcCfg *RpcServerConfig, chainRpcCfg []*config.RPC,
 		if l1RewardManagerAddr == "" || l2RewardManagerAddr == "" {
 			continue
 		}
-		L1RewardManager, _ := bindings.NewL1RewardManager(common.HexToAddress(l1RewardManagerAddr), client)
-		L2RewardManager, _ := bindings.NewL2RewardManager(common.HexToAddress(l2RewardManagerAddr), client)
+		L1RewardManager, _ := l1_reward_manager_bindings.NewL1RewardManager(common.HexToAddress(l1RewardManagerAddr), client)
+		L2RewardManager, _ := l2_reward_manager_bindings.NewL2RewardManager(common.HexToAddress(l2RewardManagerAddr), client)
 		l1RewardManagers[chainRpcCfg[i].ChainId] = L1RewardManager
 		l2RewardManagers[chainRpcCfg[i].ChainId] = L2RewardManager
 	}
@@ -133,7 +135,7 @@ func (s *RpcServer) L1StakerRewardsAmount(ctx context.Context, request *pb.L1Sta
 		strategiesParam = append(strategiesParam, common.HexToAddress(strategy))
 	}
 	l1RewardManagerCaller := l1RewardManager.L1RewardManagerCaller
-	rawCaller := &bindings.L1RewardManagerCallerRaw{Contract: &l1RewardManagerCaller}
+	rawCaller := &l1_reward_manager_bindings.L1RewardManagerCallerRaw{Contract: &l1RewardManagerCaller}
 	var incomeResult []interface{}
 	err := rawCaller.Call(&bind.CallOpts{Context: ctx,
 		From: common.HexToAddress(stakerAddress),
@@ -171,7 +173,7 @@ func (s *RpcServer) L2StakerRewardsAmount(ctx context.Context, request *pb.L2Sta
 	paramAddress := make([]common.Address, 0)
 	paramAddress = append(paramAddress, common.HexToAddress(stakerAddress))
 	l2RewardManagerCaller := l2RewardManager.L2RewardManagerCaller
-	rawCaller := &bindings.L2RewardManagerCallerRaw{Contract: &l2RewardManagerCaller}
+	rawCaller := &l2_reward_manager_bindings.L2RewardManagerCallerRaw{Contract: &l2RewardManagerCaller}
 	var incomeResult []interface{}
 	err := rawCaller.Call(&bind.CallOpts{Context: ctx,
 		From: common.HexToAddress(stakerAddress),

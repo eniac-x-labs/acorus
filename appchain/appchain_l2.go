@@ -3,19 +3,23 @@ package appchain
 import (
 	"context"
 	"fmt"
-	"github.com/cornerstone-labs/acorus/appchain/bindings"
-	"github.com/cornerstone-labs/acorus/appchain/unpack"
-	"github.com/cornerstone-labs/acorus/common/bigint"
-	"github.com/cornerstone-labs/acorus/database/appchain"
-	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"time"
 
+	"github.com/cornerstone-labs/acorus/appchain/bindings"
+	"github.com/cornerstone-labs/acorus/appchain/unpack"
+	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/tasks"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/appchain"
+	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/rpc/bridge"
+)
+
+var (
+	StakeAmount = big.NewInt(0).Mul(big.NewInt(32), big.NewInt(1e18))
 )
 
 type L2AppChainListener struct {
@@ -56,6 +60,16 @@ func (l *L2AppChainListener) Start() error {
 	l.tasks.Go(func() error {
 		for range l2ListenerEventOn1.C {
 			err := l.onL2Data()
+			if err != nil {
+				log.Error("L2AppChainListener", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
+	l.tasks.Go(func() error {
+		for range l2ListenerEventOn1.C {
+			err := l.operatorSharesTask()
 			if err != nil {
 				log.Error("L2AppChainListener", "err", err)
 				continue
@@ -146,6 +160,116 @@ func (l *L2AppChainListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.StrategyManagerAbi.Events["Deposit"].ID.String():
 		err := unpack.StakeRecord(l.chainId, event, l.db)
 		return err
+	case bindings.DelegationManagerAbi.Events["OperatorSharesIncreased"].ID.String():
+		err := unpack.OperatorSharesIncreased(l.chainId, event, l.db)
+		return err
+	}
+	return nil
+}
+
+func (l *L2AppChainListener) operatorSharesTask() error {
+	log.Info("operatorSharesTask start")
+	if err := l.db.Transaction(func(tx *database.DB) error {
+		err := l.operatorSharesIncreased()
+		return err
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+type ToStakeShares struct {
+	TotalShares    *big.Int
+	UserInfoShares []*UserInfoShares
+}
+type UserInfoShares struct {
+	UserShares      *big.Int
+	Staker          common.Address
+	Operator        common.Address
+	StrategyAddress common.Address
+}
+
+func (l *L2AppChainListener) operatorSharesIncreased() error {
+	toStakeShares := new(ToStakeShares)
+	toStakeShares.TotalShares = big.NewInt(0)
+	needStakeShares := l.db.AppChainOperatorSharesIncreased.GetNeedStakeShares(l.chainId)
+	log.Info("operatorSharesIncreased", "needStakeSharesSize", len(needStakeShares))
+	for _, needStakeShare := range needStakeShares {
+		operatorAddress := needStakeShare.Operator
+		shares := needStakeShare.Shares
+		useShares := needStakeShare.UseShares
+		strategyAddress := needStakeShare.StrategyAddress
+		totalShares := toStakeShares.TotalShares
+		if totalShares.Cmp(StakeAmount) == 0 {
+			break
+		}
+		leftAddShares := big.NewInt(0).Sub(StakeAmount, totalShares)
+		thisUserLeftShares := big.NewInt(0).Sub(shares, useShares)
+
+		if thisUserLeftShares.Cmp(leftAddShares) == -1 {
+			totalShares = big.NewInt(0).Add(totalShares, thisUserLeftShares)
+			needStakeShare.Status = 1
+			needStakeShare.UseShares = shares
+		}
+		if thisUserLeftShares.Cmp(leftAddShares) == 0 {
+			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
+			needStakeShare.Status = 1
+			needStakeShare.UseShares = shares
+		}
+		if thisUserLeftShares.Cmp(leftAddShares) == 1 {
+			thisNeedShares := big.NewInt(0).Sub(thisUserLeftShares, leftAddShares)
+			totalShares = big.NewInt(0).Add(totalShares, thisNeedShares)
+			needStakeShare.UseShares = big.NewInt(0).Add(useShares, thisNeedShares)
+		}
+		err := l.db.AppChainOperatorSharesIncreased.UpdateOperatorUseShares(*needStakeShare)
+		if err != nil {
+			return err
+		}
+		userInfoShares := toStakeShares.UserInfoShares
+		userInfoShares = append(userInfoShares, &UserInfoShares{
+			UserShares:      needStakeShare.UseShares,
+			Staker:          needStakeShare.Staker,
+			StrategyAddress: strategyAddress,
+			Operator:        operatorAddress,
+		})
+		toStakeShares.TotalShares = totalShares
+		toStakeShares.UserInfoShares = userInfoShares
+	}
+	if toStakeShares.TotalShares.Cmp(StakeAmount) == 0 {
+		batchIdInt := time.Now().Unix()
+		batchId := big.NewInt(batchIdInt)
+		increaseBatches := make([]appchain.AppChainIncreaseBatch, 0)
+		mintMap := make(map[string]string)
+		for _, userInfoShares := range toStakeShares.UserInfoShares {
+			increaseBatches = append(increaseBatches, appchain.AppChainIncreaseBatch{
+				Staker:          userInfoShares.Staker,
+				Shares:          userInfoShares.UserShares,
+				ChainId:         l.chainId,
+				BatchId:         batchId.String(),
+				StrategyAddress: userInfoShares.StrategyAddress,
+				Operator:        userInfoShares.Operator,
+				Created:         uint64(time.Now().Unix()),
+			})
+			mintMap[userInfoShares.Staker.String()] = userInfoShares.UserShares.String()
+		}
+		log.Info("operatorSharesIncreased", "increaseBatchesSize", len(increaseBatches))
+		// save batch
+		err := l.db.AppChainIncreaseBatch.StoreAppChainIncreasedBatch(increaseBatches)
+		if err != nil {
+			return err
+		}
+		// call rpc
+		batchMintResp, err := l.bridgeRpcService.BatchMint(batchId.Uint64(), mintMap)
+		if err != nil {
+			return err
+		}
+		log.Info("BatchMint", "batchId", batchId, "rpcResp", batchMintResp)
+		success := batchMintResp.Success
+		if success {
+			log.Info("BatchMint", "batchId", batchId, "success", success)
+		} else {
+			return fmt.Errorf("call rpc BatchMint failed")
+		}
 	}
 	return nil
 }

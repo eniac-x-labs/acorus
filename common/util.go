@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/signal"
 	"reflect"
@@ -116,4 +117,20 @@ func CalculateCurrentPage(total uint, pageSize uint) uint {
 
 func CalculateOffset(page uint, pageSize uint) uint {
 	return (page - 1) * pageSize
+}
+
+func GetBatchId() string {
+	rand.Seed(time.Now().UnixNano())
+	randomNum := GetRandom(6)
+	timeString := time.Now().Format("20060102150405") // 时间字符串，精确到秒
+	combinedString := fmt.Sprintf("%s%s", timeString, randomNum)
+	return combinedString
+}
+
+func GetRandom(times int) string {
+	var result string
+	for i := 0; i < times; i++ {
+		result += fmt.Sprintf("%d", rand.Intn(10))
+	}
+	return result
 }

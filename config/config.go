@@ -68,8 +68,8 @@ type Config struct {
 }
 
 type AppChain struct {
-	L1 L1AppChain `yaml:"l1"`
-	L2 L2AppChain `yaml:"l2"`
+	L1 L1AppChain    `yaml:"l1"`
+	L2 []*L2AppChain `yaml:"l2"`
 }
 
 type L1AppChain struct {
@@ -79,8 +79,9 @@ type L1AppChain struct {
 }
 
 type L2AppChain struct {
-	ChainId   string   `yaml:"chain_id"`
-	Contracts []string `yaml:"contracts"`
+	ChainId     string   `yaml:"chain_id"`
+	Contracts   []string `yaml:"contracts"`
+	StartHeight uint64   `yaml:"start_height"`
 }
 
 func New(path string) (*Config, error) {

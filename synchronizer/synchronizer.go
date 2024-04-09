@@ -87,21 +87,21 @@ func (syncer *Synchronizer) Start() error {
 	syncer.tasks.Go(func() error {
 		for range tickerSyncer.C {
 			if len(syncer.headers) > 0 {
-				log.Info("chain ", syncer.chainId, "retrying previous batch")
+				log.Info("sync", "chain ", syncer.chainId, "retrying previous batch")
 			} else {
 				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
 				if err != nil {
-					log.Error("chain ", syncer.chainId, "error querying for headers", "err", err)
+					log.Error("sync", "chain ", syncer.chainId, "error querying for headers", "err", err)
 					continue
 				} else if len(newHeaders) == 0 {
-					log.Warn("chain ", syncer.chainId, "no new headers. syncer at head?")
+					log.Warn("sync", "chain ", syncer.chainId, "no new headers. syncer at head?")
 				} else {
 					syncer.headers = newHeaders
 				}
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
 					latestHeaderF, _ := latestHeader.Number.Float64()
-					log.Warn("chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
+					log.Warn("sync", "chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
 				}
 			}
 			err := syncer.processBatch(syncer.headers)
@@ -121,7 +121,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		return nil
 	}
 	firstHeader, lastHeader := headers[0], headers[len(headers)-1]
-	log.Info("chain ", syncer.chainId, "extracting batch", "size", len(headers))
+	log.Info("processBatch", "chain ", syncer.chainId, "extracting batch", "size", len(headers))
 
 	headerMap := make(map[common.Hash]*types.Header, len(headers))
 	for i := range headers {
@@ -133,7 +133,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 	filterQuery := ethereum.FilterQuery{FromBlock: firstHeader.Number, ToBlock: lastHeader.Number}
 	logs, err := syncer.ethClient.FilterLogs(filterQuery, uint(chainIdInt))
 	if err != nil {
-		log.Error("chain ", syncer.chainId, "failed to extract logs", "err", err)
+		log.Error("processBatch", "chain ", syncer.chainId, "failed to extract logs", "err", err)
 		return err
 	}
 
@@ -144,7 +144,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 	}
 
 	if len(logs.Logs) > 0 {
-		log.Info("chain ", syncer.chainId, "detected logs", "size", len(logs.Logs))
+		log.Info("processBatch", "chain ", syncer.chainId, "detected logs", "size", len(logs.Logs))
 	}
 
 	chainBlockHeaders := make([]common2.ChainBlockHeader, 0, len(headers))
