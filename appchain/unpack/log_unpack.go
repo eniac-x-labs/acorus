@@ -2,6 +2,7 @@ package unpack
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"math/big"
 
 	delegation_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/delegation/bindings"
 	stake_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/staking_manager/bindings"
@@ -94,6 +95,7 @@ func OperatorSharesIncreased(chainId string, event event.ContractEvent, db *data
 		Operator:        uEvent.Operator,
 		Staker:          uEvent.Staker,
 		Shares:          uEvent.Shares,
+		UseShares:       big.NewInt(0),
 		ChainId:         chainId,
 		Created:         event.Timestamp,
 	}
