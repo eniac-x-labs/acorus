@@ -68,6 +68,7 @@ type Acorus struct {
 	airDropWorker          *point_worker.PointWorker
 	cleanDataWorker        *clean_data_worker.WorkerProcessor
 	appChainL1             *appchain.L1AppChainListener
+	appChainL2             map[string]*appchain.L2AppChainListener
 	appChainRpcServer      *rpc_appchain.RpcServer
 }
 
@@ -133,6 +134,13 @@ func (as *Acorus) Start(ctx context.Context) error {
 	if err := as.appChainL1.Start(); err != nil {
 		log.Error("start appChainL1 failed", "err", err)
 		return err
+	}
+	for chainId, appChainL2Process := range as.appChainL2 {
+		if err := appChainL2Process.Start(); err != nil {
+			log.Error("start appChainL2 failed", "chainId", chainId, "err", err)
+			return err
+		}
+		log.Info("start appChainL2 success", "chainId", chainId)
 	}
 	if err := as.appChainRpcServer.Start(ctx); err != nil {
 		log.Error("start appChainRpcServer failed", "err", err)
@@ -223,6 +231,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initAppChainRpcServer(cfg); err != nil {
 		fmt.Errorf("failed to initAppChainRpcServer: %w", err)
 	}
+	if err := as.initAppChainL2(cfg); err != nil {
+		fmt.Errorf("failed to initAppChainL2: %w", err)
+	}
 	return nil
 }
 
@@ -237,6 +248,25 @@ func (as *Acorus) initAppChainL1(cfg *config.Config) error {
 		log.Error("init initAppChainL1 failed", "err", err)
 	}
 	as.appChainL1 = processor
+	return nil
+}
+
+func (as *Acorus) initAppChainL2(cfg *config.Config) error {
+	appchainL2s := cfg.AppChain.L2
+	as.appChainL2 = make(map[string]*appchain.L2AppChainListener)
+	var loopInterval time.Duration = time.Second * 5
+	var epoch uint64 = 10_000
+	for _, appchainL2 := range appchainL2s {
+		chainId := appchainL2.ChainId
+		startHeight := appchainL2.StartHeight
+		contracts := appchainL2.Contracts
+		processor, err := appchain.NewL2AppChainListener(chainId, contracts, as.shutdown, loopInterval, startHeight, epoch, as.birdgeRpcService, as.DB)
+		if err != nil {
+			log.Error("init initAppChainL2 failed", "err", err)
+		}
+		as.appChainL2[chainId] = processor
+		log.Info("initAppChainL2 success", "chainId", chainId)
+	}
 	return nil
 }
 

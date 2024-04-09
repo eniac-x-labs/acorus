@@ -472,3 +472,37 @@ CREATE INDEX IF NOT EXISTS ac_chain_stake_strategy ON ac_chain_stake (strategy_a
 CREATE INDEX IF NOT EXISTS ac_chain_stake_chain_id ON ac_chain_stake (chain_id);
 CREATE INDEX IF NOT EXISTS ac_chain_stake_staker ON ac_chain_stake (staker);
 
+create table if not exists ac_operator_shares_increased(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    block_number      UINT256          default 0,
+    tx_hash         varchar,
+    shares      UINT256          default 0,
+    use_shares      UINT256          default 0,
+    strategy_address     varchar,
+    operator varchar,
+    staker          varchar,
+    status int              default 0,
+    chain_id varchar,
+    created         INTEGER CHECK (created > 0)
+    );
+CREATE INDEX IF NOT EXISTS ac_operator_shares_increased_tx_hash ON ac_operator_shares_increased (tx_hash);
+CREATE INDEX IF NOT EXISTS ac_operator_shares_increased_operator ON ac_operator_shares_increased (operator);
+CREATE INDEX IF NOT EXISTS ac_operator_shares_increased_strategy ON ac_operator_shares_increased (strategy_address);
+CREATE INDEX IF NOT EXISTS ac_operator_shares_increased_chain_id ON ac_operator_shares_increased (chain_id);
+CREATE INDEX IF NOT EXISTS ac_operator_shares_increased_staker ON ac_operator_shares_increased (staker);
+
+create table if not exists ac_chain_increase_batch(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    strategy_address     varchar,
+    staker          varchar,
+    operator varchar,
+    shares      UINT256          default 0,
+    chain_id varchar,
+    batch_id varchar,
+    created         INTEGER CHECK (created > 0)
+);
+
+CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_operator ON ac_chain_increase_batch (operator);
+CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_strategy ON ac_chain_increase_batch (strategy_address);
+CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_chain_id ON ac_chain_increase_batch (chain_id);
+CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_staker ON ac_chain_increase_batch (staker);

@@ -18,6 +18,7 @@ type BridgeRpcService interface {
 	UpdateDepositFundingPoolBalance(sourceChainId, destChainId, amount,
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateDepositFundingPoolBalanceResponse, error)
 	UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
+	BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -106,4 +107,14 @@ func (r *bridgeRpcService) UnstakeBatch(sourceHash, bridgeAddress, sourceChainId
 	}
 	log.Info("UnstakeBatchRpc", "upstakeBatchReq", upstakeBatchReq)
 	return r.bRpcService.UnstakeBatch(ctx, upstakeBatchReq)
+}
+
+func (r *bridgeRpcService) BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error) {
+	ctx := context.Background()
+	batchMintReq := &pb.BatchMintRequest{
+		Batch: batchId,
+		Mint:  batchMint,
+	}
+	log.Info("BatchMintRpc", "batchId", batchId, "batchMintReq", batchMintReq)
+	return r.bRpcService.BatchMint(ctx, batchMintReq)
 }

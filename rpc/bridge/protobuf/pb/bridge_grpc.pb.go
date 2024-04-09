@@ -28,6 +28,7 @@ type BridgeServiceClient interface {
 	UpdateWithdrawFundingPoolBalance(ctx context.Context, in *UpdateWithdrawFundingPoolBalanceRequest, opts ...grpc.CallOption) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(ctx context.Context, in *UnstakeBatchRequest, opts ...grpc.CallOption) (*UnstakeBatchResponse, error)
 	UnstakeSingle(ctx context.Context, in *UnstakeSingleRequest, opts ...grpc.CallOption) (*UnstakeSingleResponse, error)
+	BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -92,6 +93,15 @@ func (c *bridgeServiceClient) UnstakeSingle(ctx context.Context, in *UnstakeSing
 	return out, nil
 }
 
+func (c *bridgeServiceClient) BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error) {
+	out := new(BatchMintResponse)
+	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/BatchMint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -102,6 +112,7 @@ type BridgeServiceServer interface {
 	UpdateWithdrawFundingPoolBalance(context.Context, *UpdateWithdrawFundingPoolBalanceRequest) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(context.Context, *UnstakeBatchRequest) (*UnstakeBatchResponse, error)
 	UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error)
+	BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error)
 }
 
 // UnimplementedBridgeServiceServer must be embedded to have forward compatible implementations.
@@ -125,6 +136,9 @@ func (UnimplementedBridgeServiceServer) UnstakeBatch(context.Context, *UnstakeBa
 }
 func (UnimplementedBridgeServiceServer) UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnstakeSingle not implemented")
+}
+func (UnimplementedBridgeServiceServer) BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchMint not implemented")
 }
 
 // UnsafeBridgeServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -246,6 +260,24 @@ func _BridgeService_UnstakeSingle_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_BatchMint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchMintRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).BatchMint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/selaginella.proto_rpc.BridgeService/BatchMint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).BatchMint(ctx, req.(*BatchMintRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -276,6 +308,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnstakeSingle",
 			Handler:    _BridgeService_UnstakeSingle_Handler,
+		},
+		{
+			MethodName: "BatchMint",
+			Handler:    _BridgeService_BatchMint_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
