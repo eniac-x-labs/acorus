@@ -87,10 +87,10 @@ func (db appChainUnStakeDB) ListAppChainUnStake(page, pageSize uint32, staker, s
 	table := db.gorm.Table(AppChainUnStake{}.TableName()).Select("*")
 	querySR := db.gorm.Table("(?) as temp ", table)
 	if staker != "" {
-		querySR = querySR.Where("staker = ?", staker)
+		querySR = querySR.Where(AppChainUnStake{Staker: common.HexToAddress(staker)})
 	}
 	if strategy != "" {
-		querySR = querySR.Where("l2_strategy = ?", strategy)
+		querySR = querySR.Where(AppChainUnStake{L2Strategy: common.HexToAddress(strategy)})
 	}
 	resultTotal := querySR.Count(&totalRecord)
 	if resultTotal.Error != nil {
