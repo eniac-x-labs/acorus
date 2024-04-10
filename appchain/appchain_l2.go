@@ -219,7 +219,7 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 		}
 		if thisUserLeftShares.Cmp(leftAddShares) == 1 {
 			thisNeedShares := big.NewInt(0).Sub(thisUserLeftShares, leftAddShares)
-			totalShares = big.NewInt(0).Add(totalShares, thisNeedShares)
+			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
 			needStakeShare.UseShares = big.NewInt(0).Add(useShares, thisNeedShares)
 		}
 
