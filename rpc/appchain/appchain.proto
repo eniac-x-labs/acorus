@@ -49,8 +49,8 @@ message L2UnStakeRecord{
   string guid = 1;
   int64 block_number = 2;
   string tx_hash = 3;
-  int64 eth_amount = 4;
-  int64 locked_amount = 5;
+  string eth_amount = 4;
+  string locked_amount = 5;
   string claim_tx_hash = 6;
   string l2_strategy = 7;
   string staker = 8;
@@ -87,7 +87,7 @@ message L2StakeRecord {
   string guid = 1;
   int64 block_number = 2;
   string tx_hash = 3;
-  int64 shares = 4;
+  string shares = 4;
   string strategy = 5;
   string staker = 6;
   string token_address = 7;
