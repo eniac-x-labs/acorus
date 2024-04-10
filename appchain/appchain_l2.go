@@ -179,8 +179,9 @@ func (l *L2AppChainListener) operatorSharesTask() error {
 }
 
 type ToStakeShares struct {
-	TotalShares    *big.Int
-	UserInfoShares []*UserInfoShares
+	TotalShares      *big.Int
+	UserInfoShares   []*UserInfoShares
+	NeedUpdateShares []*appchain.AppChainOperatorSharesIncreased
 }
 type UserInfoShares struct {
 	UserShares      *big.Int
@@ -221,10 +222,7 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			totalShares = big.NewInt(0).Add(totalShares, thisNeedShares)
 			needStakeShare.UseShares = big.NewInt(0).Add(useShares, thisNeedShares)
 		}
-		err := l.db.AppChainOperatorSharesIncreased.UpdateOperatorUseShares(*needStakeShare)
-		if err != nil {
-			return err
-		}
+
 		userInfoShares := toStakeShares.UserInfoShares
 		userInfoShares = append(userInfoShares, &UserInfoShares{
 			UserShares:      needStakeShare.UseShares,
@@ -232,13 +230,17 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			StrategyAddress: strategyAddress,
 			Operator:        operatorAddress,
 		})
+		needUpdateShares := toStakeShares.NeedUpdateShares
+		needUpdateShares = append(needUpdateShares, needStakeShare)
 		toStakeShares.TotalShares = totalShares
 		toStakeShares.UserInfoShares = userInfoShares
+		toStakeShares.NeedUpdateShares = needUpdateShares
 	}
 	if toStakeShares.TotalShares.Cmp(StakeAmount) == 0 {
 		batchIdInt := time.Now().Unix()
 		batchId := big.NewInt(batchIdInt)
 		increaseBatches := make([]appchain.AppChainIncreaseBatch, 0)
+		// create batchMint param
 		mintMap := make(map[string]string)
 		for _, userInfoShares := range toStakeShares.UserInfoShares {
 			increaseBatches = append(increaseBatches, appchain.AppChainIncreaseBatch{
@@ -252,6 +254,16 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			})
 			mintMap[userInfoShares.Staker.String()] = userInfoShares.UserShares.String()
 		}
+
+		// update shares
+		log.Info("operatorSharesIncreased", "needStakeSharesSize", len(toStakeShares.NeedUpdateShares))
+		for _, needStakeShare := range toStakeShares.NeedUpdateShares {
+			err := l.db.AppChainOperatorSharesIncreased.UpdateOperatorUseShares(*needStakeShare)
+			if err != nil {
+				return err
+			}
+		}
+
 		log.Info("operatorSharesIncreased", "increaseBatchesSize", len(increaseBatches))
 		// save batch
 		err := l.db.AppChainIncreaseBatch.StoreAppChainIncreasedBatch(increaseBatches)
