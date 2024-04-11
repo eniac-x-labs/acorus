@@ -251,12 +251,13 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 				Operator:        userInfoShares.Operator,
 				Created:         uint64(time.Now().Unix()),
 			})
-			exitsSharesStr := mintMap[userInfoShares.Staker.String()]
+			staker := userInfoShares.Staker.String()
+			exitsSharesStr := mintMap[staker]
 			if exitsSharesStr == "" {
 				exitsSharesStr = "0"
 			}
 			exitsShares, _ := big.NewInt(0).SetString(exitsSharesStr, 10)
-			mintMap[userInfoShares.Staker.String()] = big.NewInt(0).Add(exitsShares, userInfoShares.UserShares).String()
+			mintMap[staker] = big.NewInt(0).Add(exitsShares, userInfoShares.UserShares).String()
 		}
 
 		// update shares
