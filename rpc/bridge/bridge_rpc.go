@@ -103,7 +103,7 @@ func (r *bridgeRpcService) UnstakeBatch(sourceHash, bridgeAddress, sourceChainId
 		SourceChainId: sourceChainId,
 		DestChainId:   destChainId,
 		SourceHash:    sourceHash,
-		GasLimit:      "21000",
+		GasLimit:      "200000",
 	}
 	log.Info("UnstakeBatchRpc", "upstakeBatchReq", upstakeBatchReq)
 	return r.bRpcService.UnstakeBatch(ctx, upstakeBatchReq)
