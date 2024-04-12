@@ -1,11 +1,14 @@
 package unpack
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	delegation_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/delegation/bindings"
 	stake_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/staking_manager/bindings"
+	strategybasebindings "github.com/cornerstone-labs/acorus/appchain/bindings/strategy_base/bindings"
 	stratege_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/strategy_manager/bindings"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/appchain"
@@ -13,9 +16,10 @@ import (
 )
 
 var (
-	StakeUnpack, _    = stake_bindings.NewStakingManager(common.Address{}, nil)
-	StrategyUnpack, _ = stratege_bindings.NewStrategyManager(common.Address{}, nil)
-	DelegateUnpack, _ = delegation_bindings.NewDelegationManager(common.Address{}, nil)
+	StakeUnpack, _        = stake_bindings.NewStakingManager(common.Address{}, nil)
+	StrategyUnpack, _     = stratege_bindings.NewStrategyManager(common.Address{}, nil)
+	DelegateUnpack, _     = delegation_bindings.NewDelegationManager(common.Address{}, nil)
+	StrategyBaseUnpack, _ = strategybasebindings.NewStrategyBase(common.Address{}, nil)
 )
 
 const (
@@ -100,4 +104,34 @@ func OperatorSharesIncreased(chainId string, event event.ContractEvent, db *data
 		Created:         event.Timestamp,
 	}
 	return db.AppChainOperatorSharesIncreased.StoreAppChainOperatorSharesIncreased(operatorSharesIncreased)
+}
+
+func TransferETHToL2DappLinkBridge(chainId string, event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := StrategyBaseUnpack.ParseTransferETHToL2DappLinkBridge(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	dapplinkBridgeRecord := appchain.AppChainDappLinkBridge{
+		TxHash:                rlpLog.TxHash,
+		SourceChainId:         uEvent.SourceChainId.String(),
+		DestChainId:           uEvent.DestChainId.String(),
+		ChainId:               chainId,
+		Bridge:                uEvent.Bridge,
+		StakingManagerAddress: uEvent.L1StakingManagerAddr,
+		TokenAddress:          uEvent.TokenAddress,
+		Amount:                uEvent.BridgeEthAmount,
+		BatchId:               uEvent.BatchId,
+		Nonce:                 uEvent.Nonce,
+		NotifyRelayer:         false,
+		Created:               event.Timestamp,
+	}
+
+	return db.AppChainDappLinkBridge.StroeAppChainDappLinkBridge(dapplinkBridgeRecord)
+}
+
+func ComputeMsgHash(sourceChainId, destChainId, nonce *big.Int) common.Hash {
+	return crypto.Keccak256Hash(common.LeftPadBytes(sourceChainId.Bytes(), 32),
+		common.LeftPadBytes(destChainId.Bytes(), 32),
+		common.LeftPadBytes(nonce.Bytes(), 32))
 }

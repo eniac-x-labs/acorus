@@ -48,6 +48,7 @@ type DB struct {
 	AppChainStake                   appchain.AppChainStakeDB
 	AppChainOperatorSharesIncreased appchain.AppChainOperatorSharesIncreasedDB
 	AppChainIncreaseBatch           appchain.AppChainIncreaseBatchDB
+	AppChainDappLinkBridge          appchain.AppChainDappLinkBridgeDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -108,6 +109,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		AppChainStake:                   appchain.NewAppChainStakeDB(gorm),
 		AppChainOperatorSharesIncreased: appchain.NewAppChainOperatorSharesIncreasedDB(gorm),
 		AppChainIncreaseBatch:           appchain.NewAppChainIncreaseBatchDB(gorm),
+		AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 	}
 	return db, nil
 }
@@ -140,6 +142,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			AppChainStake:                   appchain.NewAppChainStakeDB(gorm),
 			AppChainOperatorSharesIncreased: appchain.NewAppChainOperatorSharesIncreasedDB(gorm),
 			AppChainIncreaseBatch:           appchain.NewAppChainIncreaseBatchDB(gorm),
+			AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 		}
 		return fn(txDB)
 	})
