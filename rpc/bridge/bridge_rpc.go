@@ -19,6 +19,7 @@ type BridgeRpcService interface {
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateDepositFundingPoolBalanceResponse, error)
 	UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
 	BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error)
+	TransferToL2DappLinkBridge(batchId uint64, ChainId, StrategyAddress string) (*pb.TransferToL2DappLinkBridgeResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -117,4 +118,15 @@ func (r *bridgeRpcService) BatchMint(batchId uint64, batchMint map[string]string
 	}
 	log.Info("BatchMintRpc", "batchId", batchId, "batchMintReq", batchMintReq)
 	return r.bRpcService.BatchMint(ctx, batchMintReq)
+}
+
+func (r *bridgeRpcService) TransferToL2DappLinkBridge(batchId uint64, ChainId, StrategyAddress string) (*pb.TransferToL2DappLinkBridgeResponse, error) {
+	ctx := context.Background()
+	transferToL2DappLinkBridgeReq := &pb.TransferToL2DappLinkBridgeRequest{
+		Batch:           batchId,
+		ChainId:         ChainId,
+		StrategyAddress: StrategyAddress,
+	}
+	log.Info("TransferToL2DappLinkBridge", "ChainId", ChainId, "batchId", batchId, "transferToL2DappLinkBridgeReq", transferToL2DappLinkBridgeReq)
+	return r.bRpcService.TransferToL2DappLinkBridge(ctx, transferToL2DappLinkBridgeReq)
 }

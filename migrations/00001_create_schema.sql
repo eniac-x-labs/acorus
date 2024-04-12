@@ -499,6 +499,7 @@ create table if not exists ac_chain_increase_batch(
     shares      UINT256          default 0,
     chain_id varchar,
     batch_id varchar,
+    notify_relayer  boolean          default false,
     created         INTEGER CHECK (created > 0)
 );
 
@@ -506,3 +507,21 @@ CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_operator ON ac_chain_increase
 CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_strategy ON ac_chain_increase_batch (strategy_address);
 CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_chain_id ON ac_chain_increase_batch (chain_id);
 CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_staker ON ac_chain_increase_batch (staker);
+CREATE INDEX IF NOT EXISTS ac_chain_increase_batch_batch_id ON ac_chain_increase_batch (batch_id);
+
+create table if not exists ac_chain_dapplink_bridge(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash varchar,
+    source_chain_id     varchar,
+    dest_chain_id          varchar,
+    bridge varchar,
+    staking_manager_address      varchar,
+    token_address varchar,
+    amount UINT256          default 0,
+    batch_id  UINT256          default 0,
+    nonce         UINT256          default 0,
+    notify_relayer  boolean          default false,
+    created INTEGER CHECK (created > 0)
+);
+CREATE INDEX IF NOT EXISTS ac_chain_dapplink_bridge_batch_id ON ac_chain_dapplink_bridge (batch_id);
+CREATE INDEX IF NOT EXISTS ac_chain_dapplink_bridge_tx_hash ON ac_chain_dapplink_bridge (tx_hash);

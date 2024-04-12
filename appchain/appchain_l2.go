@@ -71,7 +71,17 @@ func (l *L2AppChainListener) Start() error {
 		for range l2ListenerEventOn1.C {
 			err := l.operatorSharesTask()
 			if err != nil {
-				log.Error("L2AppChainListener", "err", err)
+				log.Error("L2AppChainListener operatorSharesTask", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
+	l.tasks.Go(func() error {
+		for range l2ListenerEventOn1.C {
+			err := l.batchMintTask()
+			if err != nil {
+				log.Error("L2AppChainListener batchMintTask", "err", err)
 				continue
 			}
 		}
@@ -163,12 +173,15 @@ func (l *L2AppChainListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.DelegationManagerAbi.Events["OperatorSharesIncreased"].ID.String():
 		err := unpack.OperatorSharesIncreased(l.chainId, event, l.db)
 		return err
+	case bindings.StrategyBaseAbi.Events["TransferETHToL2DappLinkBridge"].ID.String():
+		err := unpack.TransferETHToL2DappLinkBridge(l.chainId, event, l.db)
+		return err
 	}
 	return nil
 }
 
 func (l *L2AppChainListener) operatorSharesTask() error {
-	log.Info("operatorSharesTask start")
+	log.Info("operatorSharesTask start", "chainId", l.chainId)
 	if err := l.db.Transaction(func(tx *database.DB) error {
 		err := l.operatorSharesIncreased()
 		return err
@@ -176,6 +189,12 @@ func (l *L2AppChainListener) operatorSharesTask() error {
 		return err
 	}
 	return nil
+}
+
+func (l *L2AppChainListener) batchMintTask() error {
+	log.Info("batchMintTask start", "chainId", l.chainId)
+	// dont trx
+	return l.batchMint()
 }
 
 type ToStakeShares struct {
@@ -191,8 +210,7 @@ type UserInfoShares struct {
 }
 
 func (l *L2AppChainListener) operatorSharesIncreased() error {
-	toStakeShares := new(ToStakeShares)
-	toStakeShares.TotalShares = big.NewInt(0)
+	strategyMap := make(map[string]*ToStakeShares)
 	needStakeShares := l.db.AppChainOperatorSharesIncreased.GetNeedStakeShares(l.chainId)
 	log.Info("operatorSharesIncreased", "needStakeSharesSize", len(needStakeShares))
 	for _, needStakeShare := range needStakeShares {
@@ -200,7 +218,14 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 		shares := needStakeShare.Shares
 		useShares := needStakeShare.UseShares
 		strategyAddress := needStakeShare.StrategyAddress
+
+		toStakeShares := strategyMap[strategyAddress.String()]
+		if toStakeShares == nil {
+			toStakeShares = new(ToStakeShares)
+			toStakeShares.TotalShares = big.NewInt(0)
+		}
 		totalShares := toStakeShares.TotalShares
+
 		if totalShares.Cmp(StakeAmount) == 0 {
 			break
 		}
@@ -234,58 +259,85 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 		toStakeShares.TotalShares = totalShares
 		toStakeShares.UserInfoShares = userInfoShares
 		toStakeShares.NeedUpdateShares = needUpdateShares
+		strategyMap[strategyAddress.String()] = toStakeShares
 	}
-	if toStakeShares.TotalShares.Cmp(StakeAmount) == 0 {
-		batchIdInt := time.Now().Unix()
-		batchId := big.NewInt(batchIdInt)
-		increaseBatches := make([]appchain.AppChainIncreaseBatch, 0)
+	for strategyAddress, toStakeShares := range strategyMap {
+		if toStakeShares.TotalShares.Cmp(StakeAmount) == 0 {
+			batchIdInt := time.Now().Unix()
+			batchId := big.NewInt(batchIdInt)
+			increaseBatches := make([]appchain.AppChainIncreaseBatch, 0)
+			for _, userInfoShares := range toStakeShares.UserInfoShares {
+				increaseBatches = append(increaseBatches, appchain.AppChainIncreaseBatch{
+					Staker:          userInfoShares.Staker,
+					Shares:          userInfoShares.UserShares,
+					ChainId:         l.chainId,
+					BatchId:         batchId.String(),
+					StrategyAddress: userInfoShares.StrategyAddress,
+					Operator:        userInfoShares.Operator,
+					Created:         uint64(time.Now().Unix()),
+				})
+			}
+			// update shares
+			log.Info("operatorSharesIncreased", "chainId", l.chainId, "needStakeSharesSize", len(toStakeShares.NeedUpdateShares))
+			for _, needStakeShare := range toStakeShares.NeedUpdateShares {
+				err := l.db.AppChainOperatorSharesIncreased.UpdateOperatorUseShares(*needStakeShare)
+				if err != nil {
+					return err
+				}
+			}
+
+			log.Info("operatorSharesIncreased", "chainId", l.chainId, "increaseBatchesSize", len(increaseBatches))
+			// save batch
+			err := l.db.AppChainIncreaseBatch.StoreAppChainIncreasedBatch(increaseBatches)
+			if err != nil {
+				return err
+			}
+			// call rpc
+			transferToL2DappLinkBridgeResp, err := l.bridgeRpcService.TransferToL2DappLinkBridge(batchId.Uint64(), l.chainId, strategyAddress)
+			if err != nil {
+				return err
+			}
+			log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "rpcResp", transferToL2DappLinkBridgeResp)
+			success := transferToL2DappLinkBridgeResp.Success
+			if success {
+				log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "success", success)
+			} else {
+				return fmt.Errorf("call rpc BatchMint failed")
+			}
+		}
+	}
+	return nil
+}
+
+func (l *L2AppChainListener) batchMint() error {
+	notifyRelayer := l.db.AppChainDappLinkBridge.ListDataByNoNotifyRelayer(l.chainId)
+	if len(notifyRelayer) == 0 {
+		log.Info("batchMint", "chainId", l.chainId, "no more need batchMint data")
+	}
+	log.Info("batchMint", "chainId", l.chainId, "notifyRelayerSize", len(notifyRelayer))
+	for _, dappLinkBridge := range notifyRelayer {
+		batchId := dappLinkBridge.BatchId
+		listBatchData := l.db.AppChainIncreaseBatch.ListBatchDataByBatchId(batchId.String())
 		// create batchMint param
 		mintMap := make(map[string]string)
-		for _, userInfoShares := range toStakeShares.UserInfoShares {
-			increaseBatches = append(increaseBatches, appchain.AppChainIncreaseBatch{
-				Staker:          userInfoShares.Staker,
-				Shares:          userInfoShares.UserShares,
-				ChainId:         l.chainId,
-				BatchId:         batchId.String(),
-				StrategyAddress: userInfoShares.StrategyAddress,
-				Operator:        userInfoShares.Operator,
-				Created:         uint64(time.Now().Unix()),
-			})
-			staker := userInfoShares.Staker.String()
+		for _, batchInfo := range listBatchData {
+			staker := batchInfo.Staker.String()
 			exitsSharesStr := mintMap[staker]
 			if exitsSharesStr == "" {
 				exitsSharesStr = "0"
 			}
 			exitsShares, _ := big.NewInt(0).SetString(exitsSharesStr, 10)
-			mintMap[staker] = big.NewInt(0).Add(exitsShares, userInfoShares.UserShares).String()
+			mintMap[staker] = big.NewInt(0).Add(exitsShares, batchInfo.Shares).String()
 		}
-
-		// update shares
-		log.Info("operatorSharesIncreased", "needStakeSharesSize", len(toStakeShares.NeedUpdateShares))
-		for _, needStakeShare := range toStakeShares.NeedUpdateShares {
-			err := l.db.AppChainOperatorSharesIncreased.UpdateOperatorUseShares(*needStakeShare)
+		rpcResp, rpcErr := l.bridgeRpcService.BatchMint(batchId.Uint64(), mintMap)
+		if rpcErr != nil {
+			return rpcErr
+		}
+		if rpcResp.Success {
+			err := l.db.AppChainIncreaseBatch.NotifyBatchMintSuccess(batchId.String())
 			if err != nil {
 				return err
 			}
-		}
-
-		log.Info("operatorSharesIncreased", "increaseBatchesSize", len(increaseBatches))
-		// save batch
-		err := l.db.AppChainIncreaseBatch.StoreAppChainIncreasedBatch(increaseBatches)
-		if err != nil {
-			return err
-		}
-		// call rpc
-		batchMintResp, err := l.bridgeRpcService.BatchMint(batchId.Uint64(), mintMap)
-		if err != nil {
-			return err
-		}
-		log.Info("BatchMint", "batchId", batchId, "rpcResp", batchMintResp)
-		success := batchMintResp.Success
-		if success {
-			log.Info("BatchMint", "batchId", batchId, "success", success)
-		} else {
-			return fmt.Errorf("call rpc BatchMint failed")
 		}
 	}
 	return nil

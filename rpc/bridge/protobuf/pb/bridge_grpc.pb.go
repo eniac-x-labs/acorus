@@ -28,6 +28,7 @@ type BridgeServiceClient interface {
 	UpdateWithdrawFundingPoolBalance(ctx context.Context, in *UpdateWithdrawFundingPoolBalanceRequest, opts ...grpc.CallOption) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(ctx context.Context, in *UnstakeBatchRequest, opts ...grpc.CallOption) (*UnstakeBatchResponse, error)
 	UnstakeSingle(ctx context.Context, in *UnstakeSingleRequest, opts ...grpc.CallOption) (*UnstakeSingleResponse, error)
+	TransferToL2DappLinkBridge(ctx context.Context, in *TransferToL2DappLinkBridgeRequest, opts ...grpc.CallOption) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error)
 }
 
@@ -93,6 +94,15 @@ func (c *bridgeServiceClient) UnstakeSingle(ctx context.Context, in *UnstakeSing
 	return out, nil
 }
 
+func (c *bridgeServiceClient) TransferToL2DappLinkBridge(ctx context.Context, in *TransferToL2DappLinkBridgeRequest, opts ...grpc.CallOption) (*TransferToL2DappLinkBridgeResponse, error) {
+	out := new(TransferToL2DappLinkBridgeResponse)
+	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/TransferToL2DappLinkBridge", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *bridgeServiceClient) BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error) {
 	out := new(BatchMintResponse)
 	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/BatchMint", in, out, opts...)
@@ -112,6 +122,7 @@ type BridgeServiceServer interface {
 	UpdateWithdrawFundingPoolBalance(context.Context, *UpdateWithdrawFundingPoolBalanceRequest) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(context.Context, *UnstakeBatchRequest) (*UnstakeBatchResponse, error)
 	UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error)
+	TransferToL2DappLinkBridge(context.Context, *TransferToL2DappLinkBridgeRequest) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error)
 }
 
@@ -136,6 +147,9 @@ func (UnimplementedBridgeServiceServer) UnstakeBatch(context.Context, *UnstakeBa
 }
 func (UnimplementedBridgeServiceServer) UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnstakeSingle not implemented")
+}
+func (UnimplementedBridgeServiceServer) TransferToL2DappLinkBridge(context.Context, *TransferToL2DappLinkBridgeRequest) (*TransferToL2DappLinkBridgeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TransferToL2DappLinkBridge not implemented")
 }
 func (UnimplementedBridgeServiceServer) BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BatchMint not implemented")
@@ -260,6 +274,24 @@ func _BridgeService_UnstakeSingle_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_TransferToL2DappLinkBridge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferToL2DappLinkBridgeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).TransferToL2DappLinkBridge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/selaginella.proto_rpc.BridgeService/TransferToL2DappLinkBridge",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).TransferToL2DappLinkBridge(ctx, req.(*TransferToL2DappLinkBridgeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BridgeService_BatchMint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BatchMintRequest)
 	if err := dec(in); err != nil {
@@ -308,6 +340,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnstakeSingle",
 			Handler:    _BridgeService_UnstakeSingle_Handler,
+		},
+		{
+			MethodName: "TransferToL2DappLinkBridge",
+			Handler:    _BridgeService_TransferToL2DappLinkBridge_Handler,
 		},
 		{
 			MethodName: "BatchMint",

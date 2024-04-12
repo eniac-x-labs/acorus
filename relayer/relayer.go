@@ -3,6 +3,12 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/cornerstone-labs/acorus/common/bigint"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/common/tasks"
@@ -11,10 +17,6 @@ import (
 	"github.com/cornerstone-labs/acorus/database/relayer"
 	"github.com/cornerstone-labs/acorus/relayer/bindings"
 	"github.com/cornerstone-labs/acorus/relayer/unpack"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"math/big"
-	"time"
 )
 
 type RelayerListener struct {
