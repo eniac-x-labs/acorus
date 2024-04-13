@@ -301,10 +301,6 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "rpcResp", transferToL2DappLinkBridgeResp)
 			success := transferToL2DappLinkBridgeResp.Success
 			if success {
-				err := l.db.AppChainDappLinkBridge.NotifyAppChainDappLinkBridge(batchId)
-				if err != nil {
-					log.Error("NotifyAppChainDappLinkBridge", "chainId", l.chainId, "NotifyAppChainDappLinkBridge", err)
-				}
 				log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "success", success)
 			} else {
 				return fmt.Errorf("call rpc BatchMint failed")
@@ -342,7 +338,12 @@ func (l *L2AppChainListener) batchMint() error {
 		if rpcResp.Success {
 			err := l.db.AppChainIncreaseBatch.NotifyBatchMintSuccess(batchId.String())
 			if err != nil {
+				log.Error("NotifyBatchMintSuccess", "chainId", l.chainId, "NotifyBatchMintSuccess", err)
 				return err
+			}
+			err = l.db.AppChainDappLinkBridge.NotifyAppChainDappLinkBridge(batchId)
+			if err != nil {
+				log.Error("NotifyAppChainDappLinkBridge", "chainId", l.chainId, "NotifyAppChainDappLinkBridge", err)
 			}
 		}
 	}
