@@ -231,29 +231,32 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 		}
 		leftAddShares := big.NewInt(0).Sub(StakeAmount, totalShares)
 		thisUserLeftShares := big.NewInt(0).Sub(shares, useShares)
-
+		newUserInfoShares := &UserInfoShares{
+			Staker:          needStakeShare.Staker,
+			StrategyAddress: strategyAddress,
+			Operator:        operatorAddress,
+		}
 		if thisUserLeftShares.Cmp(leftAddShares) == -1 {
 			totalShares = big.NewInt(0).Add(totalShares, thisUserLeftShares)
 			needStakeShare.Status = 1
 			needStakeShare.UseShares = shares
+			newUserInfoShares.UserShares = thisUserLeftShares
 		}
 		if thisUserLeftShares.Cmp(leftAddShares) == 0 {
 			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
 			needStakeShare.Status = 1
 			needStakeShare.UseShares = shares
+			newUserInfoShares.UserShares = thisUserLeftShares
 		}
 		if thisUserLeftShares.Cmp(leftAddShares) == 1 {
 			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
 			needStakeShare.UseShares = big.NewInt(0).Add(useShares, leftAddShares)
+			newUserInfoShares.UserShares = leftAddShares
+
 		}
 
 		userInfoShares := toStakeShares.UserInfoShares
-		userInfoShares = append(userInfoShares, &UserInfoShares{
-			UserShares:      needStakeShare.UseShares,
-			Staker:          needStakeShare.Staker,
-			StrategyAddress: strategyAddress,
-			Operator:        operatorAddress,
-		})
+		userInfoShares = append(userInfoShares, newUserInfoShares)
 		needUpdateShares := toStakeShares.NeedUpdateShares
 		needUpdateShares = append(needUpdateShares, needStakeShare)
 		toStakeShares.TotalShares = totalShares
