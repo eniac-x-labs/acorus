@@ -112,6 +112,7 @@ func TransferETHToL2DappLinkBridge(chainId string, event event.ContractEvent, db
 	if unpackErr != nil {
 		return unpackErr
 	}
+	var notifyRelayer = false
 	dapplinkBridgeRecord := appchain.AppChainDappLinkBridge{
 		TxHash:                rlpLog.TxHash,
 		SourceChainId:         uEvent.SourceChainId.String(),
@@ -123,6 +124,7 @@ func TransferETHToL2DappLinkBridge(chainId string, event event.ContractEvent, db
 		Amount:                uEvent.BridgeEthAmount,
 		BatchId:               uEvent.BatchId,
 		Nonce:                 uEvent.Nonce,
+		NotifyRelayer:         &notifyRelayer,
 		Created:               event.Timestamp,
 	}
 
