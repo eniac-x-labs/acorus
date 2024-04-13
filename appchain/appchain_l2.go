@@ -312,7 +312,8 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 func (l *L2AppChainListener) batchMint() error {
 	notifyRelayer := l.db.AppChainDappLinkBridge.ListDataByNoNotifyRelayer(l.chainId)
 	if len(notifyRelayer) == 0 {
-		log.Info("batchMint", "chainId", l.chainId, "no more need batchMint data")
+		log.Info("batchMint", "chainId", l.chainId, "no more need batchMint data", len(notifyRelayer))
+		return nil
 	}
 	log.Info("batchMint", "chainId", l.chainId, "notifyRelayerSize", len(notifyRelayer))
 	for _, dappLinkBridge := range notifyRelayer {
