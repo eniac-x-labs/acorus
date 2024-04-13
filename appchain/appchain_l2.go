@@ -267,7 +267,6 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			batchId := big.NewInt(batchIdInt)
 			increaseBatches := make([]appchain.AppChainIncreaseBatch, 0)
 			for _, userInfoShares := range toStakeShares.UserInfoShares {
-				var noNotify = false
 				increaseBatches = append(increaseBatches, appchain.AppChainIncreaseBatch{
 					Staker:          userInfoShares.Staker,
 					Shares:          userInfoShares.UserShares,
@@ -275,7 +274,6 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 					BatchId:         batchId.String(),
 					StrategyAddress: userInfoShares.StrategyAddress,
 					Operator:        userInfoShares.Operator,
-					NotifyRelayer:   &noNotify,
 					Created:         uint64(time.Now().Unix()),
 				})
 			}
