@@ -17,7 +17,7 @@ type AppChainIncreaseBatch struct {
 	ChainId         string         `json:"chain_id"`
 	BatchId         string         `json:"batch_id"`
 	Created         uint64         `json:"created"`
-	NotifyRelayer   bool           `json:"notify_relayer"`
+	NotifyRelayer   *bool          `json:"notify_relayer"`
 }
 
 func (AppChainIncreaseBatch) TableName() string {
@@ -48,7 +48,8 @@ func (db appChainIncreaseBatchDB) StoreAppChainIncreasedBatch(appChainIncreaseBa
 
 func (db appChainIncreaseBatchDB) ListBatchDataByBatchId(batchId string) []AppChainIncreaseBatch {
 	var appChainIncreaseBatch []AppChainIncreaseBatch
-	err := db.gorm.Table(AppChainIncreaseBatch{}.TableName()).Where(AppChainIncreaseBatch{BatchId: batchId}).Find(&appChainIncreaseBatch)
+	var noNotify = false
+	err := db.gorm.Table(AppChainIncreaseBatch{}.TableName()).Where(AppChainIncreaseBatch{BatchId: batchId, NotifyRelayer: &noNotify}).Find(&appChainIncreaseBatch)
 	if err != nil {
 		log.Error("ListBatchDataByBatchId", "err", err)
 	}

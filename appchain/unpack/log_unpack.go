@@ -123,7 +123,6 @@ func TransferETHToL2DappLinkBridge(chainId string, event event.ContractEvent, db
 		Amount:                uEvent.BridgeEthAmount,
 		BatchId:               uEvent.BatchId,
 		Nonce:                 uEvent.Nonce,
-		NotifyRelayer:         false,
 		Created:               event.Timestamp,
 	}
 
