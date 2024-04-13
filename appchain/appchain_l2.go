@@ -231,29 +231,32 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 		}
 		leftAddShares := big.NewInt(0).Sub(StakeAmount, totalShares)
 		thisUserLeftShares := big.NewInt(0).Sub(shares, useShares)
-
+		newUserInfoShares := &UserInfoShares{
+			Staker:          needStakeShare.Staker,
+			StrategyAddress: strategyAddress,
+			Operator:        operatorAddress,
+		}
 		if thisUserLeftShares.Cmp(leftAddShares) == -1 {
 			totalShares = big.NewInt(0).Add(totalShares, thisUserLeftShares)
 			needStakeShare.Status = 1
 			needStakeShare.UseShares = shares
+			newUserInfoShares.UserShares = thisUserLeftShares
 		}
 		if thisUserLeftShares.Cmp(leftAddShares) == 0 {
 			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
 			needStakeShare.Status = 1
 			needStakeShare.UseShares = shares
+			newUserInfoShares.UserShares = thisUserLeftShares
 		}
 		if thisUserLeftShares.Cmp(leftAddShares) == 1 {
 			totalShares = big.NewInt(0).Add(totalShares, leftAddShares)
 			needStakeShare.UseShares = big.NewInt(0).Add(useShares, leftAddShares)
+			newUserInfoShares.UserShares = leftAddShares
+
 		}
 
 		userInfoShares := toStakeShares.UserInfoShares
-		userInfoShares = append(userInfoShares, &UserInfoShares{
-			UserShares:      needStakeShare.UseShares,
-			Staker:          needStakeShare.Staker,
-			StrategyAddress: strategyAddress,
-			Operator:        operatorAddress,
-		})
+		userInfoShares = append(userInfoShares, newUserInfoShares)
 		needUpdateShares := toStakeShares.NeedUpdateShares
 		needUpdateShares = append(needUpdateShares, needStakeShare)
 		toStakeShares.TotalShares = totalShares
@@ -301,10 +304,6 @@ func (l *L2AppChainListener) operatorSharesIncreased() error {
 			log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "rpcResp", transferToL2DappLinkBridgeResp)
 			success := transferToL2DappLinkBridgeResp.Success
 			if success {
-				err := l.db.AppChainDappLinkBridge.NotifyAppChainDappLinkBridge(batchId)
-				if err != nil {
-					log.Error("NotifyAppChainDappLinkBridge", "chainId", l.chainId, "NotifyAppChainDappLinkBridge", err)
-				}
 				log.Info("TransferToL2DappLinkBridge", "chainId", l.chainId, "batchId", batchId, "success", success)
 			} else {
 				return fmt.Errorf("call rpc BatchMint failed")
@@ -342,7 +341,12 @@ func (l *L2AppChainListener) batchMint() error {
 		if rpcResp.Success {
 			err := l.db.AppChainIncreaseBatch.NotifyBatchMintSuccess(batchId.String())
 			if err != nil {
+				log.Error("NotifyBatchMintSuccess", "chainId", l.chainId, "NotifyBatchMintSuccess", err)
 				return err
+			}
+			err = l.db.AppChainDappLinkBridge.NotifyAppChainDappLinkBridge(batchId)
+			if err != nil {
+				log.Error("NotifyAppChainDappLinkBridge", "chainId", l.chainId, "NotifyAppChainDappLinkBridge", err)
 			}
 		}
 	}
