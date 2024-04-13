@@ -48,9 +48,10 @@ func (db appChainIncreaseBatchDB) StoreAppChainIncreasedBatch(appChainIncreaseBa
 
 func (db appChainIncreaseBatchDB) ListBatchDataByBatchId(batchId string) []AppChainIncreaseBatch {
 	var appChainIncreaseBatch []AppChainIncreaseBatch
-	err := db.gorm.Table(AppChainIncreaseBatch{}.TableName()).Where(AppChainIncreaseBatch{BatchId: batchId}).Where("notify_relayer = ?", false).Find(&appChainIncreaseBatch)
-	if err != nil {
-		log.Error("ListBatchDataByBatchId", "err", err)
+	result := db.gorm.Table(AppChainIncreaseBatch{}.TableName()).Where(AppChainIncreaseBatch{BatchId: batchId})
+	result = result.Where("notify_relayer = ?", false).Find(&appChainIncreaseBatch)
+	if result.Error != nil {
+		log.Error("ListBatchDataByBatchId", "err", result.Error)
 	}
 	return appChainIncreaseBatch
 }
