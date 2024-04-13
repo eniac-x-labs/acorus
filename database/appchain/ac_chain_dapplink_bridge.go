@@ -20,7 +20,7 @@ type AppChainDappLinkBridge struct {
 	Amount                *big.Int       `json:"amount"gorm:"serializer:u256"`
 	BatchId               *big.Int       `json:"batch_id"gorm:"serializer:u256"`
 	Nonce                 *big.Int       `json:"nonce"gorm:"serializer:u256"`
-	NotifyRelayer         *bool          `json:"notify_relayer"`
+	NotifyRelayer         bool           `json:"notify_relayer"`
 	Created               uint64         `json:"created"`
 }
 
@@ -67,8 +67,7 @@ func (db appChainDappLinkBridgeDB) NotifyAppChainDappLinkBridge(batchId *big.Int
 
 func (db appChainDappLinkBridgeDB) ListDataByNoNotifyRelayer(chainId string) []AppChainDappLinkBridge {
 	var appChainDappLinkBridge []AppChainDappLinkBridge
-	var noNotify = false
-	err := db.gorm.Table(AppChainDappLinkBridge{}.TableName()).Where(AppChainDappLinkBridge{NotifyRelayer: &noNotify, ChainId: chainId}).Find(&appChainDappLinkBridge)
+	err := db.gorm.Table(AppChainDappLinkBridge{}.TableName()).Where(AppChainDappLinkBridge{ChainId: chainId}).Where("notify_relayer = ?", false).Find(&appChainDappLinkBridge)
 	if err.Error != nil {
 		log.Error("ListDataByNoNotifyRelayer", "err", err.Error)
 	}
