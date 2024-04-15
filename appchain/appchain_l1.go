@@ -157,7 +157,7 @@ func (l *L1AppChainListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.StakingManagerAbi.Events["UnstakeRequested"].ID.String():
 		err := unpack.UnstakeRequested(l.chainId, event, l.db)
 		return err
-	case bindings.StakingManagerAbi.Events["UnstakeRequestClaimed"].ID.String():
+	case bindings.UnstakeRequestsManagerAbi.Events["UnstakeRequestClaimed"].ID.String():
 		err := unpack.UnstakeRequestClaimed(event, l.db)
 		return err
 	}
@@ -170,10 +170,11 @@ func (l *L1AppChainListener) notifyRelayerBatch() error {
 	for _, batch := range batchList {
 		destChainId := batch.DestChainId
 		sourceChainId := batch.SourceChainId
-		bridge := batch.Bridge
 		strategy := batch.L2Strategy
 		txHash := batch.TxHash
-		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), bridge.String(), strategy.String(), sourceChainId, destChainId)
+		strategyMap := make(map[string]uint64)
+		strategyMap[strategy.String()] = batch.UnstakeNonce.Uint64()
+		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), sourceChainId, destChainId, strategyMap)
 		if err != nil {
 			return err
 		}

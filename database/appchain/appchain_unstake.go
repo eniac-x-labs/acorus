@@ -24,6 +24,7 @@ type AppChainUnStake struct {
 	Bridge        common.Address `json:"bridge" gorm:"serializer:bytes"`
 	SourceChainId string         `json:"source_chain_id"`
 	DestChainId   string         `json:"dest_chain_id"`
+	UnstakeNonce  *big.Int       `json:"unstake_nonce" gorm:"serializer:u256"`
 	Status        uint8          `json:"status"`
 	NotifyRelayer bool           `json:"notify_relayer"`
 	Created       uint64         `json:"created"`
@@ -112,11 +113,9 @@ func (db appChainUnStakeDB) NotifyAppChainUnStake(txHash string) error {
 
 func (db appChainUnStakeDB) ClaimAppChainUnStake(chainUnStakeBatch AppChainUnStake, noClaim uint8) error {
 	var exits AppChainUnStake
-	err := db.gorm.Table(chainUnStakeBatch.TableName()).Where(AppChainUnStake{L2Strategy: chainUnStakeBatch.L2Strategy,
-		SourceChainId: chainUnStakeBatch.SourceChainId,
-		DestChainId:   chainUnStakeBatch.DestChainId,
-		Staker:        chainUnStakeBatch.Staker,
-		Status:        noClaim,
+	err := db.gorm.Table(chainUnStakeBatch.TableName()).Where(AppChainUnStake{
+		UnstakeNonce: chainUnStakeBatch.UnstakeNonce,
+		Status:       noClaim,
 	}).Take(&exits)
 	if err != nil {
 		if errors.Is(err.Error, gorm.ErrRecordNotFound) {

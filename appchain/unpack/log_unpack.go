@@ -10,16 +10,18 @@ import (
 	stake_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/staking_manager/bindings"
 	strategybasebindings "github.com/cornerstone-labs/acorus/appchain/bindings/strategy_base/bindings"
 	stratege_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/strategy_manager/bindings"
+	unstake_manager_bindings "github.com/cornerstone-labs/acorus/appchain/bindings/unstake_requests_manager/bindings"
 	"github.com/cornerstone-labs/acorus/database"
 	"github.com/cornerstone-labs/acorus/database/appchain"
 	"github.com/cornerstone-labs/acorus/database/event"
 )
 
 var (
-	StakeUnpack, _        = stake_bindings.NewStakingManager(common.Address{}, nil)
-	StrategyUnpack, _     = stratege_bindings.NewStrategyManager(common.Address{}, nil)
-	DelegateUnpack, _     = delegation_bindings.NewDelegationManager(common.Address{}, nil)
-	StrategyBaseUnpack, _ = strategybasebindings.NewStrategyBase(common.Address{}, nil)
+	StakeUnpack, _          = stake_bindings.NewStakingManager(common.Address{}, nil)
+	StrategyUnpack, _       = stratege_bindings.NewStrategyManager(common.Address{}, nil)
+	DelegateUnpack, _       = delegation_bindings.NewDelegationManager(common.Address{}, nil)
+	StrategyBaseUnpack, _   = strategybasebindings.NewStrategyBase(common.Address{}, nil)
+	UnstakeManagerUnpack, _ = unstake_manager_bindings.NewUnstakeRequestsManager(common.Address{}, nil)
 )
 
 const (
@@ -29,19 +31,16 @@ const (
 
 func UnstakeRequestClaimed(event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	uEvent, unpackErr := StakeUnpack.ParseUnstakeRequestClaimed(*rlpLog)
+	uEvent, unpackErr := UnstakeManagerUnpack.ParseUnstakeRequestClaimed(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
 	unStakeSingle := appchain.AppChainUnStake{
-		ClaimTxHash:   rlpLog.TxHash,
-		Bridge:        uEvent.Bridge,
-		Staker:        uEvent.Staker,
-		SourceChainId: uEvent.SourceChainId.String(),
-		DestChainId:   uEvent.DestChainId.String(),
-		L2Strategy:    uEvent.L2Strategy,
-		Updated:       event.Timestamp,
-		Status:        Claim,
+		ClaimTxHash:  rlpLog.TxHash,
+		Bridge:       uEvent.BridgeAddress,
+		UnstakeNonce: uEvent.UnStakeMessageNonce,
+		Updated:      event.Timestamp,
+		Status:       Claim,
 	}
 	return db.AppChainUnStake.ClaimAppChainUnStake(unStakeSingle, Pending)
 }
@@ -61,6 +60,7 @@ func UnstakeRequested(chainId string, event event.ContractEvent, db *database.DB
 		DETHLocked:    uEvent.DETHLocked,
 		SourceChainId: chainId,
 		DestChainId:   uEvent.DestChainId.String(),
+		UnstakeNonce:  uEvent.UnStakeMessageNonce,
 		Created:       event.Timestamp,
 		Status:        Pending,
 	}
