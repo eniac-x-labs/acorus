@@ -17,7 +17,7 @@ type BridgeRpcService interface {
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateWithdrawFundingPoolBalanceResponse, error)
 	UpdateDepositFundingPoolBalance(sourceChainId, destChainId, amount,
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateDepositFundingPoolBalanceResponse, error)
-	UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
+	UnstakeBatch(sourceHash, bridgeAddress, strategyAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error)
 	BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error)
 	TransferToL2DappLinkBridge(batchId uint64, ChainId, StrategyAddress string) (*pb.TransferToL2DappLinkBridgeResponse, error)
 }
@@ -97,14 +97,15 @@ func (r *bridgeRpcService) UpdateWithdrawFundingPoolBalance(sourceChainId, destC
 	return poolBalanceResponse, err
 }
 
-func (r *bridgeRpcService) UnstakeBatch(sourceHash, bridgeAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error) {
+func (r *bridgeRpcService) UnstakeBatch(sourceHash, bridgeAddress, strategyAddress, sourceChainId, destChainId string) (*pb.UnstakeBatchResponse, error) {
 	ctx := context.Background()
 	upstakeBatchReq := &pb.UnstakeBatchRequest{
-		BridgeAddress: bridgeAddress,
-		SourceChainId: sourceChainId,
-		DestChainId:   destChainId,
-		SourceHash:    sourceHash,
-		GasLimit:      "200000",
+		BridgeAddress:     bridgeAddress,
+		SourceChainId:     sourceChainId,
+		DestChainId:       destChainId,
+		SourceHash:        sourceHash,
+		L2StrategyAddress: strategyAddress,
+		GasLimit:          "200000",
 	}
 	log.Info("UnstakeBatchRpc", "upstakeBatchReq", upstakeBatchReq)
 	return r.bRpcService.UnstakeBatch(ctx, upstakeBatchReq)

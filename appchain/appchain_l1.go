@@ -171,8 +171,9 @@ func (l *L1AppChainListener) notifyRelayerBatch() error {
 		destChainId := batch.DestChainId
 		sourceChainId := batch.SourceChainId
 		bridge := batch.Bridge
+		strategy := batch.L2Strategy
 		txHash := batch.TxHash
-		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), bridge.String(), sourceChainId, destChainId)
+		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), bridge.String(), strategy.String(), sourceChainId, destChainId)
 		if err != nil {
 			return err
 		}
