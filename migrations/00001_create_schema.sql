@@ -444,6 +444,7 @@ create table if not exists ac_chain_unstake
     bridge          varchar,
     source_chain_id varchar,
     dest_chain_id   varchar,
+    unstake_nonce UINT256 default 0,
     status          int              default 0,
     notify_relayer  boolean          default false,
     created         INTEGER CHECK (created > 0),
