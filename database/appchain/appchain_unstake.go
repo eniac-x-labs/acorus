@@ -71,7 +71,7 @@ func (db appChainUnStakeDB) StoreAppChainUnStake(chainUnStakeBatch AppChainUnSta
 
 func (db appChainUnStakeDB) ListAppChainUnStakeWaitNotify() (chainUnStakeBatch []AppChainUnStake) {
 	getSql := `
-		select * from  ac_chain_unstake_batch where notify_relayer = false  LIMIT 20
+		select * from  ac_chain_unstake where notify_relayer = false  LIMIT 20
 	`
 	result := db.gorm.Raw(getSql).Find(&chainUnStakeBatch)
 	err := result.Error
@@ -106,7 +106,7 @@ func (db appChainUnStakeDB) ListAppChainUnStake(page, pageSize uint32, staker, s
 
 func (db appChainUnStakeDB) NotifyAppChainUnStake(txHash string) error {
 	chainUnStakeBatch := new(AppChainUnStake)
-	result := db.gorm.Table(chainUnStakeBatch.TableName()).Where("tx_hash = ?", txHash).Updates(map[string]interface{}{"notify_relayer": true})
+	result := db.gorm.Table(chainUnStakeBatch.TableName()).Where("tx_hash = ? and notify_relayer = false", txHash).Update("notify_relayer", true)
 	return result.Error
 }
 
