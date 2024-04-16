@@ -526,3 +526,18 @@ create table if not exists ac_chain_dapplink_bridge(
 );
 CREATE INDEX IF NOT EXISTS ac_chain_dapplink_bridge_batch_id ON ac_chain_dapplink_bridge (batch_id);
 CREATE INDEX IF NOT EXISTS ac_chain_dapplink_bridge_tx_hash ON ac_chain_dapplink_bridge (tx_hash);
+
+create table if not exists ac_migrate_shares(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash varchar,
+    staker     varchar,
+    strategy          varchar,
+    chain_id varchar,
+    shares UINT256 default 0,
+    block_number UINT256          default 0,
+    unstake_nonce         UINT256          default 0,
+    notify_relayer  boolean          default false,
+    created INTEGER CHECK (created > 0)
+);
+
+CREATE INDEX IF NOT EXISTS ac_migrate_shares_tx_hash ON ac_migrate_shares (tx_hash);

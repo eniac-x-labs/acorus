@@ -16,8 +16,8 @@ type AppChainOperatorSharesIncreased struct {
 	Shares          *big.Int       `json:"shares" gorm:"serializer:u256"`
 	UseShares       *big.Int       `json:"use_shares" gorm:"serializer:u256"`
 	StrategyAddress common.Address `json:"strategy_address" gorm:"serializer:bytes"`
-	Operator        common.Address `json:"staker" gorm:"serializer:bytes"`
-	Staker          common.Address `json:"token_address" gorm:"serializer:bytes"`
+	Operator        common.Address `json:"operator" gorm:"serializer:bytes"`
+	Staker          common.Address `json:"staker" gorm:"serializer:bytes"`
 	Status          int            `json:"status"`
 	ChainId         string         `json:"chain_id"`
 	Created         uint64         `json:"created"`

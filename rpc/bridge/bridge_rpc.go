@@ -18,6 +18,7 @@ type BridgeRpcService interface {
 	UpdateDepositFundingPoolBalance(sourceChainId, destChainId, amount,
 		receiveAddress, tokenAddress, hash string) (*pb.UpdateDepositFundingPoolBalanceResponse, error)
 	UnstakeBatch(sourceHash, sourceChainId, destChainId string, strategyMap map[string]uint64) (*pb.UnstakeBatchResponse, error)
+	MigrateL1Shares(sourceHash, chainId, strategy, staker, shares string, nonce uint64) (*pb.MigrateL1SharesResponse, error)
 	BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error)
 	TransferToL2DappLinkBridge(batchId uint64, ChainId, StrategyAddress string) (*pb.TransferToL2DappLinkBridgeResponse, error)
 }
@@ -129,4 +130,18 @@ func (r *bridgeRpcService) TransferToL2DappLinkBridge(batchId uint64, ChainId, S
 	}
 	log.Info("TransferToL2DappLinkBridge", "ChainId", ChainId, "batchId", batchId, "transferToL2DappLinkBridgeReq", transferToL2DappLinkBridgeReq)
 	return r.bRpcService.TransferToL2DappLinkBridge(ctx, transferToL2DappLinkBridgeReq)
+}
+
+func (r *bridgeRpcService) MigrateL1Shares(sourceHash, chainId, strategy, staker, shares string, nonce uint64) (*pb.MigrateL1SharesResponse, error) {
+	ctx := context.Background()
+	migrateL1SharesReq := &pb.MigrateL1SharesRequest{
+		SourceHash:            sourceHash,
+		ChainId:               chainId,
+		Strategies:            strategy,
+		Withdrawer:            staker,
+		Shares:                shares,
+		L1UnStakeMessageNonce: nonce,
+	}
+	log.Info("MigrateL1SharesRpc", "migrateL1SharesReq", migrateL1SharesReq)
+	return r.bRpcService.MigrateL1Shares(ctx, migrateL1SharesReq)
 }
