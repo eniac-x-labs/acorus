@@ -232,7 +232,7 @@ func (l *L1AppChainListener) migrateShares() error {
 		}
 		success := unstakeBatch.Success
 		if success {
-			err := l.db.AppChainUnStake.NotifyAppChainUnStake(txHash.String())
+			err := l.db.AppChainUnStake.NotifyAppChainUnStake(unStakeInfo.TxHash.String())
 			if err != nil {
 				return err
 			}
