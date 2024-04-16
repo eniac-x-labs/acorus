@@ -177,7 +177,7 @@ func (l *L2AppChainListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.StrategyBaseAbi.Events["TransferETHToL2DappLinkBridge"].ID.String():
 		err := unpack.TransferETHToL2DappLinkBridge(l.chainId, event, l.db)
 		return err
-	case bindings.StrategyBaseAbi.Events["MigrateRelatedL1StakerShares"].ID.String():
+	case bindings.StrategyManagerAbi.Events["MigrateRelatedL1StakerShares"].ID.String():
 		err := unpack.MigrateRelatedL1StakerShares(l.chainId, event, l.db)
 		return err
 	}
