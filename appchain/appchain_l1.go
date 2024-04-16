@@ -182,16 +182,17 @@ func (l *L1AppChainListener) notifyRelayerBatchBefore() error {
 		unstakeNonce := batch.UnstakeNonce
 		staker := batch.Staker
 		strategy := batch.L2Strategy
+		destChainId := batch.DestChainId
 		// call rpc
-		notifyMigrateSharesSuccessResp, err := l.bridgeRpcService.MigrateL1Shares(txHash.String(), l.chainId, strategy.String(), staker.String(), shares.String(), unstakeNonce.Uint64())
+		notifyMigrateSharesSuccessResp, err := l.bridgeRpcService.MigrateL1Shares(txHash.String(), destChainId, strategy.String(), staker.String(), shares.String(), unstakeNonce.Uint64())
 		if err != nil {
 			return err
 		}
-		log.Info("NotifyMigrateSharesSuccess", "chainId", l.chainId, "txHash", txHash, "rpcResp", notifyMigrateSharesSuccessResp)
+		log.Info("NotifyMigrateSharesSuccess", "chainId", destChainId, "txHash", txHash, "rpcResp", notifyMigrateSharesSuccessResp)
 		if notifyMigrateSharesSuccessResp.Success {
 			err := l.db.AppChainUnStake.NotifyMigrate(txHash.String())
 			if err != nil {
-				log.Error("NotifyMigrateSharesSuccess", "chainId", l.chainId, "NotifyMigrateSharesSuccess", err)
+				log.Error("NotifyMigrateSharesSuccess", "chainId", destChainId, "NotifyMigrateSharesSuccess", err)
 				return err
 			}
 		}
