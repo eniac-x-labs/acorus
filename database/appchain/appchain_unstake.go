@@ -27,6 +27,7 @@ type AppChainUnStake struct {
 	UnstakeNonce  *big.Int       `json:"unstake_nonce" gorm:"serializer:u256"`
 	Status        uint8          `json:"status"`
 	NotifyRelayer bool           `json:"notify_relayer"`
+	MigrateNotify bool           `json:"migrate_notify"`
 	Created       uint64         `json:"created"`
 	Updated       uint64         `json:"updated"`
 }
@@ -43,12 +44,15 @@ type AppChainUnStakeDB interface {
 	AppChainUnStakeDBView
 	StoreAppChainUnStake(cainUnStakeBatch AppChainUnStake) error
 	NotifyAppChainUnStake(txHash string) error
+	NotifyMigrate(txHash string) error
 	ClaimAppChainUnStake(chainUnStakeBatch AppChainUnStake, noClaim uint8) error
 }
 
 type AppChainUnStakeDBView interface {
 	ListAppChainUnStake(page, pageSize uint32, staker, strategy string) ([]AppChainUnStake, int64, int64)
 	ListAppChainUnStakeWaitNotify() []AppChainUnStake
+	ListUnStakeMigrateNotify() []AppChainUnStake
+	GetUnkStakeWaitNotify(unstakeNonce *big.Int) *AppChainUnStake
 }
 
 func NewAppChainUnStakeDB(db *gorm.DB) AppChainUnStakeDB {
@@ -72,7 +76,7 @@ func (db appChainUnStakeDB) StoreAppChainUnStake(chainUnStakeBatch AppChainUnSta
 
 func (db appChainUnStakeDB) ListAppChainUnStakeWaitNotify() (chainUnStakeBatch []AppChainUnStake) {
 	getSql := `
-		select * from  ac_chain_unstake where notify_relayer = false  LIMIT 20
+		select * from  ac_chain_unstake where notify_relayer = false and migrate_notify = true  LIMIT 20
 	`
 	result := db.gorm.Raw(getSql).Find(&chainUnStakeBatch)
 	err := result.Error
@@ -129,4 +133,39 @@ func (db appChainUnStakeDB) ClaimAppChainUnStake(chainUnStakeBatch AppChainUnSta
 	exits.Bridge = chainUnStakeBatch.Bridge
 
 	return db.gorm.Table(chainUnStakeBatch.TableName()).Save(exits).Error
+}
+
+func (db appChainUnStakeDB) NotifyMigrate(txHash string) error {
+	chainUnStakeBatch := new(AppChainUnStake)
+	result := db.gorm.Table(chainUnStakeBatch.TableName()).Where("tx_hash = ? and migrate_notify = false", txHash).Update("migrate_notify", true)
+	return result.Error
+}
+
+func (db appChainUnStakeDB) ListUnStakeMigrateNotify() []AppChainUnStake {
+	var chainUnStakeBatch []AppChainUnStake
+	getSql := `
+		select * from  ac_chain_unstake where migrate_notify = false and  notify_relayer = false  LIMIT 20
+	`
+	result := db.gorm.Raw(getSql).Find(&chainUnStakeBatch)
+	err := result.Error
+	if err != nil {
+		return nil
+	}
+	return chainUnStakeBatch
+}
+
+func (db appChainUnStakeDB) GetUnkStakeWaitNotify(unstakeNonce *big.Int) *AppChainUnStake {
+	var chainUnStakeBatch AppChainUnStake
+	result := db.gorm.Table(chainUnStakeBatch.TableName()).
+		Where(AppChainUnStake{MigrateNotify: true, UnstakeNonce: unstakeNonce}).
+		Where("notify_relayer = false").Take(&chainUnStakeBatch)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		log.Info("GetUnkStakeWaitNotify", "err", result.Error)
+		return nil
+	}
+	return &chainUnStakeBatch
+
 }

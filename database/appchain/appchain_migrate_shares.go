@@ -36,7 +36,7 @@ type AppChainMigrateSharesDB interface {
 	AppChainMigrateSharesDBView
 }
 type AppChainMigrateSharesDBView interface {
-	ListDataByNoNotifyRelayer(chainId string) []AppChainMigrateShares
+	ListDataByNoNotifyRelayer() []AppChainMigrateShares
 }
 
 func NewAppChainMigrateSharesDB(db *gorm.DB) AppChainMigrateSharesDB {
@@ -62,9 +62,10 @@ func (db appChainMigrateSharesDB) NotifyMigrateSharesSuccess(TxHash common.Hash)
 	return db.gorm.Table(AppChainMigrateShares{}.TableName()).Where(AppChainMigrateShares{TxHash: TxHash}).Update("notify_relayer", true).Error
 }
 
-func (db appChainMigrateSharesDB) ListDataByNoNotifyRelayer(chainId string) []AppChainMigrateShares {
+func (db appChainMigrateSharesDB) ListDataByNoNotifyRelayer() []AppChainMigrateShares {
 	var appChainMigrateShares []AppChainMigrateShares
-	err := db.gorm.Table(AppChainMigrateShares{}.TableName()).Where(AppChainMigrateShares{ChainId: chainId}).Where("notify_relayer = ?", false).Find(&appChainMigrateShares)
+	err := db.gorm.Table(AppChainMigrateShares{}.TableName()).Where("notify_relayer = ?", false).
+		Limit(20).Find(&appChainMigrateShares)
 	if err.Error != nil {
 		log.Error("AppChainMigrateShares ListDataByNoNotifyRelayer", "err", err.Error)
 	}
