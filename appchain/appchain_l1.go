@@ -65,9 +65,19 @@ func (l *L1AppChainListener) Start() error {
 	})
 	l.tasks.Go(func() error {
 		for range l1ListenerEventOn1.C {
-			err := l.notifyRelayerBatch()
+			err := l.notifyRelayerBatchBefore()
 			if err != nil {
 				log.Error("notifyRelayerBatch", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
+	l.tasks.Go(func() error {
+		for range l1ListenerEventOn1.C {
+			err := l.migrateSharesTask()
+			if err != nil {
+				log.Error("L1AppChainListener migrateSharesTask", "err", err)
 				continue
 			}
 		}
@@ -153,7 +163,6 @@ func (l *L1AppChainListener) EventsFetch(fromL1Height, toL1Height *big.Int) erro
 
 func (l *L1AppChainListener) eventUnpack(event event.ContractEvent) error {
 	switch event.EventSignature.String() {
-
 	case bindings.StakingManagerAbi.Events["UnstakeRequested"].ID.String():
 		err := unpack.UnstakeRequested(l.chainId, event, l.db)
 		return err
@@ -164,16 +173,58 @@ func (l *L1AppChainListener) eventUnpack(event event.ContractEvent) error {
 	return nil
 }
 
-func (l *L1AppChainListener) notifyRelayerBatch() error {
-	batchList := l.db.AppChainUnStake.ListAppChainUnStakeWaitNotify()
-	log.Info("notifyRelayerBatch", "batchList", batchList)
+func (l *L1AppChainListener) notifyRelayerBatchBefore() error {
+	batchList := l.db.AppChainUnStake.ListUnStakeMigrateNotify()
+	log.Info("notifyRelayerBatchBefore", "migrate", len(batchList))
 	for _, batch := range batchList {
-		destChainId := batch.DestChainId
-		sourceChainId := batch.SourceChainId
-		strategy := batch.L2Strategy
 		txHash := batch.TxHash
+		shares := batch.EthAmount
+		unstakeNonce := batch.UnstakeNonce
+		staker := batch.Staker
+		strategy := batch.L2Strategy
+		// call rpc
+		notifyMigrateSharesSuccessResp, err := l.bridgeRpcService.MigrateL1Shares(txHash.String(), l.chainId, strategy.String(), staker.String(), shares.String(), unstakeNonce.Uint64())
+		if err != nil {
+			return err
+		}
+		log.Info("NotifyMigrateSharesSuccess", "chainId", l.chainId, "txHash", txHash, "rpcResp", notifyMigrateSharesSuccessResp)
+		if notifyMigrateSharesSuccessResp.Success {
+			err := l.db.AppChainUnStake.NotifyMigrate(txHash.String())
+			if err != nil {
+				log.Error("NotifyMigrateSharesSuccess", "chainId", l.chainId, "NotifyMigrateSharesSuccess", err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (l *L1AppChainListener) migrateSharesTask() error {
+	log.Info("migrateSharesTask start", "chainId", l.chainId)
+	// dont trx
+	err := l.migrateShares()
+	return err
+}
+
+func (l *L1AppChainListener) migrateShares() error {
+	migrateSharesList := l.db.AppChainMigrateShares.ListDataByNoNotifyRelayer()
+	if len(migrateSharesList) == 0 {
+		log.Info("migrateShares", "chainId", l.chainId, "no more need migrateShares data", len(migrateSharesList))
+		return nil
+	}
+	log.Info("migrateShares", "chainId", l.chainId, "notifyRelayerSize", len(migrateSharesList))
+	for _, migrateShares := range migrateSharesList {
+		txHash := migrateShares.TxHash
+		unstakeNonce := migrateShares.UnstakeNonce
+		unStakeInfo := l.db.AppChainUnStake.GetUnkStakeWaitNotify(unstakeNonce)
+		if unStakeInfo == nil {
+			continue
+		}
+		destChainId := unStakeInfo.DestChainId
+		sourceChainId := unStakeInfo.SourceChainId
+		strategy := unStakeInfo.L2Strategy
 		strategyMap := make(map[string]uint64)
-		strategyMap[strategy.String()] = batch.UnstakeNonce.Uint64()
+		strategyMap[strategy.String()] = unstakeNonce.Uint64()
 		unstakeBatch, err := l.bridgeRpcService.UnstakeBatch(txHash.String(), sourceChainId, destChainId, strategyMap)
 		if err != nil {
 			return err
@@ -184,7 +235,13 @@ func (l *L1AppChainListener) notifyRelayerBatch() error {
 			if err != nil {
 				return err
 			}
+			err = l.db.AppChainMigrateShares.NotifyMigrateSharesSuccess(txHash)
+			if err != nil {
+				log.Error("NotifyMigrateSharesSuccess", "chainId", l.chainId, "NotifyMigrateSharesSuccess", err)
+				return err
+			}
 		}
 	}
+
 	return nil
 }

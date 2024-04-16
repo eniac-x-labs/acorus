@@ -447,6 +447,7 @@ create table if not exists ac_chain_unstake
     unstake_nonce UINT256 default 0,
     status          int              default 0,
     notify_relayer  boolean          default false,
+    migrate_notify  boolean          default false,
     created         INTEGER CHECK (created > 0),
     updated         INTEGER
 );
