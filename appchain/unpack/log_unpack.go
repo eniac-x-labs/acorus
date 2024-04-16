@@ -130,6 +130,27 @@ func TransferETHToL2DappLinkBridge(chainId string, event event.ContractEvent, db
 	return db.AppChainDappLinkBridge.StroeAppChainDappLinkBridge(dapplinkBridgeRecord)
 }
 
+func MigrateRelatedL1StakerShares(chainId string, event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := StrategyUnpack.ParseMigrateRelatedL1StakerShares(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	appChainMigrateShares := appchain.AppChainMigrateShares{
+		TxHash:        rlpLog.TxHash,
+		ChainId:       chainId,
+		BlockNumber:   event.BlockNumber,
+		UnstakeNonce:  uEvent.L1UnStakeMessageNonce,
+		Shares:        uEvent.Shares,
+		Staker:        uEvent.Staker,
+		Strategy:      uEvent.Strategy,
+		NotifyRelayer: false,
+		Created:       event.Timestamp,
+	}
+
+	return db.AppChainMigrateShares.StoreMigrateShares(appChainMigrateShares)
+}
+
 func ComputeMsgHash(sourceChainId, destChainId, nonce *big.Int) common.Hash {
 	return crypto.Keccak256Hash(common.LeftPadBytes(sourceChainId.Bytes(), 32),
 		common.LeftPadBytes(destChainId.Bytes(), 32),

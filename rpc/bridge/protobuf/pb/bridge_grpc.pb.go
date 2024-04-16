@@ -27,7 +27,7 @@ type BridgeServiceClient interface {
 	UpdateDepositFundingPoolBalance(ctx context.Context, in *UpdateDepositFundingPoolBalanceRequest, opts ...grpc.CallOption) (*UpdateDepositFundingPoolBalanceResponse, error)
 	UpdateWithdrawFundingPoolBalance(ctx context.Context, in *UpdateWithdrawFundingPoolBalanceRequest, opts ...grpc.CallOption) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(ctx context.Context, in *UnstakeBatchRequest, opts ...grpc.CallOption) (*UnstakeBatchResponse, error)
-	UnstakeSingle(ctx context.Context, in *UnstakeSingleRequest, opts ...grpc.CallOption) (*UnstakeSingleResponse, error)
+	MigrateL1Shares(ctx context.Context, in *MigrateL1SharesRequest, opts ...grpc.CallOption) (*MigrateL1SharesResponse, error)
 	TransferToL2DappLinkBridge(ctx context.Context, in *TransferToL2DappLinkBridgeRequest, opts ...grpc.CallOption) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error)
 }
@@ -85,9 +85,9 @@ func (c *bridgeServiceClient) UnstakeBatch(ctx context.Context, in *UnstakeBatch
 	return out, nil
 }
 
-func (c *bridgeServiceClient) UnstakeSingle(ctx context.Context, in *UnstakeSingleRequest, opts ...grpc.CallOption) (*UnstakeSingleResponse, error) {
-	out := new(UnstakeSingleResponse)
-	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/UnstakeSingle", in, out, opts...)
+func (c *bridgeServiceClient) MigrateL1Shares(ctx context.Context, in *MigrateL1SharesRequest, opts ...grpc.CallOption) (*MigrateL1SharesResponse, error) {
+	out := new(MigrateL1SharesResponse)
+	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/MigrateL1Shares", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ type BridgeServiceServer interface {
 	UpdateDepositFundingPoolBalance(context.Context, *UpdateDepositFundingPoolBalanceRequest) (*UpdateDepositFundingPoolBalanceResponse, error)
 	UpdateWithdrawFundingPoolBalance(context.Context, *UpdateWithdrawFundingPoolBalanceRequest) (*UpdateWithdrawFundingPoolBalanceResponse, error)
 	UnstakeBatch(context.Context, *UnstakeBatchRequest) (*UnstakeBatchResponse, error)
-	UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error)
+	MigrateL1Shares(context.Context, *MigrateL1SharesRequest) (*MigrateL1SharesResponse, error)
 	TransferToL2DappLinkBridge(context.Context, *TransferToL2DappLinkBridgeRequest) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error)
 }
@@ -145,8 +145,8 @@ func (UnimplementedBridgeServiceServer) UpdateWithdrawFundingPoolBalance(context
 func (UnimplementedBridgeServiceServer) UnstakeBatch(context.Context, *UnstakeBatchRequest) (*UnstakeBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnstakeBatch not implemented")
 }
-func (UnimplementedBridgeServiceServer) UnstakeSingle(context.Context, *UnstakeSingleRequest) (*UnstakeSingleResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UnstakeSingle not implemented")
+func (UnimplementedBridgeServiceServer) MigrateL1Shares(context.Context, *MigrateL1SharesRequest) (*MigrateL1SharesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MigrateL1Shares not implemented")
 }
 func (UnimplementedBridgeServiceServer) TransferToL2DappLinkBridge(context.Context, *TransferToL2DappLinkBridgeRequest) (*TransferToL2DappLinkBridgeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TransferToL2DappLinkBridge not implemented")
@@ -256,20 +256,20 @@ func _BridgeService_UnstakeBatch_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _BridgeService_UnstakeSingle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnstakeSingleRequest)
+func _BridgeService_MigrateL1Shares_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MigrateL1SharesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BridgeServiceServer).UnstakeSingle(ctx, in)
+		return srv.(BridgeServiceServer).MigrateL1Shares(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/selaginella.proto_rpc.BridgeService/UnstakeSingle",
+		FullMethod: "/selaginella.proto_rpc.BridgeService/MigrateL1Shares",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BridgeServiceServer).UnstakeSingle(ctx, req.(*UnstakeSingleRequest))
+		return srv.(BridgeServiceServer).MigrateL1Shares(ctx, req.(*MigrateL1SharesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -338,8 +338,8 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _BridgeService_UnstakeBatch_Handler,
 		},
 		{
-			MethodName: "UnstakeSingle",
-			Handler:    _BridgeService_UnstakeSingle_Handler,
+			MethodName: "MigrateL1Shares",
+			Handler:    _BridgeService_MigrateL1Shares_Handler,
 		},
 		{
 			MethodName: "TransferToL2DappLinkBridge",
