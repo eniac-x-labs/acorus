@@ -542,3 +542,22 @@ create table if not exists ac_migrate_shares(
 );
 
 CREATE INDEX IF NOT EXISTS ac_migrate_shares_tx_hash ON ac_migrate_shares (tx_hash);
+
+
+create table if not exists ac_chain_withdraw
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    block_number    UINT256          default 0,
+    tx_hash         varchar,
+    shares      UINT256          default 0,
+    strategy     varchar,
+    operator varchar,
+    staker          varchar,
+    chain_id varchar,
+    created         INTEGER CHECK (created > 0)
+    );
+CREATE INDEX IF NOT EXISTS ac_chain_withdraw_tx_hash ON ac_chain_withdraw (tx_hash);
+CREATE INDEX IF NOT EXISTS ac_chain_withdraw_operator ON ac_chain_withdraw (operator);
+CREATE INDEX IF NOT EXISTS ac_chain_withdraw_strategy ON ac_chain_withdraw (strategy);
+CREATE INDEX IF NOT EXISTS ac_chain_withdraw_chain_id ON ac_chain_withdraw (chain_id);
+CREATE INDEX IF NOT EXISTS ac_chain_withdraw_staker ON ac_chain_withdraw (staker);
