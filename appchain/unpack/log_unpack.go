@@ -151,6 +151,26 @@ func MigrateRelatedL1StakerShares(chainId string, event event.ContractEvent, db 
 	return db.AppChainMigrateShares.StoreMigrateShares(appChainMigrateShares)
 }
 
+func WithdrawalCompleted(chainId string, event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := DelegateUnpack.ParseWithdrawalCompleted(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	appChainMigrateShares := appchain.AppChainWithdraw{
+		TxHash:      rlpLog.TxHash,
+		ChainId:     chainId,
+		BlockNumber: event.BlockNumber,
+		Shares:      uEvent.Shares,
+		Staker:      uEvent.Staker,
+		Strategy:    uEvent.Strategy,
+		Operator:    uEvent.Operator,
+		Created:     event.Timestamp,
+	}
+	return db.AppChainWithdraw.StoreAppchainWithdraw(appChainMigrateShares)
+
+}
+
 func ComputeMsgHash(sourceChainId, destChainId, nonce *big.Int) common.Hash {
 	return crypto.Keccak256Hash(common.LeftPadBytes(sourceChainId.Bytes(), 32),
 		common.LeftPadBytes(destChainId.Bytes(), 32),
