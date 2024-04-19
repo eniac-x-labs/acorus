@@ -11,6 +11,7 @@ service AppChainService {
   rpc L2StakerRewardsAmount(L2StakerRewardsAmountRequest) returns (L2StakerRewardsAmountResponse);
   rpc L2UnStakeRecord(L2UnStakeRecordRequest) returns (L2UnStakeRecordResponse);
   rpc L2StakeRecord(L2StakeRecordRequest) returns (L2StakeRecordResponse);
+  rpc L2WithdrawRecord(L2WithdrawRecordRequest) returns (L2WithdrawRecordResponse);
 
 }
 
@@ -92,7 +93,9 @@ message L2StakeRecord {
   string staker = 6;
   string token_address = 7;
   string chain_id = 8;
-  uint64 created = 9;
+  int32 status = 9;
+  string use_shares = 10;
+  uint64 created = 11;
 }
 
 message L2StakeRecordResponse {
@@ -107,4 +110,36 @@ message L2StakeRecordResponse {
   L2StakePage page = 3;
 }
 
+
+
+message L2WithdrawRecordRequest {
+  string address = 1;
+  string strategy = 2;
+  uint32 page = 4;
+  uint32 page_size = 5;
+}
+
+message L2WithdrawRecord {
+  string guid = 1;
+  int64 block_number = 2;
+  string tx_hash = 3;
+  string shares = 4;
+  string strategy = 5;
+  string staker = 6;
+  string chain_id = 7;
+  string operator = 8;
+  uint64 created = 9;
+}
+
+message L2WithdrawRecordResponse {
+  bool success = 1;
+  string message = 2;
+  message L2WithdrawPage {
+    uint32 current_page = 1;
+    uint32 page_size = 2;
+    int64 total = 3;
+    repeated L2WithdrawRecord records = 4;
+  }
+  L2WithdrawPage page = 3;
+}
 

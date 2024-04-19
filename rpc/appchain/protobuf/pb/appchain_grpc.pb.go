@@ -26,6 +26,7 @@ type AppChainServiceClient interface {
 	L2StakerRewardsAmount(ctx context.Context, in *L2StakerRewardsAmountRequest, opts ...grpc.CallOption) (*L2StakerRewardsAmountResponse, error)
 	L2UnStakeRecord(ctx context.Context, in *L2UnStakeRecordRequest, opts ...grpc.CallOption) (*L2UnStakeRecordResponse, error)
 	L2StakeRecord(ctx context.Context, in *L2StakeRecordRequest, opts ...grpc.CallOption) (*L2StakeRecordResponse, error)
+	L2WithdrawRecord(ctx context.Context, in *L2WithdrawRecordRequest, opts ...grpc.CallOption) (*L2WithdrawRecordResponse, error)
 }
 
 type appChainServiceClient struct {
@@ -72,6 +73,15 @@ func (c *appChainServiceClient) L2StakeRecord(ctx context.Context, in *L2StakeRe
 	return out, nil
 }
 
+func (c *appChainServiceClient) L2WithdrawRecord(ctx context.Context, in *L2WithdrawRecordRequest, opts ...grpc.CallOption) (*L2WithdrawRecordResponse, error) {
+	out := new(L2WithdrawRecordResponse)
+	err := c.cc.Invoke(ctx, "/acorus.rpc.appchain.AppChainService/L2WithdrawRecord", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AppChainServiceServer is the server API for AppChainService service.
 // All implementations must embed UnimplementedAppChainServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type AppChainServiceServer interface {
 	L2StakerRewardsAmount(context.Context, *L2StakerRewardsAmountRequest) (*L2StakerRewardsAmountResponse, error)
 	L2UnStakeRecord(context.Context, *L2UnStakeRecordRequest) (*L2UnStakeRecordResponse, error)
 	L2StakeRecord(context.Context, *L2StakeRecordRequest) (*L2StakeRecordResponse, error)
+	L2WithdrawRecord(context.Context, *L2WithdrawRecordRequest) (*L2WithdrawRecordResponse, error)
 }
 
 // UnimplementedAppChainServiceServer must be embedded to have forward compatible implementations.
@@ -97,6 +108,9 @@ func (UnimplementedAppChainServiceServer) L2UnStakeRecord(context.Context, *L2Un
 }
 func (UnimplementedAppChainServiceServer) L2StakeRecord(context.Context, *L2StakeRecordRequest) (*L2StakeRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method L2StakeRecord not implemented")
+}
+func (UnimplementedAppChainServiceServer) L2WithdrawRecord(context.Context, *L2WithdrawRecordRequest) (*L2WithdrawRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method L2WithdrawRecord not implemented")
 }
 func (UnimplementedAppChainServiceServer) mustEmbedUnimplementedAppChainServiceServer() {}
 
@@ -183,6 +197,24 @@ func _AppChainService_L2StakeRecord_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AppChainService_L2WithdrawRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(L2WithdrawRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AppChainServiceServer).L2WithdrawRecord(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/acorus.rpc.appchain.AppChainService/L2WithdrawRecord",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AppChainServiceServer).L2WithdrawRecord(ctx, req.(*L2WithdrawRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AppChainService_ServiceDesc is the grpc.ServiceDesc for AppChainService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -205,6 +237,10 @@ var AppChainService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "L2StakeRecord",
 			Handler:    _AppChainService_L2StakeRecord_Handler,
+		},
+		{
+			MethodName: "L2WithdrawRecord",
+			Handler:    _AppChainService_L2WithdrawRecord_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

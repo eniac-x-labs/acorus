@@ -259,15 +259,19 @@ func (s *RpcServer) L2StakeRecord(ctx context.Context, request *pb.L2StakeRecord
 
 	if len(stakeList) > 0 {
 		for _, stake := range stakeList {
+			stakeHash := stake.TxHash
+			increasedInfo := s.db.AppChainOperatorSharesIncreased.GetOperatorSharesIncreasedByTxHash(stakeHash)
 			record := &pb.L2StakeRecord{
 				Staker:       stake.Staker.String(),
 				Strategy:     stake.StrategyAddress.String(),
 				Shares:       stake.Shares.String(),
-				TxHash:       stake.TxHash.String(),
+				TxHash:       stakeHash.String(),
 				TokenAddress: stake.TokenAddress.String(),
 				BlockNumber:  stake.BlockNumber.Int64(),
 				Guid:         stake.GUID.String(),
 				ChainId:      stake.ChainId,
+				Status:       int32(increasedInfo.Status),
+				UseShares:    increasedInfo.UseShares.String(),
 				Created:      stake.Created,
 			}
 			records = append(records, record)
@@ -281,6 +285,51 @@ func (s *RpcServer) L2StakeRecord(ctx context.Context, request *pb.L2StakeRecord
 		Records:     records,
 	}
 	return &pb.L2StakeRecordResponse{
+		Success: true,
+		Message: "success",
+		Page:    resultPage,
+	}, nil
+}
+
+func (s *RpcServer) L2WithdrawRecord(ctx context.Context, request *pb.L2WithdrawRecordRequest) (*pb.L2WithdrawRecordResponse, error) {
+	page := request.Page
+	pageSize := request.PageSize
+	strategy := request.Strategy
+	address := request.Address
+	records := make([]*pb.L2WithdrawRecord, 0)
+	if page == 0 {
+		page = 1
+	}
+	if pageSize <= 10 {
+		pageSize = 10
+	}
+	withdrawList, total, currentPage := s.db.AppChainWithdraw.ListAppChainWithdraw(page, pageSize, address, strategy)
+
+	if len(withdrawList) > 0 {
+		for _, withdraw := range withdrawList {
+			stakeHash := withdraw.TxHash
+			record := &pb.L2WithdrawRecord{
+				Staker:      withdraw.Staker.String(),
+				Strategy:    withdraw.Strategy.String(),
+				Shares:      withdraw.Shares.String(),
+				Operator:    withdraw.Operator.String(),
+				TxHash:      stakeHash.String(),
+				BlockNumber: withdraw.BlockNumber.Int64(),
+				Guid:        withdraw.GUID.String(),
+				ChainId:     withdraw.ChainId,
+				Created:     withdraw.Created,
+			}
+			records = append(records, record)
+		}
+	}
+
+	resultPage := &pb.L2WithdrawRecordResponse_L2WithdrawPage{
+		CurrentPage: uint32(currentPage),
+		PageSize:    pageSize,
+		Total:       total,
+		Records:     records,
+	}
+	return &pb.L2WithdrawRecordResponse{
 		Success: true,
 		Message: "success",
 		Page:    resultPage,

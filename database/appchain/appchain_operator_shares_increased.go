@@ -38,6 +38,7 @@ type AppChainOperatorSharesIncreasedDB interface {
 }
 type AppChainOperatorSharesIncreasedDBView interface {
 	GetNeedStakeShares(chainId string) []*AppChainOperatorSharesIncreased
+	GetOperatorSharesIncreasedByTxHash(hash common.Hash) *AppChainOperatorSharesIncreased
 }
 
 func NewAppChainOperatorSharesIncreasedDB(db *gorm.DB) AppChainOperatorSharesIncreasedDB {
@@ -86,4 +87,14 @@ func (db appChainOperatorSharesIncreasedDB) UpdateOperatorUseShares(acOperatorSh
 		return result.Error
 	}
 	return nil
+}
+
+func (db appChainOperatorSharesIncreasedDB) GetOperatorSharesIncreasedByTxHash(hash common.Hash) *AppChainOperatorSharesIncreased {
+	var acOperatorSharesIncreased AppChainOperatorSharesIncreased
+	err := db.gorm.Table(AppChainOperatorSharesIncreased{}.TableName()).Where(AppChainOperatorSharesIncreased{TxHash: hash}).Take(&acOperatorSharesIncreased).Error
+	if err != nil {
+		log.Error("GetOperatorSharesIncreasedByTxHash", "err", err)
+		return nil
+	}
+	return &acOperatorSharesIncreased
 }
