@@ -180,7 +180,11 @@ func (l *L2AppChainListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.StrategyManagerAbi.Events["MigrateRelatedL1StakerShares"].ID.String():
 		err := unpack.MigrateRelatedL1StakerShares(l.chainId, event, l.db)
 		return err
+	case bindings.DelegationManagerAbi.Events["WithdrawalCompleted"].ID.String():
+		err := unpack.WithdrawalCompleted(l.chainId, event, l.db)
+		return err
 	}
+
 	return nil
 }
 

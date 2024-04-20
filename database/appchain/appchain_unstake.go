@@ -119,13 +119,12 @@ func (db appChainUnStakeDB) ClaimAppChainUnStake(chainUnStakeBatch AppChainUnSta
 	var exits AppChainUnStake
 	err := db.gorm.Table(chainUnStakeBatch.TableName()).Where(AppChainUnStake{
 		UnstakeNonce: chainUnStakeBatch.UnstakeNonce,
-		Status:       noClaim,
-	}).Take(&exits)
+	}).Where("status = ?", noClaim).Take(&exits).Error
 	if err != nil {
-		if errors.Is(err.Error, gorm.ErrRecordNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
 		}
-		return err.Error
+		return err
 	}
 	exits.Status = chainUnStakeBatch.Status
 	exits.Updated = chainUnStakeBatch.Updated
