@@ -76,7 +76,7 @@ func (db appChainStakeDB) ListAppChainStake(page, pageSize uint32, staker, strat
 	if resultTotal.Error != nil {
 		log.Error("appchain stake record", "get staking records by address count fail", resultTotal.Error)
 	}
-	querySR = querySR.Offset(int(offset)).Limit(int(pageSize))
+	querySR = querySR.Order("created desc").Offset(int(offset)).Limit(int(pageSize))
 	resultList := querySR.Find(&chainStakeBatch)
 	if resultList.Error != nil {
 		log.Error("appchain stake record", "get staking records by address fail", resultList.Error)
