@@ -74,7 +74,7 @@ func (db appChainWithdrawDB) ListAppChainWithdraw(page, pageSize uint32, staker,
 	if resultTotal.Error != nil {
 		log.Error("appchain withdraw record", "get withdraw records by address count fail", resultTotal.Error)
 	}
-	querySR = querySR.Offset(int(offset)).Limit(int(pageSize))
+	querySR = querySR.Order("created desc").Offset(int(offset)).Limit(int(pageSize))
 	resultList := querySR.Find(&appChainWithdraw)
 	if resultList.Error != nil {
 		log.Error("appchain withdraw record", "get withdraw records by address fail", resultList.Error)

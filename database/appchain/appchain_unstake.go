@@ -101,7 +101,7 @@ func (db appChainUnStakeDB) ListAppChainUnStake(page, pageSize uint32, staker, s
 	if resultTotal.Error != nil {
 		log.Error("appchain unstake record", "get unstaking records by address count fail", resultTotal.Error)
 	}
-	querySR = querySR.Offset(int(offset)).Limit(int(pageSize))
+	querySR = querySR.Order("created desc").Offset(int(offset)).Limit(int(pageSize))
 	resultList := querySR.Find(&chainUnStakeBatch)
 	if resultList.Error != nil {
 		log.Error("appchain unstake record", "get unstaking records by address fail", resultList.Error)
