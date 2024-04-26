@@ -50,6 +50,16 @@ func (pw *PointWorker) Start() error {
 		}
 		return nil
 	})
+	pw.tasks.Go(func() error {
+		for range tickerScan.C {
+			err := pw.pointsByStrategyStake()
+			if err != nil {
+				log.Error(" shutting down pointsByStrategyStake ", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
 	return nil
 }
 
@@ -95,6 +105,32 @@ func (pw *PointWorker) pointsByStaking() error {
 			if dbErr != nil {
 				log.Error("UpdatePointsStatus error", "dbErr", dbErr, "this point is success", guid)
 				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (pw *PointWorker) pointsByStrategyStake() error {
+	needPoints := pw.db.AppChainStake.NeedPoints()
+	log.Info("confirmPoints", "needPointsSize", len(needPoints))
+	if len(needPoints) == 0 {
+		return nil
+	}
+
+	for _, needPoint := range needPoints {
+		txHash := needPoint.TxHash
+		staker := needPoint.Staker
+		// todo  add type
+		pointsType := 1
+		points, err := pw.airDropRpcService.SubmitDppLinkPoints("", pointsType, staker.String())
+		if err != nil {
+			return err
+		}
+		if points.Code == "200" {
+			dbErr := pw.db.AppChainStake.UpdatePointsStatus(txHash)
+			if dbErr != nil {
+				return dbErr
 			}
 		}
 	}
