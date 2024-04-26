@@ -18,18 +18,15 @@ type B struct {
 
 func (b *B) StartUnpack() {
 	fmt.Println("B: Start" + b.b)
-	// B 的 Start 方法逻辑
 }
 
 type C struct {
-	// C 的字段
 	c string
 }
 
 func (c *C) StartUnpack() {
 	fmt.Println("C: Start" + c.c)
 	c.ss()
-	// C 的 Start 方法逻辑
 }
 
 func (c *C) ss() {

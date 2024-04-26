@@ -22,6 +22,7 @@ type AppChainStake struct {
 	TokenAddress    common.Address `json:"token_address" gorm:"serializer:bytes"`
 	ChainId         string         `json:"chain_id"`
 	Created         uint64         `json:"created"`
+	IsPoints        bool           `json:"is_points"`
 }
 
 func (AppChainStake) TableName() string {
@@ -39,6 +40,7 @@ type AppChainStakeDB interface {
 
 type AppChainStakeDBView interface {
 	ListAppChainStake(page, pageSize uint32, staker, strategy string) ([]AppChainStake, int64, int64)
+	NeedPoints(chainId string) []AppChainStake
 }
 
 func NewAppChainStakeDB(db *gorm.DB) AppChainStakeDB {
@@ -82,4 +84,14 @@ func (db appChainStakeDB) ListAppChainStake(page, pageSize uint32, staker, strat
 		log.Error("appchain stake record", "get staking records by address fail", resultList.Error)
 	}
 	return chainStakeBatch, totalRecord, int64(page)
+}
+
+func (db appChainStakeDB) NeedPoints(chainId string) []AppChainStake {
+	var chainStakeBatch []AppChainStake
+	resultList := db.gorm.Table(AppChainStake{}.TableName()).Where(AppChainStake{ChainId: chainId}).
+		Where("is_points = false").Find(&chainStakeBatch)
+	if resultList.Error != nil {
+		log.Error("appchain stake record", "get need points fail", resultList.Error)
+	}
+	return chainStakeBatch
 }
