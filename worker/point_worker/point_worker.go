@@ -60,6 +60,17 @@ func (pw *PointWorker) Start() error {
 		}
 		return nil
 	})
+
+	pw.tasks.Go(func() error {
+		for range tickerScan.C {
+			err := pw.pointsByStrategyUnStake()
+			if err != nil {
+				log.Error(" shutting down pointsByStrategyUnStake ", "err", err)
+				continue
+			}
+		}
+		return nil
+	})
 	return nil
 }
 
@@ -121,14 +132,38 @@ func (pw *PointWorker) pointsByStrategyStake() error {
 	for _, needPoint := range needPoints {
 		txHash := needPoint.TxHash
 		staker := needPoint.Staker
-		// todo  add type
-		pointsType := 1
+		pointsType := pw.getPointsType(global_const.L3Stake)
 		points, err := pw.airDropRpcService.SubmitDppLinkPoints("", pointsType, staker.String())
 		if err != nil {
 			return err
 		}
 		if points.Code == "200" {
 			dbErr := pw.db.AppChainStake.UpdatePointsStatus(txHash)
+			if dbErr != nil {
+				return dbErr
+			}
+		}
+	}
+	return nil
+}
+
+func (pw *PointWorker) pointsByStrategyUnStake() error {
+	needPoints := pw.db.AppChainUnStake.NeedPoints()
+	log.Info("confirmPoints", "needPointsSize", len(needPoints))
+	if len(needPoints) == 0 {
+		return nil
+	}
+
+	for _, needPoint := range needPoints {
+		txHash := needPoint.TxHash
+		staker := needPoint.Staker
+		pointsType := pw.getPointsType(global_const.L3UnStake)
+		points, err := pw.airDropRpcService.SubmitDppLinkPoints("", pointsType, staker.String())
+		if err != nil {
+			return err
+		}
+		if points.Code == "200" {
+			dbErr := pw.db.AppChainUnStake.UpdatePointsStatus(txHash)
 			if dbErr != nil {
 				return dbErr
 			}
@@ -145,6 +180,10 @@ func (pw *PointWorker) getPointsType(txType int) string {
 		return "3"
 	case global_const.StakingTypeWithdraw:
 		return "2"
+	case global_const.L3Stake:
+		return "4"
+	case global_const.L3UnStake:
+		return "5"
 	}
 	return ""
 }

@@ -16,6 +16,8 @@ const (
 	StakingTypeStake    = 1
 	StakingTypeReward   = 2
 	StakingTypeWithdraw = 3
+	L3Stake             = 4
+	L3UnStake           = 5
 
 	BridgeOperaInitType     = 1
 	BridgeOperaFinalizeType = 2
