@@ -30,6 +30,7 @@ type AppChainUnStake struct {
 	MigrateNotify bool           `json:"migrate_notify"`
 	Created       uint64         `json:"created"`
 	Updated       uint64         `json:"updated"`
+	IsPoints      bool           `json:"is_points"`
 }
 
 func (AppChainUnStake) TableName() string {
@@ -45,6 +46,7 @@ type AppChainUnStakeDB interface {
 	StoreAppChainUnStake(cainUnStakeBatch AppChainUnStake) error
 	NotifyAppChainUnStake(txHash string) error
 	NotifyMigrate(txHash string) error
+	UpdatePointsStatus(txHash common.Hash) error
 	ClaimAppChainUnStake(chainUnStakeBatch AppChainUnStake, noClaim uint8) error
 }
 
@@ -53,6 +55,7 @@ type AppChainUnStakeDBView interface {
 	ListAppChainUnStakeWaitNotify() []AppChainUnStake
 	ListUnStakeMigrateNotify() []AppChainUnStake
 	GetUnkStakeWaitNotify(unstakeNonce *big.Int) *AppChainUnStake
+	NeedPoints() []AppChainUnStake
 }
 
 func NewAppChainUnStakeDB(db *gorm.DB) AppChainUnStakeDB {
@@ -167,4 +170,18 @@ func (db appChainUnStakeDB) GetUnkStakeWaitNotify(unstakeNonce *big.Int) *AppCha
 	}
 	return &chainUnStakeBatch
 
+}
+
+func (db appChainUnStakeDB) NeedPoints() []AppChainUnStake {
+	var appChainUnStake []AppChainUnStake
+	resultList := db.gorm.Table(AppChainUnStake{}.TableName()).
+		Where("is_points = false").Limit(20).Find(&appChainUnStake)
+	if resultList.Error != nil {
+		log.Error("appchain unstake record", "get need points fail", resultList.Error)
+	}
+	return appChainUnStake
+}
+
+func (db appChainUnStakeDB) UpdatePointsStatus(txHash common.Hash) error {
+	return db.gorm.Table(AppChainUnStake{}.TableName()).Where(AppChainUnStake{TxHash: txHash}).Update("is_points", true).Error
 }

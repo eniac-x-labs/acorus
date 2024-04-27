@@ -16,7 +16,7 @@ import (
 
 func main() {
 	// 以太坊节点的URL
-	nodeURL := "https://rpc.ankr.com/eth/7f3ae11204e03961b67c557c4996244f0a53222b23c31a7baf9ae91c6bd89702"
+	nodeURL := "https://rpc.ankr.com/eth/"
 
 	// 以太坊区块号
 	blockNumber := big.NewInt(19034517)

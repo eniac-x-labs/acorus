@@ -22,6 +22,7 @@ type AppChainStake struct {
 	TokenAddress    common.Address `json:"token_address" gorm:"serializer:bytes"`
 	ChainId         string         `json:"chain_id"`
 	Created         uint64         `json:"created"`
+	IsPoints        bool           `json:"is_points"`
 }
 
 func (AppChainStake) TableName() string {
@@ -35,10 +36,12 @@ type appChainStakeDB struct {
 type AppChainStakeDB interface {
 	AppChainStakeDBView
 	StoreAppChainStake(cainStakeBatch AppChainStake) error
+	UpdatePointsStatus(txHash common.Hash) error
 }
 
 type AppChainStakeDBView interface {
 	ListAppChainStake(page, pageSize uint32, staker, strategy string) ([]AppChainStake, int64, int64)
+	NeedPoints() []AppChainStake
 }
 
 func NewAppChainStakeDB(db *gorm.DB) AppChainStakeDB {
@@ -82,4 +85,18 @@ func (db appChainStakeDB) ListAppChainStake(page, pageSize uint32, staker, strat
 		log.Error("appchain stake record", "get staking records by address fail", resultList.Error)
 	}
 	return chainStakeBatch, totalRecord, int64(page)
+}
+
+func (db appChainStakeDB) NeedPoints() []AppChainStake {
+	var chainStakeBatch []AppChainStake
+	resultList := db.gorm.Table(AppChainStake{}.TableName()).
+		Where("is_points = false").Limit(20).Find(&chainStakeBatch)
+	if resultList.Error != nil {
+		log.Error("appchain stake record", "get need points fail", resultList.Error)
+	}
+	return chainStakeBatch
+}
+
+func (db appChainStakeDB) UpdatePointsStatus(txHash common.Hash) error {
+	return db.gorm.Table(AppChainStake{}.TableName()).Where(AppChainStake{TxHash: txHash}).Update("is_points", true).Error
 }

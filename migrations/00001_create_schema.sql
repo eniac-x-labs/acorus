@@ -449,8 +449,10 @@ create table if not exists ac_chain_unstake
     notify_relayer  boolean          default false,
     migrate_notify  boolean          default false,
     created         INTEGER CHECK (created > 0),
-    updated         INTEGER
-);
+    updated         INTEGER,
+    is_points              boolean          default false
+
+    );
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_tx_hash ON ac_chain_unstake (tx_hash);
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_l2_strategy ON ac_chain_unstake (l2_strategy);
 CREATE INDEX IF NOT EXISTS ac_chain_unstake_staker ON ac_chain_unstake (staker);
@@ -467,7 +469,8 @@ create table if not exists ac_chain_stake
     strategy_address     varchar,
     staker          varchar,
     chain_id varchar,
-    created         INTEGER CHECK (created > 0)
+    created         INTEGER CHECK (created > 0),
+    is_points              boolean          default false
     );
 CREATE INDEX IF NOT EXISTS ac_chain_stake_tx_hash ON ac_chain_stake (tx_hash);
 CREATE INDEX IF NOT EXISTS ac_chain_stake_strategy ON ac_chain_stake (strategy_address);
