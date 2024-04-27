@@ -37,9 +37,10 @@ Acorus is project which can sync l1->l2 deposit, l2->l1 withdraw transactions of
 - ✅ [Mantle](https://github.com/mantlenetworkio)
 - ✅ [Metis Andromeda](https://github.com/MetisProtocol)
 - ✅ [Manta](https://pacific.manta.network/)
-- 🏗️ [Polygon](https://github.com/0xPolygonHermez)
-- 🏗️ [Zksync](https://github.com/matter-labs)
-- 🏗️ [Arbitrum](https://github.com/OffchainLab)
+- ✅ [Polygon](https://github.com/0xPolygonHermez)
+- ✅ [Zksync](https://github.com/matter-labs)
+- ✅ [Arbitrum](https://github.com/OffchainLab)
+- ✅ [ZKFair](https://zkfair.io/)
 - 🏗️ [Starknet](https://github.com/starkware-libs)
 
 If you want support your project, please create pr for us, we will support it.
