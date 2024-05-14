@@ -21,6 +21,7 @@ type BridgeRpcService interface {
 	MigrateL1Shares(sourceHash, chainId, strategy, staker, shares string, nonce uint64) (*pb.MigrateL1SharesResponse, error)
 	BatchMint(batchId uint64, batchMint map[string]string) (*pb.BatchMintResponse, error)
 	TransferToL2DappLinkBridge(batchId uint64, ChainId, StrategyAddress string) (*pb.TransferToL2DappLinkBridgeResponse, error)
+	TransferL2Share(request *pb.TransferL2ShareRequest) (*pb.TransferL2ShareResponse, error)
 }
 
 type bridgeRpcService struct {
@@ -144,4 +145,10 @@ func (r *bridgeRpcService) MigrateL1Shares(sourceHash, chainId, strategy, staker
 	}
 	log.Info("MigrateL1SharesRpc", "migrateL1SharesReq", migrateL1SharesReq)
 	return r.bRpcService.MigrateL1Shares(ctx, migrateL1SharesReq)
+}
+
+func (r *bridgeRpcService) TransferL2Share(request *pb.TransferL2ShareRequest) (*pb.TransferL2ShareResponse, error) {
+	log.Info("TransferL2ShareRpc", "transferL2ShareReq", request)
+	ctx := context.Background()
+	return r.bRpcService.TransferL2Share(ctx, request)
 }

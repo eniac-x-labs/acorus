@@ -30,6 +30,7 @@ type BridgeServiceClient interface {
 	MigrateL1Shares(ctx context.Context, in *MigrateL1SharesRequest, opts ...grpc.CallOption) (*MigrateL1SharesResponse, error)
 	TransferToL2DappLinkBridge(ctx context.Context, in *TransferToL2DappLinkBridgeRequest, opts ...grpc.CallOption) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(ctx context.Context, in *BatchMintRequest, opts ...grpc.CallOption) (*BatchMintResponse, error)
+	TransferL2Share(ctx context.Context, in *TransferL2ShareRequest, opts ...grpc.CallOption) (*TransferL2ShareResponse, error)
 }
 
 type bridgeServiceClient struct {
@@ -112,6 +113,15 @@ func (c *bridgeServiceClient) BatchMint(ctx context.Context, in *BatchMintReques
 	return out, nil
 }
 
+func (c *bridgeServiceClient) TransferL2Share(ctx context.Context, in *TransferL2ShareRequest, opts ...grpc.CallOption) (*TransferL2ShareResponse, error) {
+	out := new(TransferL2ShareResponse)
+	err := c.cc.Invoke(ctx, "/selaginella.proto_rpc.BridgeService/TransferL2Share", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BridgeServiceServer is the server API for BridgeService service.
 // All implementations must embed UnimplementedBridgeServiceServer
 // for forward compatibility
@@ -124,6 +134,7 @@ type BridgeServiceServer interface {
 	MigrateL1Shares(context.Context, *MigrateL1SharesRequest) (*MigrateL1SharesResponse, error)
 	TransferToL2DappLinkBridge(context.Context, *TransferToL2DappLinkBridgeRequest) (*TransferToL2DappLinkBridgeResponse, error)
 	BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error)
+	TransferL2Share(context.Context, *TransferL2ShareRequest) (*TransferL2ShareResponse, error)
 }
 
 // UnimplementedBridgeServiceServer must be embedded to have forward compatible implementations.
@@ -153,6 +164,9 @@ func (UnimplementedBridgeServiceServer) TransferToL2DappLinkBridge(context.Conte
 }
 func (UnimplementedBridgeServiceServer) BatchMint(context.Context, *BatchMintRequest) (*BatchMintResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BatchMint not implemented")
+}
+func (UnimplementedBridgeServiceServer) TransferL2Share(context.Context, *TransferL2ShareRequest) (*TransferL2ShareResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TransferL2Share not implemented")
 }
 
 // UnsafeBridgeServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -310,6 +324,24 @@ func _BridgeService_BatchMint_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BridgeService_TransferL2Share_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferL2ShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BridgeServiceServer).TransferL2Share(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/selaginella.proto_rpc.BridgeService/TransferL2Share",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BridgeServiceServer).TransferL2Share(ctx, req.(*TransferL2ShareRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // BridgeService_ServiceDesc is the grpc.ServiceDesc for BridgeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -348,6 +380,10 @@ var BridgeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchMint",
 			Handler:    _BridgeService_BatchMint_Handler,
+		},
+		{
+			MethodName: "TransferL2Share",
+			Handler:    _BridgeService_TransferL2Share_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

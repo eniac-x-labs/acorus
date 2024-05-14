@@ -51,6 +51,7 @@ type DB struct {
 	AppChainDappLinkBridge          appchain.AppChainDappLinkBridgeDB
 	AppChainMigrateShares           appchain.AppChainMigrateSharesDB
 	AppChainWithdraw                appchain.AppChainWithdrawDB
+	AppChainDethShares              appchain.AppChainDethSharesDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -114,6 +115,7 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 		AppChainMigrateShares:           appchain.NewAppChainMigrateSharesDB(gorm),
 		AppChainWithdraw:                appchain.NewAppChainWithdrawDB(gorm),
+		AppChainDethShares:              appchain.NewAppChainDethSharesDB(gorm),
 	}
 	return db, nil
 }
@@ -149,6 +151,7 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 			AppChainMigrateShares:           appchain.NewAppChainMigrateSharesDB(gorm),
 			AppChainWithdraw:                appchain.NewAppChainWithdrawDB(gorm),
+			AppChainDethShares:              appchain.NewAppChainDethSharesDB(gorm),
 		}
 		return fn(txDB)
 	})

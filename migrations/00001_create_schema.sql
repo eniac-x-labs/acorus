@@ -564,3 +564,22 @@ CREATE INDEX IF NOT EXISTS ac_chain_withdraw_operator ON ac_chain_withdraw (oper
 CREATE INDEX IF NOT EXISTS ac_chain_withdraw_strategy ON ac_chain_withdraw (strategy);
 CREATE INDEX IF NOT EXISTS ac_chain_withdraw_chain_id ON ac_chain_withdraw (chain_id);
 CREATE INDEX IF NOT EXISTS ac_chain_withdraw_staker ON ac_chain_withdraw (staker);
+
+
+
+create table if not exists ac_chain_deth_shares
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    shares      UINT256          default 0,
+    token_address   varchar,
+    strategy_address     varchar,
+    staker          varchar,
+    chain_id varchar,
+    created         INTEGER CHECK (created > 0)
+    );
+CREATE INDEX IF NOT EXISTS ac_chain_deth_shares_strategy ON ac_chain_deth_shares (strategy_address);
+CREATE INDEX IF NOT EXISTS ac_chain_deth_shares_chain_id ON ac_chain_deth_shares (chain_id);
+CREATE INDEX IF NOT EXISTS ac_chain_deth_shares_staker ON ac_chain_deth_shares (staker);
+
+
+
