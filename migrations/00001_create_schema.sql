@@ -582,4 +582,21 @@ CREATE INDEX IF NOT EXISTS ac_chain_deth_shares_chain_id ON ac_chain_deth_shares
 CREATE INDEX IF NOT EXISTS ac_chain_deth_shares_staker ON ac_chain_deth_shares (staker);
 
 
+create table if not exists ac_chain_deth_transfer
+(
+    guid            text PRIMARY KEY DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    tx_hash      varchar        ,
+    block_number    UINT256          default 0,
+    from_address     varchar,
+    to_address          varchar,
+    shares UINT256         default 0,
+    claimed int              default 0,
+    message_nonce UINT256         default 0,
+    notify_relayer boolean default false,
+    created         INTEGER CHECK (created > 0)
+    );
+CREATE INDEX IF NOT EXISTS ac_chain_deth_transfer_tx_hash ON ac_chain_deth_transfer (tx_hash);
+CREATE INDEX IF NOT EXISTS ac_chain_deth_transfer_from_address ON ac_chain_deth_transfer (from_address);
+CREATE INDEX IF NOT EXISTS ac_chain_deth_transfer_to_address ON ac_chain_deth_transfer (to_address);
+
 

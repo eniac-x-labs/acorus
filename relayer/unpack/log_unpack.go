@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cornerstone-labs/acorus/common/global_const"
 	"github.com/cornerstone-labs/acorus/database"
+	"github.com/cornerstone-labs/acorus/database/appchain"
 	common2 "github.com/cornerstone-labs/acorus/database/common"
 	"github.com/cornerstone-labs/acorus/database/event"
 	"github.com/cornerstone-labs/acorus/database/relayer"
@@ -14,9 +15,8 @@ import (
 )
 
 var (
-	L1Unpack, _       = bindings.NewL1PoolManagerFilterer(common.Address{}, nil)
-	MsgUnpack, _      = bindings.NewIMessageManagerFilterer(common.Address{}, nil)
-	IL1PoolManager, _ = bindings.NewIL1PoolManagerFilterer(common.Address{}, nil)
+	L1Unpack, _  = bindings.NewL1PoolManagerFilterer(common.Address{}, nil)
+	MsgUnpack, _ = bindings.NewIMessageManagerFilterer(common.Address{}, nil)
 )
 
 func MessageSent(event event.ContractEvent, db *database.DB) error {
@@ -255,7 +255,7 @@ func StakingWETHEvent(event event.ContractEvent, db *database.DB) error {
 
 func Withdraw(event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	withdraw, unpackErr := IL1PoolManager.ParseWithdraw(*rlpLog)
+	withdraw, unpackErr := L1Unpack.ParseWithdraw(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
@@ -278,7 +278,7 @@ func Withdraw(event event.ContractEvent, db *database.DB) error {
 
 func ClaimReward(event event.ContractEvent, db *database.DB) error {
 	rlpLog := event.RLPLog
-	claimReward, unpackErr := IL1PoolManager.ParseClaimReward(*rlpLog)
+	claimReward, unpackErr := L1Unpack.ParseClaimReward(*rlpLog)
 	if unpackErr != nil {
 		return unpackErr
 	}
@@ -308,4 +308,33 @@ func ClaimEvent(event event.ContractEvent, db *database.DB) error {
 	}
 	fmt.Println(claimEvent)
 	return nil
+}
+
+func DethTransfer(event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := L1Unpack.ParseInitiateStakingMessage(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	dethTransfer := appchain.AppChainDEthTransfer{
+		TxHash:       rlpLog.TxHash,
+		BlockNumber:  event.BlockNumber,
+		From:         uEvent.From,
+		To:           uEvent.To,
+		Shares:       uEvent.Shares,
+		MessageNonce: uEvent.StakeMessageNonce,
+		Created:      event.Timestamp,
+	}
+	return db.AppChainDEthTransfer.StoreAppChainDEthTransfer(dethTransfer)
+
+}
+
+func ClaimDethTransfer(event event.ContractEvent, db *database.DB) error {
+	rlpLog := event.RLPLog
+	uEvent, unpackErr := L1Unpack.ParseFinalizeStakingMessage(*rlpLog)
+	if unpackErr != nil {
+		return unpackErr
+	}
+	return db.AppChainDEthTransfer.ClaimDethTransfer(uEvent.StakeMessageNonce)
+
 }

@@ -1,10 +1,6 @@
 package unpack
 
 import (
-	"github.com/cornerstone-labs/acorus/common/bigint"
-	"github.com/cornerstone-labs/acorus/rpc/bridge"
-	"github.com/cornerstone-labs/acorus/rpc/bridge/protobuf/pb"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -161,6 +157,7 @@ func WithdrawalCompleted(chainId string, event event.ContractEvent, db *database
 	if unpackErr != nil {
 		return unpackErr
 	}
+
 	appChainMigrateShares := appchain.AppChainWithdraw{
 		TxHash:      rlpLog.TxHash,
 		ChainId:     chainId,
@@ -179,63 +176,4 @@ func ComputeMsgHash(sourceChainId, destChainId, nonce *big.Int) common.Hash {
 	return crypto.Keccak256Hash(common.LeftPadBytes(sourceChainId.Bytes(), 32),
 		common.LeftPadBytes(destChainId.Bytes(), 32),
 		common.LeftPadBytes(nonce.Bytes(), 32))
-}
-
-func TransferL2Shares(bridgeRpcService bridge.BridgeRpcService, fromAddress, toAddress common.Address,
-	shares *big.Int, db *database.DB) error {
-	fromAddressDethList := db.AppChainDethShares.ListDethSharesByAddress(fromAddress)
-	log.Info("TransferL2Shares", "fromAddressDethList", len(fromAddressDethList))
-	if len(fromAddressDethList) == 0 {
-		return nil
-	}
-	sharesMap := make(map[uint64]*pb.ShareMap)
-	for i := 0; i < len(fromAddressDethList); i++ {
-		strategyAmountMap := make(map[string]string)
-		dethSharesInfo := fromAddressDethList[i]
-		thisStrategyShares := dethSharesInfo.Shares
-		chainIdStr := dethSharesInfo.ChainId
-		chainId, _ := big.NewInt(0).SetString(chainIdStr, 10)
-		chainIdUint := chainId.Uint64()
-		totalShares := getTotalShares(sharesMap)
-		needShares := big.NewInt(0).Sub(shares, totalShares)
-		if needShares.Cmp(shares) == 0 {
-			break
-		}
-		strategyAddress := dethSharesInfo.StrategyAddress
-		if needShares.Cmp(thisStrategyShares) == -1 {
-			strategyAmountMap[strategyAddress.String()] = needShares.String()
-			sharesMap[chainIdUint] = &pb.ShareMap{
-				ShareMap: strategyAmountMap,
-			}
-			break
-		}
-		if needShares.Cmp(thisStrategyShares) == 0 {
-			strategyAmountMap[strategyAddress.String()] = needShares.String()
-			sharesMap[chainIdUint] = &pb.ShareMap{
-				ShareMap: strategyAmountMap,
-			}
-			break
-		}
-		if needShares.Cmp(thisStrategyShares) == 1 {
-			strategyAmountMap[strategyAddress.String()] = thisStrategyShares.String()
-			sharesMap[chainIdUint] = &pb.ShareMap{
-				ShareMap: strategyAmountMap,
-			}
-		}
-	}
-	l2ShareReq := &pb.TransferL2ShareRequest{}
-	bridgeRpcService.TransferL2Share(l2ShareReq)
-	return nil
-}
-
-func getTotalShares(sharesMap map[uint64]*pb.ShareMap) *big.Int {
-	totalShares := bigint.Zero
-	for _, shareMapInfo := range sharesMap {
-		shareMap := shareMapInfo.GetShareMap()
-		for _, shares := range shareMap {
-			sharesBig, _ := big.NewInt(0).SetString(shares, 10)
-			totalShares = big.NewInt(0).Add(totalShares, sharesBig)
-		}
-	}
-	return totalShares
 }

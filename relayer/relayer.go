@@ -281,11 +281,17 @@ func (rl *RelayerListener) eventUnpack(event event.ContractEvent) error {
 	case bindings.L1PoolAbi.Events["ClaimEvent"].ID.String():
 		err := unpack.ClaimEvent(event, rl.db)
 		return err
-	case bindings.IL1PoolAbi.Events["Withdraw"].ID.String():
+	case bindings.L1PoolAbi.Events["Withdraw"].ID.String():
 		err := unpack.Withdraw(event, rl.db)
 		return err
-	case bindings.IL1PoolAbi.Events["ClaimReward"].ID.String():
+	case bindings.L1PoolAbi.Events["ClaimReward"].ID.String():
 		err := unpack.ClaimReward(event, rl.db)
+		return err
+	case bindings.L1PoolAbi.Events["InitiateStakingMessage"].ID.String():
+		err := unpack.DethTransfer(event, rl.db)
+		return err
+	case bindings.L1PoolAbi.Events["FinalizeStakingMessage"].ID.String():
+		err := unpack.ClaimDethTransfer(event, rl.db)
 		return err
 	}
 	return nil
