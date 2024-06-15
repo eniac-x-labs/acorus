@@ -91,17 +91,16 @@ func (syncer *Synchronizer) Start() error {
 			} else {
 				newHeaders, err := syncer.headerTraversal.NextHeaders(syncer.headerBufferSize)
 				if err != nil {
-					log.Error("sync", "chain ", syncer.chainId, "error querying for headers", "err", err)
+					log.Error("sync", "chain ", syncer.chainId, "error querying for headers err", err)
 					continue
 				} else if len(newHeaders) == 0 {
-					log.Warn("sync", "chain ", syncer.chainId, "no new headers. syncer at head?")
+					log.Warn("sync", "chain ", syncer.chainId, "no new headers. syncer at head?", 0)
 				} else {
 					syncer.headers = newHeaders
 				}
 				latestHeader := syncer.headerTraversal.LatestHeader()
 				if latestHeader != nil {
-					latestHeaderF, _ := latestHeader.Number.Float64()
-					log.Warn("sync", "chain ", syncer.chainId, "Latest header", "latestHeader Number", latestHeader.Number, "latestHeaderF", latestHeaderF)
+					log.Warn("sync", "chain ", syncer.chainId, "latestHeader Number", latestHeader.Number)
 				}
 			}
 			err := syncer.processBatch(syncer.headers)
@@ -121,7 +120,8 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 		return nil
 	}
 	firstHeader, lastHeader := headers[0], headers[len(headers)-1]
-	log.Info("processBatch", "chain ", syncer.chainId, "extracting batch", "size", len(headers))
+	log.Info("processBatch", "chain ", syncer.chainId, "extracting batch size", len(headers),
+		"firstHeader", firstHeader.Number, "lastHeader", lastHeader.Number)
 
 	headerMap := make(map[common.Hash]*types.Header, len(headers))
 	for i := range headers {
@@ -133,7 +133,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 	filterQuery := ethereum.FilterQuery{FromBlock: firstHeader.Number, ToBlock: lastHeader.Number}
 	logs, err := syncer.ethClient.FilterLogs(filterQuery, uint(chainIdInt))
 	if err != nil {
-		log.Error("processBatch", "chain ", syncer.chainId, "failed to extract logs", "err", err)
+		log.Error("processBatch", "chain ", syncer.chainId, "failed to extract logs err", err)
 		return err
 	}
 
@@ -144,7 +144,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 	}
 
 	if len(logs.Logs) > 0 {
-		log.Info("processBatch", "chain ", syncer.chainId, "detected logs", "size", len(logs.Logs))
+		log.Info("processBatch", "chain ", syncer.chainId, "detected logs size", len(logs.Logs))
 	}
 
 	chainBlockHeaders := make([]common2.ChainBlockHeader, 0, len(headers))
@@ -180,7 +180,7 @@ func (syncer *Synchronizer) processBatch(headers []types.Header) error {
 			}
 			return nil
 		}); err != nil {
-			log.Error("unable to persist batch", "err")
+			log.Error("unable to persist batch", "err", err)
 			return nil, fmt.Errorf("unable to persist batch: %w", err)
 		}
 		return nil, nil
