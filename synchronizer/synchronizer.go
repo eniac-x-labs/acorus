@@ -67,7 +67,7 @@ func NewSynchronizer(cfg *Config, db *database.DB, client node.EthClient, shutdo
 	log.Info("Support chain", "chainId", chainIdInt)
 	resCtx, resCancel := context.WithCancel(context.Background())
 	return &Synchronizer{
-		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Millisecond,
+		loopInterval:     time.Duration(cfg.LoopIntervalMsec) * time.Second,
 		headerBufferSize: uint64(cfg.HeaderBufferSize),
 		headerTraversal:  node.NewHeaderTraversal(client, fromHeader, cfg.ConfirmationDepth, uint(chainIdInt)),
 		ethClient:        client,
