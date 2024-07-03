@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cornerstone-labs/acorus/worker/deth_worker"
 	"math/big"
 	"net"
 	"strconv"
@@ -67,6 +68,7 @@ type Acorus struct {
 	relayerFundingPoolTask *relayer.RelayerFundingPool
 	airDropWorker          *point_worker.PointWorker
 	cleanDataWorker        *clean_data_worker.WorkerProcessor
+	dethWroker             *deth_worker.WorkerProcessor
 	appChainL1             *appchain.L1AppChainListener
 	appChainL2             map[string]*appchain.L2AppChainListener
 	appChainRpcServer      *rpc_appchain.RpcServer
@@ -129,6 +131,10 @@ func (as *Acorus) Start(ctx context.Context) error {
 	}
 	if err := as.cleanDataWorker.WorkerStart(); err != nil {
 		log.Error("start clean data worker failed", "err", err)
+		return err
+	}
+	if err := as.dethWroker.WorkerStart(); err != nil {
+		log.Error("start deth worker failed", "err", err)
 		return err
 	}
 	if err := as.appChainL1.Start(); err != nil {
@@ -225,6 +231,9 @@ func (as *Acorus) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	if err := as.initCleanDataWorker(cfg); err != nil {
 		fmt.Errorf("failed to init clean data worker: %w", err)
 	}
+	if err := as.initDethWorker(); err != nil {
+		fmt.Errorf("failed to init deth worker: %w", err)
+	}
 	if err := as.initAppChainL1(cfg); err != nil {
 		fmt.Errorf("failed to initAppChainL1: %w", err)
 	}
@@ -276,6 +285,15 @@ func (as *Acorus) initCleanDataWorker(cfg *config.Config) error {
 		log.Error("init clean_data_worker failed", "err", err)
 	}
 	as.cleanDataWorker = processor
+	return nil
+}
+
+func (as *Acorus) initDethWorker() error {
+	processor, err := deth_worker.NewWorkerProcessor(as.DB, as.birdgeRpcService, as.shutdown)
+	if err != nil {
+		log.Error("init deth_worker failed", "err", err)
+	}
+	as.dethWroker = processor
 	return nil
 }
 

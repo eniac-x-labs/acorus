@@ -157,6 +157,7 @@ func WithdrawalCompleted(chainId string, event event.ContractEvent, db *database
 	if unpackErr != nil {
 		return unpackErr
 	}
+
 	appChainMigrateShares := appchain.AppChainWithdraw{
 		TxHash:      rlpLog.TxHash,
 		ChainId:     chainId,

@@ -3,6 +3,14 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/pkg/errors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"path/filepath"
+
 	"github.com/cornerstone-labs/acorus/config"
 	"github.com/cornerstone-labs/acorus/database/appchain"
 	"github.com/cornerstone-labs/acorus/database/common"
@@ -13,12 +21,6 @@ import (
 	_ "github.com/cornerstone-labs/acorus/database/utils/serializers"
 	"github.com/cornerstone-labs/acorus/database/worker"
 	"github.com/cornerstone-labs/acorus/synchronizer/retry"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/pkg/errors"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"os"
-	"path/filepath"
 )
 
 type DB struct {
@@ -51,6 +53,8 @@ type DB struct {
 	AppChainDappLinkBridge          appchain.AppChainDappLinkBridgeDB
 	AppChainMigrateShares           appchain.AppChainMigrateSharesDB
 	AppChainWithdraw                appchain.AppChainWithdrawDB
+	AppChainDethShares              appchain.AppChainDethSharesDB
+	AppChainDEthTransfer            appchain.AppChainDEthTransferDB
 }
 
 func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
@@ -114,6 +118,8 @@ func NewDB(ctx context.Context, dbConfig config.Database) (*DB, error) {
 		AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 		AppChainMigrateShares:           appchain.NewAppChainMigrateSharesDB(gorm),
 		AppChainWithdraw:                appchain.NewAppChainWithdrawDB(gorm),
+		AppChainDethShares:              appchain.NewAppChainDethSharesDB(gorm),
+		AppChainDEthTransfer:            appchain.NewAppChainDEthTransferDB(gorm),
 	}
 	return db, nil
 }
@@ -149,6 +155,8 @@ func (db *DB) Transaction(fn func(db *DB) error) error {
 			AppChainDappLinkBridge:          appchain.NewAppChainDappLinkBridgeDB(gorm),
 			AppChainMigrateShares:           appchain.NewAppChainMigrateSharesDB(gorm),
 			AppChainWithdraw:                appchain.NewAppChainWithdrawDB(gorm),
+			AppChainDethShares:              appchain.NewAppChainDethSharesDB(gorm),
+			AppChainDEthTransfer:            appchain.NewAppChainDEthTransferDB(gorm),
 		}
 		return fn(txDB)
 	})
